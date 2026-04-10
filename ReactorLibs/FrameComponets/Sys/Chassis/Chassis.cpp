@@ -1,8 +1,11 @@
 #include "Chassis.hpp"
 #include "arm_math.h"
 #include "Monitor.hpp"
+#include "farcon.hpp"
+#include "Interboardcomm.hpp"
 
 ChassisType& test_chas = ChassisType::GetInstance();
+BoardComm main_board;
 
 void ChassisType::Start()
 {
@@ -14,12 +17,43 @@ void ChassisType::Start()
         // motors[i].speed_pid.ForwardLize(PidGeneral::SpeedForward, 1.5f, 5, 4.8); 			// 速度型前馈
         // motors[i].Enable();
     }
+    main_board.Init(Hardware::hcan_main, 0x220, false);
+}
+void SendChassisSpeedCommand(float vx, float vy, float vz)
+{
+    // 6 字节 uint8，完全匹配接收端格式
+    uint8_t payload[6];
+
+    // 放大 100 倍转为 int16
+    int16_t x = (int16_t)(vx);
+    int16_t y = (int16_t)(vy);
+    int16_t z = (int16_t)(vz);
+
+    // 大端格式：高字节 <<8 在前，低字节在后
+    // 对应接收端：payload[0] <<8 | payload[1]
+    payload[0] = (x >> 8) & 0xFF;  // Vx 高8位
+    payload[1] = x & 0xFF;         // Vx 低8位
+
+    payload[2] = (y >> 8) & 0xFF;  // Vy 高8位
+    payload[3] = y & 0xFF;         // Vy 低8位
+
+    payload[4] = (z >> 8) & 0xFF;  // Vz 高8位
+    payload[5] = z & 0xFF;         // Vz 低8位
+
+    main_board.SendTask(0x210, 1, payload, 6, false);
 }
 
 void ChassisType::Update()
 {
     // 遥控器控制逻辑
+    if(control_mode == FARCON)
+    {
+        // 读取遥控器数据到底盘控制变量
+        targ_speed.x = -farcon.jy_data_origin[3]*1.0f / 100.f * _max_velo;   // 前后
+        targ_speed.y = -farcon.jy_data_origin[2]*1.0f / 100.f * _max_velo;   // 左右
+        targ_speed.z = -farcon.jy_data_origin[0]*1.0f / 100.f * _max_omega;  // 旋转
 
+    }
 
     // 实现闭环的地方
     if (_walking || _is_pos_locked)
