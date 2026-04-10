@@ -12,14 +12,14 @@ void Hardware::Config_Hardwares()
     Hardware::hcan_sub = nullptr;
  
     /**-----    配置串口    -----**/
-    Hardware::huart_host = ToID(&huart1);
+    Hardware::huart_host = ToID(&huart2);
     Hardware::huart_farcon = ToID(&huart3);
     Hardware::huart_odom = ToID(&huart6);
     Hardware::huart_other = nullptr;
  
     /**-----    配置SPI总线    -----**/
     Hardware::spi_main_bus = nullptr;
-    Hardware::spi_imu_bus = ToID(&hspi1);
+    Hardware::spi_imu_bus = nullptr;
     Hardware::spi_ext_bus = nullptr;
 
     /**-----    配置定时器    -----**/
@@ -37,7 +37,7 @@ void Hardware::Config_Hardwares()
 void Hardware::Config_Parameters()
 {
     /// @brief 配置主频
-    Hardware::MainFreq_MHz = 168;
+    Hardware::MainFreq_MHz = 180;
 
     /// @brief 日志输出模式
     Hardware::RTTLogAtUart = true;
