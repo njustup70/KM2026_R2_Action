@@ -77,6 +77,8 @@ class ChassisType : public Application
         /// @brief 转到某角度具体实现
         bool _Rotating();
 
+        void _SendFarconCmd();
+
 
         Vec3 targ_ges = Vec3(0, 0, 0);      // 期望姿态，车体右手系，x向前，y向左，z从上向下看逆时针，单位m，rad
         Vec3 targ_speed;                    // 期望速度，车体右手系，x向前，y向左，z左转，单位m/s，rad/s
