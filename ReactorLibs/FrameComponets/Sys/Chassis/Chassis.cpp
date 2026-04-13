@@ -65,21 +65,21 @@ void ChassisType::Update()
     if(farcon.toggle[0] == 1) control_mode = FARCON;
     else control_mode = OPEN;
 
-    _SendFarconCmd();
+    // _SendFarconCmd();
 
-//    switch (control_mode)
-//    {
-//        case OPEN:
+   switch (control_mode)
+   {
+       case OPEN:
 
-//            break;
+           break;
 
-//        case FARCON:
-//            _SendFarconCmd();
-//            break;
+       case FARCON:
+           _SendFarconCmd();
+           break;
 
-//        default:    
-//            break;
-//    }
+       default:    
+           break;
+   }
 
     targ_velo = targ_speed.Length();
 
