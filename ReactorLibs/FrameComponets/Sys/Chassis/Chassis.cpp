@@ -7,27 +7,35 @@
 ChassisType& test_chas = ChassisType::GetInstance();
 // BoardComm main_board;
 
+void ChasTaskCallback(uint8_t task_id, const uint8_t* payload, uint8_t payload_len, void* user_ctx)
+{
+    // 这里处理C板控制底盘后反馈的应答
+}
+
 void ChassisType::Start()
 {
-    // 初始化电机
-    for (int i = 0; i < 4; i++)
-    {
-        // motors[i].Init(Hardware::hcan_main, i + 1, MotorDJIMode::PID_SpeedControl);
-        // motors[i].speed_pid.Init(3.6, 2.4, 0.0);
-        // motors[i].speed_pid.ForwardLize(PidGeneral::SpeedForward, 1.5f, 5, 4.8); 			// 速度型前馈
-        // motors[i].Enable();
-    }
+    // // 初始化电机
+    // for (int i = 0; i < 4; i++)
+    // {
+    //     // motors[i].Init(Hardware::hcan_main, i + 1, MotorDJIMode::PID_SpeedControl);
+    //     // motors[i].speed_pid.Init(3.6, 2.4, 0.0);
+    //     // motors[i].speed_pid.ForwardLize(PidGeneral::SpeedForward, 1.5f, 5, 4.8); 			// 速度型前馈
+    //     // motors[i].Enable();
+    // }
     main_board.Init(Hardware::hcan_sub, 0x220, false);
+    main_board.RegisterTask(1, ChasTaskCallback, this);
 }
+
+
 void SendChasSpeedCmd(float vx, float vy, float vz)
 {
     // 6 字节 uint8，完全匹配接收端格式
     uint8_t payload[6];
 
     // 放大 100 倍转为 int16
-    int16_t x = (int16_t)(vx);
-    int16_t y = (int16_t)(vy);
-    int16_t z = (int16_t)(vz);
+    int16_t x = (int16_t)(vx * 100.0f);
+    int16_t y = (int16_t)(vy * 100.0f);
+    int16_t z = (int16_t)(vz * 100.0f);
 
     // 大端格式：高字节 <<8 在前，低字节在后
     // 对应接收端：payload[0] <<8 | payload[1]
@@ -50,7 +58,6 @@ void ChassisType::_SendFarconCmd()
     targ_speed.y = -farcon.jy_data_origin[2]*1.0f / 100.f * _max_velo;   // 左右
     targ_speed.z = -farcon.jy_data_origin[0]*1.0f / 100.f * _max_omega;  // 旋转
     SendChasSpeedCmd(targ_speed.x, targ_speed.y, targ_speed.z);
-    _safe_lock_tick = 100;   
 }
 
 void ChassisType::Update()
@@ -58,41 +65,46 @@ void ChassisType::Update()
     if(farcon.toggle[0] == 1) control_mode = FARCON;
     else control_mode = OPEN;
 
-    switch (control_mode)
-    {
-        case OPEN:
+    _SendFarconCmd();
 
-            break;
+//    switch (control_mode)
+//    {
+//        case OPEN:
 
-        case FARCON:
-            _SendFarconCmd();
-            break;
+//            break;
 
-        default:    
-            break;
-    }
-    // 遥控器控制逻辑
+//        case FARCON:
+//            _SendFarconCmd();
+//            break;
 
-    // 实现闭环的地方
-    if (_walking || _is_pos_locked)
-    {
-        _Walking();
-    }
-    if (_rotating || _is_yaw_locked)
-    {
-        _Rotating();
-    }
-    
-    // 将底盘的 速度targ_speed 上传到各个电机
-    _UploadSpeed();
-
-    // 更新自解算里程计
-    _UpdateChasOdom();
+//        default:    
+//            break;
+//    }
 
     targ_velo = targ_speed.Length();
 
-    // 安全锁倒计时
-    _safe_lock_tick -= 5;
+    // // 遥控器控制逻辑
+
+    // // 实现闭环的地方
+    // if (_walking || _is_pos_locked)
+    // {
+    //     _Walking();
+    // }
+    // if (_rotating || _is_yaw_locked)
+    // {
+    //     _Rotating();
+    // }
+    
+    // // 将底盘的 速度targ_speed 上传到各个电机
+    // _UploadSpeed();
+
+    // // 更新自解算里程计
+    // _UpdateChasOdom();
+
+    // targ_velo = targ_speed.Length();
+
+    // // 安全锁倒计时
+    // _safe_lock_tick -= 5;
 }
 
 
