@@ -2,6 +2,7 @@
 #include "Monitor.hpp"
 #include "System.hpp"
 #include "Lift_Leg.hpp"
+#include "Chassis.hpp"
 
 StateCore &core = StateCore::GetInstance();
 Monitor &monit = Monitor::GetInstance();
@@ -9,6 +10,7 @@ Monitor &monit = Monitor::GetInstance();
 StateGraph example_graph("graph_name");
 void Action_of_Dege(StateCore *core);
 Lift_Leg &lift_leg = Lift_Leg::GetInstance();
+ChassisType &chas = ChassisType::GetInstance();
 
 
 /**
@@ -18,7 +20,8 @@ Lift_Leg &lift_leg = Lift_Leg::GetInstance();
 void MainFrameCpp()
 {
   System.RegistApp(lift_leg);
-
+  System.RegistApp(chas);
+  chas.Enable();
   // 配置状态图为简并模式
   example_graph.Degenerate(Action_of_Dege);
 
