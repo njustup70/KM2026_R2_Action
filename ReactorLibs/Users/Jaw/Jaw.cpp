@@ -123,7 +123,7 @@ void Jaw::Start()
     motor_2006.ConfigADRC()
         .AsPosC()
         .ADRC_Womega(42.0f, 9.6f)
-        .ADRC_Physic(6.9e-5f, 0.18f)
+        .ADRC_Physic(7.5e-5f, 0.18f)
         .ADRC_Limit(9.0f)
         .SpdLimit(5000.0f)
         .ADRC_MaxPlannedVel(5000.0f)
@@ -131,10 +131,22 @@ void Jaw::Start()
         .Feedforward(M2006GravityComp)
         .Apply();
     motor_2006.driver.Enable();
+
+    //继电器
+    Pin relay_pin = {'F', 1};
+    relay.Init(relay_pin, Relay::HIGH_ON);
 }
 
 void Jaw::Update()
 {
+    if(System.out_from_debugmode)
+    {
+        motor_3508_hori.Neutral();
+        motor_3508_vert.Neutral();
+        motor_2006.Neutral();
+        return;
+    }
+    
     if (!_origined)
     {
         if (!_hori_origined)
@@ -158,15 +170,11 @@ void Jaw::Update()
     }
     else
     {
-        // _UploadPos();
-        _Update_Log();
+        _UploadPos();
+		// _Update_Log(); //没有检测开了日志系统会不会卡死，反正我没log_router，不注释程序会飞
+        _SetJawState(_state);
     }
 }
-
-
-
-
-
 
 void Jaw::_Update_Log()
 {
@@ -203,17 +211,6 @@ void Jaw::_UploadPos()
 {
 
 }
-
-void Jaw::Enable()
-{
-    // _enabled = true;
-}   
-
-void Jaw::Disable()
-{
-    // _enabled = false;
-}
-
 
 /**----------------------    调零    ----------------------**/
 void Jaw::_GetHoriOrigin()
@@ -312,8 +309,32 @@ void Jaw::_GetPitchOrigin()
     {
         pitch_probe_cnt = 0;
         // 每周期（5ms）加 20 Code，每秒加 4000 Code
-        if (runed_tick > 30)    pitch_probe_code += 30;
+        if (runed_tick > 30)    pitch_probe_code += 50;
         // 但是最开始缓慢前进，目的是破除静态库伦摩擦力
         else                    pitch_probe_code += 15;
     }   
+}
+
+void Jaw::_SetJawState(JawState state)
+{
+    switch (state)
+    {
+        // 气路是这么接的
+        case JawState::OPEN:
+            relay.On();  // 打开夹爪
+            break;
+        case JawState::CLOSE:
+            relay.Off(); // 关闭夹爪
+            break;
+    }
+}
+
+void Jaw::Open()
+{
+    _state = JawState::OPEN;
+}
+
+void Jaw::Close()
+{
+    _state = JawState::CLOSE;
 }
