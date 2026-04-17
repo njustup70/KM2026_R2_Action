@@ -11,7 +11,7 @@ StateGraph example_graph("graph_name");
 void Action_of_Dege(StateCore *core);
 Lift_Leg &lift_leg = Lift_Leg::GetInstance();
 ChassisType &chas = ChassisType::GetInstance();
-
+Jaw &jaw = Jaw::GetInstance();
 
 /**
  * @brief 程序主入口
@@ -22,6 +22,8 @@ void MainFrameCpp()
   System.RegistApp(lift_leg);
   System.RegistApp(chas);
   chas.Enable();
+  System.RegistApp(jaw);
+  
   // 配置状态图为简并模式
   example_graph.Degenerate(Action_of_Dege);
 
