@@ -3,6 +3,7 @@
 #include "System.hpp"
 #include "Lift_Leg.hpp"
 #include "Chassis.hpp"
+#include "Jaw.hpp"
 
 StateCore &core = StateCore::GetInstance();
 Monitor &monit = Monitor::GetInstance();
