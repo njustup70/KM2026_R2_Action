@@ -1,7 +1,6 @@
 #include "MainFrame.hpp"
 #include "Monitor.hpp"
 #include "System.hpp"
-#include "Lift_Leg.hpp"
 #include "Chassis.hpp"
 #include "Jaw.hpp"
 #include "farcon.hpp"
@@ -11,9 +10,7 @@ Monitor &monit = Monitor::GetInstance();
 
 StateGraph example_graph("graph_name");
 void Action_of_Dege(StateCore *core);
-Lift_Leg &lift_leg = Lift_Leg::GetInstance();
 ChassisType &chas = ChassisType::GetInstance();
-// Jaw &jaw = Jaw::GetInstance();
 
 /**
  * @brief 程序主入口
@@ -21,7 +18,7 @@ ChassisType &chas = ChassisType::GetInstance();
  */
 void MainFrameCpp()
 {
-  System.RegistApp(lift_leg);
+  // System.RegistApp(lift_leg);
   System.RegistApp(chas);
   chas.Enable();
   System.RegistApp(jaw);
