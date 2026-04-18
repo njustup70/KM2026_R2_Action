@@ -8,6 +8,10 @@
 #include <cstdio>
 #include <cmath>
 
+Jaw &jaw = Jaw::GetInstance();
+
+#define POS_2006_90_CODE 151025 //2006向下为负
+
 static float M2006GravityComp(const FeedforwardInfo& info)
 {
     // 获取运行时测出的竖直原点 code
@@ -23,7 +27,7 @@ static float M2006GravityComp(const FeedforwardInfo& info)
     float code_diff = current_code - origin_code;
 
     // 映射到杆的实际角度（0 -> 竖直，-143000 -> 水平(PI/2)）
-    float rod_angle = code_diff / -143000.0f * (3.14159265f / 2.0f);
+    float rod_angle = code_diff / -151025.0f * (3.14159265f / 2.0f);
     
     // 当 z3 = 1000 时，系统所需的抵消电流 i = - (1000 / b0) = -0.3778 A
     constexpr float kMaxCompCurrent = -0.3778f * 0.9f; 
@@ -106,7 +110,7 @@ void Jaw::Start()
         .ADRC_SOTF(0.33f)
         .Feedforward(C620HoriFriction)
         .Apply();
-    motor_3508_hori.driver.Enable();
+    // motor_3508_hori.driver.Enable();
 
     motor_3508_vert.ConfigADRC()
         .AsPosC()
@@ -118,19 +122,19 @@ void Jaw::Start()
         .ADRC_SOTF(0.33f)
         .Feedforward(C620VertComp)
         .Apply();
-    motor_3508_vert.driver.Enable();
+    // motor_3508_vert.driver.Enable();
 
     motor_2006.ConfigADRC()
         .AsPosC()
         .ADRC_Womega(42.0f, 9.6f)
-        .ADRC_Physic(7.5e-5f, 0.18f)
+        .ADRC_Physic(8.0e-5f, 0.18f)
         .ADRC_Limit(9.0f)
         .SpdLimit(5000.0f)
         .ADRC_MaxPlannedVel(5000.0f)
-        .ADRC_SOTF(0.33f)
+        .ADRC_SOTF(0.25f)
         .Feedforward(M2006GravityComp)
         .Apply();
-    motor_2006.driver.Enable();
+    // motor_2006.driver.Enable();
 
     //继电器
     Pin relay_pin = {'F', 1};
@@ -171,7 +175,7 @@ void Jaw::Update()
     else
     {
         _UploadPos();
-		// _Update_Log(); //没有检测开了日志系统会不会卡死，反正我没log_router，不注释程序会飞
+//		// _Update_Log(); //没有检测开了日志系统会不会卡死，反正我没log_router，不注释程序会飞
         _SetJawState(_state);
     }
 }
@@ -207,9 +211,17 @@ void Jaw::_Update_Log()
     monit.LogInfo("%-18s | %-18s | %-18s", motor0_buf, motor1_buf, motor2_buf);
 }
 
+
 void Jaw::_UploadPos()
 {
-
+    if(_rotate_90_flag)
+    {
+        motor_2006.SetPos(_pitch_origin_code - POS_2006_90_CODE);
+    }
+    else
+    {
+        motor_2006.SetPos(_pitch_origin_code - 400);
+    }
 }
 
 /**----------------------    调零    ----------------------**/
@@ -268,7 +280,7 @@ void Jaw::_GetVertOrigin()
             // 记录中点偏移
             _vert_origin_code = motor_3508_vert.driver.measure.total_angle;
             // 往回走到中点
-            motor_3508_vert.SetPos(_vert_origin_code - 140000);
+            motor_3508_vert.SetPos(_vert_origin_code - (323077-160000)); // 323077是总行程，算出的数是到矛头的行程
         }
     }
     else
@@ -292,7 +304,7 @@ void Jaw::_GetPitchOrigin()
     motor_2006.SetPos(pitch_probe_code);
 
     // 如果撞到限位了（用eso的扰动观测来确定），连续5个Tick，就停止
-    if (fabs(motor_2006.motor_adrc.eso.z3) > 1300 && runed_tick > 30)
+    if (fabs(motor_2006.motor_adrc.eso.z3) > 2800 && runed_tick > 30)
     {
         pitch_probe_cnt++;
         if (pitch_probe_cnt >= 10)
@@ -309,7 +321,7 @@ void Jaw::_GetPitchOrigin()
     {
         pitch_probe_cnt = 0;
         // 每周期（5ms）加 20 Code，每秒加 4000 Code
-        if (runed_tick > 30)    pitch_probe_code += 50;
+        if (runed_tick > 30)    pitch_probe_code += 200;
         // 但是最开始缓慢前进，目的是破除静态库伦摩擦力
         else                    pitch_probe_code += 15;
     }   
@@ -337,4 +349,14 @@ void Jaw::Open()
 void Jaw::Close()
 {
     _state = JawState::CLOSE;
+}
+
+void Jaw::Rotate()
+{
+    _rotate_90_flag = 1;
+}
+
+void Jaw::Reset()
+{
+    _rotate_90_flag = 0;
 }

@@ -47,6 +47,9 @@ private:
     // 夹爪状态
     JawState _state = JawState::CLOSE;  
 
+    // debug取夹爪标志位
+    int _rotate_90_flag = 0;
+
 public:
     int GetPitchOriginCode() const { return _pitch_origin_code; }
 
@@ -61,4 +64,8 @@ public:
     
     void Open(); // 打开夹爪
     void Close(); // 关闭夹爪
+    void Rotate();
+    void Reset();
 };
+
+extern Jaw &jaw;

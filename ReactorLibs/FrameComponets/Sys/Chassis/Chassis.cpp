@@ -4,10 +4,10 @@
 #include "farcon.hpp"
 #include "Interboardcomm.hpp"
 
-ChassisType& test_chas = ChassisType::GetInstance();
+ChassisType &test_chas = ChassisType::GetInstance();
 // BoardComm main_board;
 
-void ChasTaskCallback(uint8_t task_id, const uint8_t* payload, uint8_t payload_len, void* user_ctx)
+void ChasTaskCallback(uint8_t task_id, const uint8_t *payload, uint8_t payload_len, void *user_ctx)
 {
     // 这里处理C板控制底盘后反馈的应答
 }
@@ -26,7 +26,6 @@ void ChassisType::Start()
     main_board.RegisterTask(1, ChasTaskCallback, this);
 }
 
-
 void SendChasSpeedCmd(float vx, float vy, float vz)
 {
     // 6 字节 uint8，完全匹配接收端格式
@@ -39,62 +38,73 @@ void SendChasSpeedCmd(float vx, float vy, float vz)
 
     // 大端格式：高字节 <<8 在前，低字节在后
     // 对应接收端：payload[0] <<8 | payload[1]
-    payload[0] = (x >> 8) & 0xFF;  // Vx 高8位
-    payload[1] = x & 0xFF;         // Vx 低8位
+    payload[0] = (x >> 8) & 0xFF; // Vx 高8位
+    payload[1] = x & 0xFF;        // Vx 低8位
 
-    payload[2] = (y >> 8) & 0xFF;  // Vy 高8位
-    payload[3] = y & 0xFF;         // Vy 低8位
+    payload[2] = (y >> 8) & 0xFF; // Vy 高8位
+    payload[3] = y & 0xFF;        // Vy 低8位
 
-    payload[4] = (z >> 8) & 0xFF;  // Vz 高8位
-    payload[5] = z & 0xFF;         // Vz 低8位
+    payload[4] = (z >> 8) & 0xFF; // Vz 高8位
+    payload[5] = z & 0xFF;        // Vz 低8位
 
     main_board.SendTask(0x210, 1, payload, 6, false);
 }
 
+// 遥控器发指令
 void ChassisType::_SendFarconCmd()
 {
     // 读取遥控器数据到底盘控制变量
-    targ_speed.x = -farcon.jy_data_origin[3]*1.0f / 100.f * _max_velo;   // 前后
-    targ_speed.y = -farcon.jy_data_origin[2]*1.0f / 100.f * _max_velo;   // 左右
-    targ_speed.z = -farcon.jy_data_origin[0]*1.0f / 100.f * _max_omega;  // 旋转
+    targ_speed.x = -farcon.jy_data_origin[3] * 1.0f / 100.f * _max_velo;  // 前后
+    targ_speed.y = -farcon.jy_data_origin[2] * 1.0f / 100.f * _max_velo;  // 左右
+    targ_speed.z = -farcon.jy_data_origin[0] * 1.0f / 100.f * _max_omega; // 旋转
+    SendChasSpeedCmd(targ_speed.x, targ_speed.y, targ_speed.z);
+}
+
+// 电控API发指令
+void ChassisType::_SendAPICmd()
+{
     SendChasSpeedCmd(targ_speed.x, targ_speed.y, targ_speed.z);
 }
 
 void ChassisType::Update()
 {
-    if(farcon.toggle[0] == 1) control_mode = FARCON;
-    else control_mode = OPEN;
+//   if (farcon.toggle[0] == 1)
+//     control_mode = FARCON;
+//   else
+//     control_mode = OPEN;
+    control_mode = FARCON;
 
-    // _SendFarconCmd();
+    switch (control_mode)
+    {
+        case OPEN:
 
-   switch (control_mode)
-   {
-       case OPEN:
+        break;
 
-           break;
+        case FARCON:
+        _SendFarconCmd();
+        break;
 
-       case FARCON:
-           _SendFarconCmd();
-           break;
+        case API:
+        _SendAPICmd();
 
-       default:    
-           break;
-   }
+        default:
+        break;
+    }
 
     targ_velo = targ_speed.Length();
 
     // // 遥控器控制逻辑
 
-    // // 实现闭环的地方
-    // if (_walking || _is_pos_locked)
-    // {
-    //     _Walking();
-    // }
-    // if (_rotating || _is_yaw_locked)
-    // {
-    //     _Rotating();
-    // }
-    
+    // 实现闭环的地方
+    if (_walking || _is_pos_locked)
+    {
+        _Walking();
+    }
+    if (_rotating || _is_yaw_locked)
+    {
+        _Rotating();
+    }
+
     // // 将底盘的 速度targ_speed 上传到各个电机
     // _UploadSpeed();
 
@@ -107,21 +117,19 @@ void ChassisType::Update()
     // _safe_lock_tick -= 5;
 }
 
-
-
 void ChassisType::_UpdateChasOdom()
 {
     // （1）获得当前角度
-    float theta_distan = 0;     // 单位：米
+    float theta_distan = 0; // 单位：米
     for (int i = 0; i < 4; i++)
     {
         theta_distan += motors[i].driver.measure.total_angle;
     }
     theta_distan = theta_distan / (MotorDJIConst::redu_M3508 * 8192) * (PI * WHEEL_DIAMETER) / 4.0f;
-    float chas_theta = theta_distan / ROTATE_RADIUS;   // 单位：弧度
-    
+    float chas_theta = theta_distan / ROTATE_RADIUS; // 单位：弧度
+
     // （2）获取车体速度(读取而不是控制的速度，以减少误差)
-    Vec3 chas_speed;        // 都是线速度
+    Vec3 chas_speed; // 都是线速度
     // 旋转分量
     for (int i = 0; i < 4; i++)
     {
@@ -140,14 +148,13 @@ void ChassisType::_UpdateChasOdom()
     chas_vxy.x = (motor_spd_xy[1] - motor_spd_xy[2]) / 2.0f;
     chas_vxy.y = (motor_spd_xy[0] - motor_spd_xy[3]) / 2.0f;
 
-
     // （3）更新里程计，还有速率
     Vec2 delta_move = chas_vxy.Rotate(chas_theta + (PI / 4)) / 200.0f;
     chas_odom.velocity = chas_vxy.Length();
 
     chas_odom.speed = (delta_move * 200.0f).ToVec3();
     chas_odom.speed.z = chas_speed.z;
-    
+
     chas_odom.pos = chas_odom.pos + delta_move.ToVec3();
     chas_odom.pos.z = chas_theta;
 }
@@ -165,27 +172,28 @@ void ChassisType::_UploadSpeed()
     {
         // 底盘未使能，分两种情况
         // (1) 底盘仍有速度
-        if(chas_odom.speed.Length() > 0.15f)
+        if (chas_odom.speed.Length() > 0.15f)
         {
-            if (runtime_cnt < 0.001f)   runtime_cnt = System.runtime_tick;
+            if (runtime_cnt < 0.001f)
+                runtime_cnt = System.runtime_tick;
 
             // (1.1) 仍有速度，先刹车停
-            if(System.runtime_tick - runtime_cnt < 1.0f)
+            if (System.runtime_tick - runtime_cnt < 1.0f)
             {
                 // 否定其他接口的控制权，并进行刹车
                 targ_speed = targ_speed * 0.96f;
                 _SendSpdToMotor();
             }
-            else    // (1.2) 1s还停不下来，强制进入空档
+            else // (1.2) 1s还停不下来，强制进入空档
             {
                 for (int i = 0; i < 4; i++)
                 {
-                    targ_speed = Vec3(0, 0, 0);
-                    motors[i].Neutral();
+                targ_speed = Vec3(0, 0, 0);
+                motors[i].Neutral();
                 }
             }
         }
-        else    // (2) 底盘已经停止，直接进入空档
+        else // (2) 底盘已经停止，直接进入空档
         {
             for (int i = 0; i < 4; i++)
             {
@@ -193,17 +201,15 @@ void ChassisType::_UploadSpeed()
                 motors[i].Neutral();
             }
         }
-
-        
     }
 }
 
 inline void ChassisType::_SendSpdToMotor()
 {
     // 计算x, y, w合成分量
-    _motor_spd[0] = (-targ_speed.x + targ_speed.y)  / (BSP_SQRT2) + targ_speed.z * ROTATE_RADIUS;
+    _motor_spd[0] = (-targ_speed.x + targ_speed.y) / (BSP_SQRT2) + targ_speed.z * ROTATE_RADIUS;
     _motor_spd[1] = (targ_speed.x + targ_speed.y) / (BSP_SQRT2) + targ_speed.z * ROTATE_RADIUS;
-    _motor_spd[2] = (-targ_speed.x - targ_speed.y)  / (BSP_SQRT2) + targ_speed.z * ROTATE_RADIUS;
+    _motor_spd[2] = (-targ_speed.x - targ_speed.y) / (BSP_SQRT2) + targ_speed.z * ROTATE_RADIUS;
     _motor_spd[3] = (targ_speed.x - targ_speed.y) / (BSP_SQRT2) + targ_speed.z * ROTATE_RADIUS;
 
     // 发送速度指令到电机
@@ -213,7 +219,6 @@ inline void ChassisType::_SendSpdToMotor()
         motors[i].SetSpd((_motor_spd[i] * 60.0f) / (PI * WHEEL_DIAMETER));
     }
 }
-
 
 void ChassisType::Enable()
 {
@@ -225,7 +230,6 @@ void ChassisType::Disable()
     // 停止所有电机
     enabled = false;
 }
-
 
 void ChassisType::MoveAt(Vec2 Pos)
 {
@@ -242,11 +246,11 @@ void ChassisType::RotateAt(float yaw)
 /**
  * @brief 直接设置底盘速度（一个通用的开环行为）
  * @param Spd 期望速度：（x: 前向速度，y：左向速度，w：逆时针）（m/s，m/s，rad/s）
- * @note 轮序：     
+ * @note 轮序：
  *                      前
  *                  0       1
- *                  
- * 
+ *
+ *
  *                  2       3
  * @warning 每次设置速度都会刷新安全锁，需要持续调用以保持底盘运动。
  * 在指令中断100ms后，底盘会自动进入空档（0电流）状态。
@@ -254,7 +258,8 @@ void ChassisType::RotateAt(float yaw)
  */
 void ChassisType::Move(Vec3 Spd)
 {
-    if (!enabled)  return;         // 开放控制未使能，直接返回
+    if (!enabled)
+        return; // 开放控制未使能，直接返回
 
     _safe_lock_tick = 100;
     targ_speed = Spd;
@@ -262,7 +267,8 @@ void ChassisType::Move(Vec3 Spd)
 
 void ChassisType::Move(Vec2 Spd)
 {
-    if (!enabled)  return;
+    if (!enabled)
+        return;
 
     _safe_lock_tick = 100;
 
@@ -272,7 +278,8 @@ void ChassisType::Move(Vec2 Spd)
 
 void ChassisType::Rotate(float omega)
 {
-    if (!enabled)  return;
+    if (!enabled)
+        return;
 
     // 验证输入安全
     if (isnan(omega) || omega == INFINITY)
@@ -280,7 +287,7 @@ void ChassisType::Rotate(float omega)
         Monitor::GetInstance().LogError("Chassis: Dangerous omega!");
         return;
     }
-    
+
     // 输入合法化
     if (omega > _max_omega)
     {
@@ -290,14 +297,10 @@ void ChassisType::Rotate(float omega)
     {
         omega = -_max_omega;
     }
-    
+
     _safe_lock_tick = 100;
     targ_speed.z = omega;
 }
-
-
-
-
 
 /**
  * @brief 基于直接移动到位置的方式
@@ -313,29 +316,29 @@ bool ChassisType::_Walking()
     move_vec = move_vec.Rotate(-System.position.z);
 
     // 检查是否到达目标位置, 如果是则返回完成
-    if (move_vec.Length() < 0.05f)    // 5cm范围内视为到达
+    if (move_vec.Length() < 0.05f) // 5cm范围内视为到达
     {
-        Move(Vec2(0, 0));           // 停止移动
+        Move(Vec2(0, 0)); // 停止移动
         _walking = false;
-        return true;                 // 动作完成
+        return true; // 动作完成
     }
 
     // 计算移动速度
-    float safe_velo = sqrt(2 * _max_accel * move_vec.Length()); 
+    float safe_velo = sqrt(2 * _max_accel * move_vec.Length());
     float out_velo = 3.0f * move_vec.Length();
     // 最终的速度应该为三者中的最小值
     float final_velo = fminf(safe_velo, fminf(out_velo, _max_velo));
 
     // 更新底盘速度（向量式更新，保证更新量不大于MaxAccel）
-    Vec2 targ_speed_vec = move_vec.Norm() * final_velo;     // 计算新的目标速度
-    Vec2 curr_speed_vec = targ_speed.ToVec2();           // 当前速度
-    
+    Vec2 targ_speed_vec = move_vec.Norm() * final_velo; // 计算新的目标速度
+    Vec2 curr_speed_vec = targ_speed.ToVec2();          // 当前速度
+
     // 计算速度差
     Vec2 delta_speed_vec = targ_speed_vec - curr_speed_vec;
     float delta_speed_len = delta_speed_vec.Length();
 
     // 限制加速度（向量长度自带绝对值）
-    if (delta_speed_len > (_max_accel / 200.0f))   // 每次调用都是1 / 200s
+    if (delta_speed_len > (_max_accel / 200.0f)) // 每次调用都是1 / 200s
     {
         delta_speed_vec = delta_speed_vec.Norm() * (_max_accel / 200.0f);
     }
@@ -343,7 +346,7 @@ bool ChassisType::_Walking()
 
     // 调用移动接口进行移动
     Move(new_speed_vec);
-		
+
     return false;
 }
 
@@ -359,15 +362,15 @@ bool ChassisType::_Rotating()
     float rotate_diff = (targ_ges.z - System.position.z);
 
     // 检查是否到达目标位置, 如果是则返回完成
-    if (fabs(rotate_diff) < 0.01f)    // 0.01rad范围内视为到达
+    if (fabs(rotate_diff) < 0.01f) // 0.01rad范围内视为到达
     {
-        Rotate(0);           // 停止
+        Rotate(0); // 停止
         _rotating = false;
-        return true;                 // 动作完成
+        return true; // 动作完成
     }
-    
+
     // 计算旋转速度 （注意绝对值）
-    float safe_omega = sqrt(2 * _max_beta * fabs(rotate_diff)); 
+    float safe_omega = sqrt(2 * _max_beta * fabs(rotate_diff));
     float out_omega = 3.0f * fabs(rotate_diff);
 
     // 最终的速度应该为三者中的最小值
@@ -378,15 +381,15 @@ bool ChassisType::_Rotating()
     float delta_speed = targ_omega * (rotate_diff > 0 ? 1 : -1) - targ_speed.z;
 
     // 限制加速度（注意绝对值）
-    if (fabs(delta_speed) > (_max_beta / 200.0f))   // 每次调用都是1 / 200s
+    if (fabs(delta_speed) > (_max_beta / 200.0f)) // 每次调用都是1 / 200s
     {
         delta_speed = (delta_speed > 0 ? 1 : -1) * (_max_beta / 200.0f);
     }
-    
+
     float new_omega = targ_speed.z + delta_speed;
 
     // 调用旋转接口进行移动
     Rotate(new_omega);
-		
+
     return false;
 }
