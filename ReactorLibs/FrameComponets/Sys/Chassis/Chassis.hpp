@@ -55,6 +55,8 @@ class ChassisType : public Application
         bool _is_pos_locked = false;        // 常锁位置环
         bool _is_yaw_locked = false;        // 常锁姿态环
 
+        // 上位机控制标志位
+        bool _host_ctrl = false;
 
         
         /// @param 四个电机的目标速度，单位m/s
@@ -77,8 +79,8 @@ class ChassisType : public Application
         /// @brief 转到某角度具体实现
         bool _Rotating();
 
-        void _SendFarconCmd();
-        void _SendAPICmd();
+        void _SetCtrlMode();
+        void _HandleCmd();
 
         Vec3 targ_ges = Vec3(0, 0, 0);      // 期望姿态，车体右手系，x向前，y向左，z从上向下看逆时针，单位m，rad
         Vec3 targ_speed;                    // 期望速度，车体右手系，x向前，y向左，z左转，单位m/s，rad/s
@@ -128,6 +130,12 @@ class ChassisType : public Application
 
         void MoveAt(Vec2 Pos);
         void RotateAt(float yaw);
+
+        // 上位机速度指令回调
+        static void HostCmdCallback(uint8_t func_code, const uint8_t* payload, uint8_t payload_len, void* user_ctx);
+
+        // c板返回的自解里程计回调
+        static void ChasTaskCallback(uint8_t task_id, const uint8_t *payload, uint8_t payload_len, void *user_ctx);
 };
 
 

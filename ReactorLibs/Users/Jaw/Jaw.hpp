@@ -30,6 +30,10 @@ private:
     float _y_pos = 0;  
     float _pitch_pos = 0;
 
+    // 上位机传来的偏移量
+    float _x_pos_bias = 0; 
+    float _y_pos_bias = 0;
+
     /// @brief 是否已经获取了原点
     bool _origined = false;
     bool _hori_origined = false;
@@ -39,6 +43,10 @@ private:
     int _hori_origin_code = 0;
     int _vert_origin_code = 0;
     int _pitch_origin_code = 0;
+
+    int _hori_origined_code = 0; // origin后的位置
+    int _vert_origined_code = 0; 
+    int _pitch_origined_code = 0; 
 
     // 打印日志所需变量
     uint32_t log_tick_cnt_ = 0;
@@ -52,6 +60,7 @@ private:
 
 public:
     int GetPitchOriginCode() const { return _pitch_origin_code; }
+    static void JawCmdRxCallback(uint8_t func_code, const uint8_t* payload, uint8_t payload_len, void* user_ctx); 
 
 
     // 电机

@@ -7,10 +7,12 @@
 #include "bsp_log.hpp"
 #include <cstdio>
 #include <cmath>
+#include "HostPC.hpp"
 
 Jaw &jaw = Jaw::GetInstance();
 
 #define POS_2006_90_CODE 151025 //2006向下为负
+#define SCREW_LEAD 2 // 单位：mm（因为上位机发来的是mm）
 
 static float M2006GravityComp(const FeedforwardInfo& info)
 {
@@ -139,6 +141,9 @@ void Jaw::Start()
     //继电器
     Pin relay_pin = {'F', 1};
     relay.Init(relay_pin, Relay::HIGH_ON);
+
+    // 注册上位机矛头偏移指令接收路由
+    host_pc.Regist(0xFA, 0xB1, JawCmdRxCallback, this);
 }
 
 void Jaw::Update()
@@ -222,6 +227,8 @@ void Jaw::_UploadPos()
     {
         motor_2006.SetPos(_pitch_origin_code - 400);
     }
+    motor_3508_hori.SetPos(_hori_origined_code + _x_pos_bias);
+    motor_3508_vert.SetPos(_vert_origined_code + _y_pos_bias);
 }
 
 /**----------------------    调零    ----------------------**/
@@ -246,7 +253,9 @@ void Jaw::_GetHoriOrigin()
             // 记录中点偏移
             _hori_origin_code = motor_3508_hori.driver.measure.total_angle;
             // 往回走到中点
-            motor_3508_hori.SetPos(_hori_origin_code - 70000);
+            _hori_origined_code = _hori_origin_code - 70000;
+            // motor_3508_hori.SetPos(_hori_origin_code - 70000);
+            motor_3508_hori.SetPos(_hori_origined_code);
         }
     }
     else
@@ -280,7 +289,9 @@ void Jaw::_GetVertOrigin()
             // 记录中点偏移
             _vert_origin_code = motor_3508_vert.driver.measure.total_angle;
             // 往回走到中点
-            motor_3508_vert.SetPos(_vert_origin_code - (323077-160000)); // 323077是总行程，算出的数是到矛头的行程
+            _hori_origined_code =_vert_origin_code - (323077-160000);
+            // motor_3508_vert.SetPos(_vert_origin_code - (323077-160000)); // 323077是总行程，算出的数是到矛头的行程
+            motor_3508_vert.SetPos(_hori_origined_code); // 323077是总行程，算出的数是到矛头的行程
         }
     }
     else
@@ -314,7 +325,9 @@ void Jaw::_GetPitchOrigin()
             // 记录中点偏移
             _pitch_origin_code = motor_2006.driver.measure.total_angle;
             // 往回走到竖直
-            motor_2006.SetPos(_pitch_origin_code - 400);
+            _pitch_origined_code = _pitch_origin_code - 400;
+            // motor_2006.SetPos(_pitch_origin_code - 400);
+            motor_2006.SetPos(_pitch_origined_code);
         }
     }
     else
@@ -359,4 +372,18 @@ void Jaw::Rotate()
 void Jaw::Reset()
 {
     _rotate_90_flag = 0;
+}
+
+void Jaw::JawCmdRxCallback(uint8_t func_code, const uint8_t* payload, uint8_t payload_len, void* user_ctx) 
+{
+    if (func_code == 0xB1) 
+    {
+        // 接收偏移量，第一个float是水平偏移，第二个float是竖直偏移
+        Vec2 bias;
+        bias.FromBytes(payload);
+
+        // mm 转 code
+        GetInstance()._x_pos_bias = bias.x * (8191 * 1) / SCREW_LEAD;
+        GetInstance()._y_pos_bias = bias.y * (8191 * 1) / SCREW_LEAD;
+    }
 }
