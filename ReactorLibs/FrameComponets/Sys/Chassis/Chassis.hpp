@@ -134,6 +134,8 @@ class ChassisType : public Application
         // 上位机速度指令回调
         static void HostCmdCallback(uint8_t func_code, const uint8_t* payload, uint8_t payload_len, void* user_ctx);
 
+        static void SlamRxCallback(uint8_t func_code, const uint8_t* payload, uint8_t payload_len, void* user_ctx);
+
         // c板返回的自解里程计回调
         static void ChasTaskCallback(uint8_t task_id, const uint8_t *payload, uint8_t payload_len, void *user_ctx);
 };

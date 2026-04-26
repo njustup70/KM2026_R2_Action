@@ -9,6 +9,7 @@
 #include "freertos.h"
 #include "task.h"
 #include "RtosCpp.hpp"
+#include "interboardcomm.hpp"
 
 SystemType& System = SystemType::GetInstance();
 LedWs2812 sys_ledband;
@@ -36,6 +37,8 @@ void SystemType::Init(bool Sc)
     odometer.Init(Hardware::huart_odom, true, false, false, true);
 
     host_pc.Init(Hardware::huart_host);
+
+    main_board.Init(Hardware::hcan_sub, 0x220, false);
 
   // 自动开始自检
   if (Sc)

@@ -37,9 +37,9 @@ void ChassisType::Start()
     //     // motors[i].speed_pid.ForwardLize(PidGeneral::SpeedForward, 1.5f, 5, 4.8); 			// 速度型前馈
     //     // motors[i].Enable();
     // }
-    main_board.Init(Hardware::hcan_sub, 0x220, false);
     main_board.RegisterTask(1, ChasTaskCallback, this);
     host_pc.Regist(0xFA, 0xBB, HostCmdCallback, this);
+    host_pc.Regist(0xFA, 0xA0, SlamRxCallback, this);
 }
 
 void SendChasSpeedCmd(float vx, float vy, float vz)
@@ -107,7 +107,9 @@ void ChassisType::_HandleCmd()
 
 void ChassisType::Update()
 {
-    control_mode = HOST; // 调试
+    // control_mode = HOST; // 调试
+
+    // host_pc.SendOdom(10, 10, 10);
     // 设置控制模式
     _SetCtrlMode();
 
@@ -415,6 +417,18 @@ bool ChassisType::_Rotating()
     Rotate(new_omega);
 
     return false;
+}
+
+void ChassisType::SlamRxCallback(uint8_t func_code, const uint8_t* payload, uint8_t payload_len, void* user_ctx)
+{
+    if(func_code == 0xA0)
+    {
+        Vec3 slam_pos;
+        slam_pos.FromBytes(payload);
+        GetInstance().targ_ges.x = slam_pos.x;
+        GetInstance().targ_ges.y = slam_pos.y;
+        GetInstance().targ_ges.z = slam_pos.z;
+    }
 }
 
 void ChassisType::HostCmdCallback(uint8_t func_code, const uint8_t* payload, uint8_t payload_len, void* user_ctx)
