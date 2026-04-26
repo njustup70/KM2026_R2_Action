@@ -3,13 +3,28 @@
 #include "Monitor.hpp"
 #include "farcon.hpp"
 #include "Interboardcomm.hpp"
+#include "HostPC.hpp"
 
 ChassisType &test_chas = ChassisType::GetInstance();
 // BoardComm main_board;
 
-void ChasTaskCallback(uint8_t task_id, const uint8_t *payload, uint8_t payload_len, void *user_ctx)
+void ChassisType::ChasTaskCallback(uint8_t task_id, const uint8_t *payload, uint8_t payload_len, void *user_ctx)
 {
-    // 这里处理C板控制底盘后反馈的应答
+    // 这里处理C板发来的自解里程计数据,0x221
+    static int send_cnt = 0; // 发送计数器，板间通讯是200hz，算法组要求100hz
+    float x;
+    float y;
+    float z;
+
+    memcpy(&x, payload, sizeof(float));
+    memcpy(&y, payload + 4, sizeof(float));
+    memcpy(&z, payload + 8, sizeof(float));
+
+    if(++send_cnt >= 2)
+    {
+        send_cnt = 0;
+        host_pc.SendOdom(x, y, z);
+    }
 }
 
 void ChassisType::Start()
@@ -22,8 +37,9 @@ void ChassisType::Start()
     //     // motors[i].speed_pid.ForwardLize(PidGeneral::SpeedForward, 1.5f, 5, 4.8); 			// 速度型前馈
     //     // motors[i].Enable();
     // }
-    main_board.Init(Hardware::hcan_sub, 0x220, false);
     main_board.RegisterTask(1, ChasTaskCallback, this);
+    host_pc.Regist(0xFA, 0xBB, HostCmdCallback, this);
+    host_pc.Regist(0xFA, 0xA0, SlamRxCallback, this);
 }
 
 void SendChasSpeedCmd(float vx, float vy, float vz)
@@ -50,46 +66,55 @@ void SendChasSpeedCmd(float vx, float vy, float vz)
     main_board.SendTask(0x210, 1, payload, 6, false);
 }
 
-// 遥控器发指令
-void ChassisType::_SendFarconCmd()
+void ChassisType::_SetCtrlMode()
 {
-    // 读取遥控器数据到底盘控制变量
-    targ_speed.x = -farcon.jy_data_origin[3] * 1.0f / 100.f * _max_velo;  // 前后
-    targ_speed.y = -farcon.jy_data_origin[2] * 1.0f / 100.f * _max_velo;  // 左右
-    targ_speed.z = -farcon.jy_data_origin[0] * 1.0f / 100.f * _max_omega; // 旋转
-    SendChasSpeedCmd(targ_speed.x, targ_speed.y, targ_speed.z);
+    if (farcon.toggle[0] == 1)
+        control_mode = FARCON;
+
+    else if(farcon.toggle[0] == 1 && farcon.toggle[1] == 1)
+        control_mode = HOST;
+
+    else
+        control_mode = OPEN;
 }
 
-// 电控API发指令
-void ChassisType::_SendAPICmd()
+void ChassisType::_HandleCmd()
 {
+    switch(control_mode)
+    {
+        case OPEN:
+        break;
+
+        case FARCON:
+            // 读取遥控器数据到底盘控制变量
+            targ_speed.x = -farcon.jy_data_origin[3] * 1.0f / 100.f * _max_velo;  // 前后
+            targ_speed.y = -farcon.jy_data_origin[2] * 1.0f / 100.f * _max_velo;  // 左右
+            targ_speed.z = -farcon.jy_data_origin[0] * 1.0f / 100.f * _max_omega; // 旋转        
+        break;
+
+        case API:
+        break;
+
+        case HOST:
+            _host_ctrl = true;
+        break;
+
+        default:
+        break;      
+    }
     SendChasSpeedCmd(targ_speed.x, targ_speed.y, targ_speed.z);
 }
 
 void ChassisType::Update()
 {
-//   if (farcon.toggle[0] == 1)
-//     control_mode = FARCON;
-//   else
-//     control_mode = OPEN;
-    control_mode = FARCON;
+    // control_mode = HOST; // 调试
 
-    switch (control_mode)
-    {
-        case OPEN:
+    // host_pc.SendOdom(10, 10, 10);
+    // 设置控制模式
+    _SetCtrlMode();
 
-        break;
-
-        case FARCON:
-        _SendFarconCmd();
-        break;
-
-        case API:
-        _SendAPICmd();
-
-        default:
-        break;
-    }
+    // 处理速度指令发送
+    _HandleCmd(); 
 
     targ_velo = targ_speed.Length();
 
@@ -392,4 +417,28 @@ bool ChassisType::_Rotating()
     Rotate(new_omega);
 
     return false;
+}
+
+void ChassisType::SlamRxCallback(uint8_t func_code, const uint8_t* payload, uint8_t payload_len, void* user_ctx)
+{
+    if(func_code == 0xA0)
+    {
+        Vec3 slam_pos;
+        slam_pos.FromBytes(payload);
+        GetInstance().targ_ges.x = slam_pos.x;
+        GetInstance().targ_ges.y = slam_pos.y;
+        GetInstance().targ_ges.z = slam_pos.z;
+    }
+}
+
+void ChassisType::HostCmdCallback(uint8_t func_code, const uint8_t* payload, uint8_t payload_len, void* user_ctx)
+{
+    if(func_code == 0xBB && GetInstance()._host_ctrl)
+    {
+        Vec3 speed;
+        speed.FromBytes(payload);
+        GetInstance().targ_speed.x = speed.x;
+        GetInstance().targ_speed.y = speed.y;
+        GetInstance().targ_speed.z = speed.z;
+    }
 }

@@ -1,6 +1,6 @@
 #include "System.hpp"
 #include "bsp_dwt.hpp"
-
+#include "HostPC.hpp"
 #include "Chassis.hpp"
 #include "led_ws2812.hpp"
 #include "Monitor.hpp"
@@ -9,6 +9,7 @@
 #include "freertos.h"
 #include "task.h"
 #include "RtosCpp.hpp"
+#include "interboardcomm.hpp"
 
 SystemType& System = SystemType::GetInstance();
 LedWs2812 sys_ledband;
@@ -24,7 +25,7 @@ void SystemType::Init(bool Sc)
     DWT_Init(CPU_HERT_C_BOARD_MHZ);
 
     // 初始化Monitor监视器
-    Monitor::GetInstance().Init(Hardware::huart_host, nullptr, false);
+    // Monitor::GetInstance().Init(Hardware::huart_host, nullptr, false);
 
     // 初始化系统灯带
     sys_ledband.Init(Hardware::htim_led, TIM_CHANNEL_1, 13);
@@ -35,7 +36,9 @@ void SystemType::Init(bool Sc)
     
     odometer.Init(Hardware::huart_odom, true, false, false, true);
 
-  // odometer.Init(Hardware::huart_odom, true, false, false, true);
+    host_pc.Init(Hardware::huart_host);
+
+    main_board.Init(Hardware::hcan_sub, 0x220, false);
 
   // 自动开始自检
   if (Sc)

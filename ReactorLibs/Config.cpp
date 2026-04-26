@@ -40,5 +40,5 @@ void Hardware::Config_Parameters()
     Hardware::MainFreq_MHz = 180;
 
     /// @brief 日志输出模式
-    Hardware::RTTLogAtUart = true;
+    Hardware::RTTLogAtUart = false;
 }
