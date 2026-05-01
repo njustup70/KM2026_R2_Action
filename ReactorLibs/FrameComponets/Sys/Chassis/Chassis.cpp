@@ -107,11 +107,10 @@ void ChassisType::_HandleCmd()
 
 void ChassisType::Update()
 {
-    // control_mode = HOST; // 调试
-
     // host_pc.SendOdom(10, 10, 10);
     // 设置控制模式
-    _SetCtrlMode();
+    // _SetCtrlMode();
+    control_mode = FARCON; // 调试
 
     // 处理速度指令发送
     _HandleCmd(); 

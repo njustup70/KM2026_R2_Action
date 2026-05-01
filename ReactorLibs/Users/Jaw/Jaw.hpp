@@ -3,6 +3,57 @@
 #include "motor_dji.hpp"  
 #include "relay.hpp"
 
+// 状态枚举
+enum MotorState 
+{
+    STATE_NORMAL,
+    STATE_PROBING,
+    STATE_LOCKED
+};
+
+// 电机状态处理器
+struct MotorFSM 
+{
+    MotorState state = STATE_NORMAL;
+    uint16_t probe_cnt = 0;
+    
+    void update(MotorDJI &motor, float target_pos) 
+    {
+        bool over_limit = fabs(motor.motor_adrc.eso.z3) > 1700;
+
+        switch (state) 
+        {
+            case STATE_NORMAL:
+                motor.SetPos(target_pos);
+                if (over_limit) state = STATE_PROBING;
+                break;
+
+            case STATE_PROBING:
+                motor.SetPos(target_pos); 
+                if (!over_limit) 
+                {
+                    state = STATE_NORMAL;
+                    probe_cnt = 0;
+                } 
+                else if (++probe_cnt >= 10) 
+                {
+                    state = STATE_LOCKED;
+                }
+                break;
+
+            case STATE_LOCKED:
+                motor.targ_current = 0;   // 发现撞限位了就锁死输出，应该还有更好的方法
+                // 自动恢复
+                if (!over_limit) 
+                {        
+                    probe_cnt = 0;
+                    state = STATE_NORMAL;
+                }
+                break;
+        }
+    }
+};
+
 class Jaw : public Application
 {
     SINGLETON(Jaw) : Application("Jaw") {};
