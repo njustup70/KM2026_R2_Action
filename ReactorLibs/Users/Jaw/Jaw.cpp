@@ -253,9 +253,9 @@ void Jaw::_GetHoriOrigin()
             // 记录中点偏移
             _hori_origin_code = motor_3508_hori.driver.measure.total_angle;
             // 往回走到中点
-            _hori_origined_code = _hori_origin_code - HORIZON_STROKE/2;
+            _vert_origined_code = _hori_origin_code - HORIZON_STROKE/2;
             // motor_3508_hori.SetPos(_hori_origin_code - 70000);
-            motor_3508_hori.SetPos(_hori_origined_code);
+            motor_3508_hori.SetPos(_vert_origined_code);
         }
     }
     else
