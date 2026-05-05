@@ -23,9 +23,9 @@ void MainFrameCpp()
   // System.RegistApp(lift_leg);
   System.RegistApp(chas);
   chas.Enable();
-  System.RegistApp(jaw);
+  // System.RegistApp(jaw);
   System.RegistApp(key);
-  System.RegistApp(hand);
+  // System.RegistApp(hand);
   
   // 配置状态图为简并模式
   example_graph.Degenerate(Action_of_Dege);
@@ -36,6 +36,11 @@ void MainFrameCpp()
 }
 
 void Action_of_Dege(StateCore *core)
+{
+
+}
+
+void Action_of_GetBlock(StateCore *core)
 {
     hand.targ_pos = 1100000;
     // Seq::WaitUntil([&](){return hand.reached;}); // 因为我弄的只读，所以只能用WaitUntil在.hpp里的模板函数。但是上电目标位置和读到位置都是0，所以会立刻返回，有bug

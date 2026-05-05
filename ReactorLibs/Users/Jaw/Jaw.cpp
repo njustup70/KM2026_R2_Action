@@ -8,6 +8,7 @@
 #include <cstdio>
 #include <cmath>
 #include "HostPC.hpp"
+#include "std_math.hpp"
 
 Jaw &jaw = Jaw::GetInstance();
 
@@ -15,6 +16,7 @@ Jaw &jaw = Jaw::GetInstance();
 #define SCREW_LEAD 2 // 单位：mm（因为上位机发来的是mm）
 #define HORIZON_STROKE 152239 // 水平方向行程
 #define VERTICAL_STROKE 323077 // 竖直方向行程
+#define GET_SPEAR_STROKE 151420 // 从竖直位置最顶端到取矛头位置的行程
 
 static float M2006GravityComp(const FeedforwardInfo& info)
 {
@@ -221,14 +223,17 @@ void Jaw::_Update_Log()
 
 void Jaw::_UploadPos()
 {
-    static MotorFSM hori_fsm, vert_fsm;
+    // static MotorFSM hori_fsm, vert_fsm;
 
     int32_t p_2006 = _rotate_90_flag ? (_pitch_origin_code - POS_2006_90_CODE) : (_pitch_origin_code - 400);
     motor_2006.SetPos(p_2006);
 
-    // 用两个电机状态处理器接管位置控制
-    hori_fsm.update(motor_3508_hori, _hori_origined_code + _x_pos_bias);
-    vert_fsm.update(motor_3508_vert, _vert_origined_code + _y_pos_bias);
+    motor_3508_hori.SetPos(_hori_origined_code + _x_pos_bias); // 车体坐标系，y正方向为负
+    motor_3508_vert.SetPos(_vert_origined_code + _y_pos_bias); // 竖直向上为正
+
+    // // 用两个电机状态处理器接管位置控制
+    // hori_fsm.update(motor_3508_hori, _hori_origined_code + _x_pos_bias);
+    // vert_fsm.update(motor_3508_vert, _vert_origined_code + _y_pos_bias);
 }
 
 /**----------------------    调零    ----------------------**/
@@ -253,9 +258,9 @@ void Jaw::_GetHoriOrigin()
             // 记录中点偏移
             _hori_origin_code = motor_3508_hori.driver.measure.total_angle;
             // 往回走到中点
-            _vert_origined_code = _hori_origin_code - HORIZON_STROKE/2;
+            _hori_origined_code = _hori_origin_code - HORIZON_STROKE/2;
             // motor_3508_hori.SetPos(_hori_origin_code - 70000);
-            motor_3508_hori.SetPos(_vert_origined_code);
+            motor_3508_hori.SetPos(_hori_origined_code);
         }
     }
     else
@@ -289,9 +294,8 @@ void Jaw::_GetVertOrigin()
             // 记录中点偏移
             _vert_origin_code = motor_3508_vert.driver.measure.total_angle;
             // 往回走到取矛头高度
-            _hori_origined_code =_vert_origin_code - (VERTICAL_STROKE-160000);
-            // motor_3508_vert.SetPos(_vert_origin_code - (323077-160000)); // 323077是总行程，算出的数是到矛头的行程
-            motor_3508_vert.SetPos(_hori_origined_code); // 323077是总行程，算出的数是到矛头的行程
+            _vert_origined_code =_vert_origin_code - GET_SPEAR_STROKE;
+            motor_3508_vert.SetPos(_vert_origined_code); 
         }
     }
     else
@@ -381,6 +385,10 @@ void Jaw::JawCmdRxCallback(uint8_t func_code, const uint8_t* payload, uint8_t pa
         // 接收偏移量，第一个float是左偏移（负值就是向右），第二个float是上偏移
         Vec2 bias;
         bias.FromBytes(payload);
+
+        // 偏移量限幅，没有第二个人能看懂，纯享
+        StdMath::fclamp(bias.x, -HORIZON_STROKE/2.0f, HORIZON_STROKE/2.0f);
+        StdMath::fclamp(bias.y, -(VERTICAL_STROKE - GET_SPEAR_STROKE), GET_SPEAR_STROKE);
 
         // mm 转 code
         GetInstance()._x_pos_bias = bias.x * (8191 * 1) / SCREW_LEAD;

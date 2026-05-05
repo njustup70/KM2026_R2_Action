@@ -4,6 +4,7 @@
 #include "farcon.hpp"
 #include "Interboardcomm.hpp"
 #include "HostPC.hpp"
+#include "System.hpp"
 
 ChassisType &test_chas = ChassisType::GetInstance();
 // BoardComm main_board;
@@ -12,18 +13,15 @@ void ChassisType::ChasTaskCallback(uint8_t task_id, const uint8_t *payload, uint
 {
     // 这里处理C板发来的自解里程计数据,0x221
     static int send_cnt = 0; // 发送计数器，板间通讯是200hz，算法组要求100hz
-    float x;
-    float y;
-    float z;
 
-    memcpy(&x, payload, sizeof(float));
-    memcpy(&y, payload + 4, sizeof(float));
-    memcpy(&z, payload + 8, sizeof(float));
+    GetInstance().chas_odom.pos.x = ((int16_t)(payload[0] << 8 | payload[1])) / 100.0f; 
+    GetInstance().chas_odom.pos.y = ((int16_t)(payload[2] << 8 | payload[3])) / 100.0f; 
+    GetInstance().chas_odom.pos.z = ((int16_t)(payload[4] << 8 | payload[5])) / 100.0f; 
 
     if(++send_cnt >= 2)
     {
         send_cnt = 0;
-        host_pc.SendOdom(x, y, z);
+        host_pc.SendOdom(GetInstance().chas_odom.pos.x, GetInstance().chas_odom.pos.y, GetInstance().chas_odom.pos.z);
     }
 }
 
@@ -40,6 +38,9 @@ void ChassisType::Start()
     main_board.RegisterTask(1, ChasTaskCallback, this);
     host_pc.Regist(0xFA, 0xBB, HostCmdCallback, this);
     host_pc.Regist(0xFA, 0xA0, SlamRxCallback, this);
+
+    uint8_t payload[1] = {0x01}; // 发送重置底盘和腿的指令，包括电机和里程计
+    main_board.SendTask(0x210, 4, payload, 1, false); 
 }
 
 void SendChasSpeedCmd(float vx, float vy, float vz)
@@ -107,10 +108,15 @@ void ChassisType::_HandleCmd()
 
 void ChassisType::Update()
 {
-    // host_pc.SendOdom(10, 10, 10);
+    if(System.out_from_debugmode)
+    {
+        uint8_t payload[1] = {0x01}; // 发送重置底盘和腿的指令，包括电机和里程计
+        main_board.SendTask(0x210, 3, payload, 1, false); // 发送停止指令
+    }
+    
     // 设置控制模式
-    // _SetCtrlMode();
-    control_mode = FARCON; // 调试
+    _SetCtrlMode();
+    // control_mode = FARCON; // 调试
 
     // 处理速度指令发送
     _HandleCmd(); 
