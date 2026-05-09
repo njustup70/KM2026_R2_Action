@@ -5,6 +5,7 @@
 #include "Jaw.hpp"
 #include "farcon.hpp"
 #include "Get_Block.hpp"
+#include "HostPC.hpp"
 
 StateCore &core = StateCore::GetInstance();
 Monitor &monit = Monitor::GetInstance();
@@ -20,12 +21,14 @@ ChassisType &chas = ChassisType::GetInstance();
  */
 void MainFrameCpp()
 {
-  // System.RegistApp(lift_leg);
+//  monit.Track(host_pc.chas_pos.x);
+//  monit.Track(host_pc.chas_pos.y);
+//  monit.Track(host_pc.chas_pos.z);
   System.RegistApp(chas);
   chas.Enable();
   // System.RegistApp(jaw);
   System.RegistApp(key);
-  // System.RegistApp(hand);
+  System.RegistApp(hand);
   
   // 配置状态图为简并模式
   example_graph.Degenerate(Action_of_Dege);
@@ -37,7 +40,10 @@ void MainFrameCpp()
 
 void Action_of_Dege(StateCore *core)
 {
-
+  // // 等待1s，板间通讯让C板复位
+  // Seq::Wait(1.0f);
+  //   chas.MoveAt(Vec2(1.0f, 0.0f));
+  //   core->GetCurState().Complete = true;
 }
 
 void Action_of_GetBlock(StateCore *core)

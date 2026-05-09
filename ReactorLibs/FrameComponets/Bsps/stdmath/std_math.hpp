@@ -320,4 +320,8 @@ Vec3 Cross3(const Vec3 &a, const Vec3 &b);
 int signf(float val);
 } // namespace StdMath
 
+// float 4字节->2字节压缩函数
+void PackFloatToInt16(uint8_t* ptr, float val, float scale);
+float UnpackInt16ToFloat(const uint8_t* ptr, float scale);
+
 #endif

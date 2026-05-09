@@ -30,8 +30,8 @@ void Monitor::TrackLog()
     if (track_count < 1)   return; // 没有跟踪变量，直接返回
 
     memset(track_send_buf, 0, 64);
-    track_send_buf[0] = '[';
-    size_t used_bytes = 1;
+    // track_send_buf[0] = '[';
+    size_t used_bytes = 0;
 
     for(int i = 0; i < track_count; i++)
     {

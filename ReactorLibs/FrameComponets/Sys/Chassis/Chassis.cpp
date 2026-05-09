@@ -5,6 +5,8 @@
 #include "Interboardcomm.hpp"
 #include "HostPC.hpp"
 #include "System.hpp"
+#include "bsp_log.hpp"
+
 
 ChassisType &test_chas = ChassisType::GetInstance();
 // BoardComm main_board;
@@ -14,11 +16,15 @@ void ChassisType::ChasTaskCallback(uint8_t task_id, const uint8_t *payload, uint
     // 这里处理C板发来的自解里程计数据,0x221
     static int send_cnt = 0; // 发送计数器，板间通讯是200hz，算法组要求100hz
 
-    GetInstance().chas_odom.pos.x = ((int16_t)(payload[0] << 8 | payload[1])) / 100.0f; 
-    GetInstance().chas_odom.pos.y = ((int16_t)(payload[2] << 8 | payload[3])) / 100.0f; 
-    GetInstance().chas_odom.pos.z = ((int16_t)(payload[4] << 8 | payload[5])) / 100.0f; 
+    // GetInstance().chas_odom.pos.x = ((int16_t)(payload[0] << 8 | payload[1])) / 1000.0f; 
+    // GetInstance().chas_odom.pos.y = ((int16_t)(payload[2] << 8 | payload[3])) / 1000.0f; 
+    // GetInstance().chas_odom.pos.z = ((int16_t)(payload[4] << 8 | payload[5])) / 1000.0f; 
 
-    if(++send_cnt >= 2)
+    GetInstance().chas_odom.pos.x = UnpackInt16ToFloat(&payload[0], 1000.0f);
+    GetInstance().chas_odom.pos.y = UnpackInt16ToFloat(&payload[2], 1000.0f);
+    GetInstance().chas_odom.pos.z = UnpackInt16ToFloat(&payload[4], 1000.0f);
+
+    if(++send_cnt >= 2) 
     {
         send_cnt = 0;
         host_pc.SendOdom(GetInstance().chas_odom.pos.x, GetInstance().chas_odom.pos.y, GetInstance().chas_odom.pos.z);
@@ -47,39 +53,66 @@ void SendChasSpeedCmd(float vx, float vy, float vz)
 {
     // 6 字节 uint8，完全匹配接收端格式
     uint8_t payload[6];
+    const float scale = 1000.0f;
+    // int16_t x = (int16_t)(vx * 1000.0f);
+    // int16_t y = (int16_t)(vy * 1000.0f);
+    // int16_t z = (int16_t)(vz * 1000.0f);
 
-    // 放大 100 倍转为 int16
-    int16_t x = (int16_t)(vx * 100.0f);
-    int16_t y = (int16_t)(vy * 100.0f);
-    int16_t z = (int16_t)(vz * 100.0f);
+    // // 大端格式：高字节 <<8 在前，低字节在后
+    // // 对应接收端：payload[0] <<8 | payload[1]
+    // payload[0] = (x >> 8) & 0xFF; // Vx 高8位
+    // payload[1] = x & 0xFF;        // Vx 低8位
 
-    // 大端格式：高字节 <<8 在前，低字节在后
-    // 对应接收端：payload[0] <<8 | payload[1]
-    payload[0] = (x >> 8) & 0xFF; // Vx 高8位
-    payload[1] = x & 0xFF;        // Vx 低8位
+    // payload[2] = (y >> 8) & 0xFF; // Vy 高8位
+    // payload[3] = y & 0xFF;        // Vy 低8位
 
-    payload[2] = (y >> 8) & 0xFF; // Vy 高8位
-    payload[3] = y & 0xFF;        // Vy 低8位
-
-    payload[4] = (z >> 8) & 0xFF; // Vz 高8位
-    payload[5] = z & 0xFF;        // Vz 低8位
-
+    // payload[4] = (z >> 8) & 0xFF; // Vz 高8位
+    // payload[5] = z & 0xFF;        // Vz 低8位
+    PackFloatToInt16(&payload[0], vx, scale);
+    PackFloatToInt16(&payload[2], vy, scale);
+    PackFloatToInt16(&payload[4], vz, scale);
     main_board.SendTask(0x210, 1, payload, 6, false);
+}
+
+void SendChasTargGes(float x, float y, float z)
+{
+    uint8_t payload[6];
+    const float scale = 1000.0f;
+    PackFloatToInt16(&payload[0], x, scale);
+    PackFloatToInt16(&payload[2], y, scale);
+    PackFloatToInt16(&payload[4], z, scale);
+
+    // int16_t x_int = (int16_t)(x * 1000.0f);
+    // int16_t y_int = (int16_t)(y * 1000.0f);
+    // int16_t z_int = (int16_t)(z * 1000.0f);
+
+    // payload[0] = (x_int >> 8) & 0xFF;
+    // payload[1] = x_int & 0xFF;
+
+    // payload[2] = (y_int >> 8) & 0xFF;
+    // payload[3] = y_int & 0xFF;
+
+    // payload[4] = (z_int >> 8) & 0xFF;
+    // payload[5] = z_int & 0xFF;
+
+    main_board.SendTask(0x210, 5, payload, sizeof(payload), false);
 }
 
 void ChassisType::_SetCtrlMode()
 {
     if (farcon.toggle[0] == 1)
-        control_mode = FARCON;
-
-    else if(farcon.toggle[0] == 1 && farcon.toggle[1] == 1)
-        control_mode = HOST;
-
+    {
+        control_mode = (farcon.toggle[1] == 1) ? HOST : FARCON;
+        _host_ctrl = (farcon.toggle[1] == 1) ? true : false;
+    }     
     else
-        control_mode = OPEN;
+	{
+        control_mode = (farcon.toggle[1] == 1) ? API : OPEN;
+        _host_ctrl = false;
+	}
 }
 
-void ChassisType::_HandleCmd()
+void ChassisType::_HandleSpeedCmd()
 {
     switch(control_mode)
     {
@@ -106,6 +139,29 @@ void ChassisType::_HandleCmd()
     SendChasSpeedCmd(targ_speed.x, targ_speed.y, targ_speed.z);
 }
 
+// 可以在walking时出现意外时打断自动，手动控制
+void ChassisType::_JudgeJoyAct()
+{
+    // 检查摇杆是否被推动
+    float joystick_deadband = 10.0f; 
+    bool joystick_active = (fabs(farcon.jy_data_origin[0]) > joystick_deadband || 
+                            fabs(farcon.jy_data_origin[2]) > joystick_deadband || 
+                            fabs(farcon.jy_data_origin[3]) > joystick_deadband);
+    
+    if (!joystick_active) 
+    {
+        // 遥控器没动，此时不发送速度指令给C板，让 _Walking() 的指令生效
+        return; 
+    } 
+    else 
+    {
+        // 摇杆动了，打断位置环
+        _walking = false;
+        _rotating = false;
+        control_mode = FARCON;
+    }
+}
+
 void ChassisType::Update()
 {
     if(System.out_from_debugmode)
@@ -114,26 +170,40 @@ void ChassisType::Update()
         main_board.SendTask(0x210, 3, payload, 1, false); // 发送停止指令
     }
     
+    // 管理发送，确保每次只有一个接口发送指令
+    Vec3 final_cmd(0, 0, 0);
+
     // 设置控制模式
     _SetCtrlMode();
     // control_mode = FARCON; // 调试
 
-    // 处理速度指令发送
-    _HandleCmd(); 
+    if(_walking)
+    {
+        // 判断有没有摇杆输入，摇杆输入打断自动走位
+        _JudgeJoyAct();
+        // 发姿态
+        SendChasTargGes(targ_ges.x, targ_ges.y, targ_ges.z);
+    }
+    else
+    {
+        // 发速度
+        _HandleSpeedCmd();   
+    }
 
     targ_velo = targ_speed.Length();
 
     // // 遥控器控制逻辑
 
-    // 实现闭环的地方
-    if (_walking || _is_pos_locked)
-    {
-        _Walking();
-    }
-    if (_rotating || _is_yaw_locked)
-    {
-        _Rotating();
-    }
+    // 实现闭环的地方，A板在这里去掉，能理解我的恭喜到达阴间尽头
+    // if (_walking || _is_pos_locked)
+    // {
+    //     _Walking();
+    //     // SendChasTargGes(targ_ges.x, targ_ges.y, targ_ges.z);
+    // }
+    // if (_rotating || _is_yaw_locked)
+    // {
+    //     _Rotating();
+    // }
 
     // // 将底盘的 速度targ_speed 上传到各个电机
     // _UploadSpeed();
@@ -265,6 +335,7 @@ void ChassisType::MoveAt(Vec2 Pos)
 {
     targ_ges = Vec3(Pos.x, Pos.y, targ_ges.z);
     _walking = true;
+    // SendChasTargGes(Pos.x, Pos.y, targ_ges.z);
 }
 
 void ChassisType::RotateAt(float yaw)
@@ -426,13 +497,14 @@ bool ChassisType::_Rotating()
 
 void ChassisType::SlamRxCallback(uint8_t func_code, const uint8_t* payload, uint8_t payload_len, void* user_ctx)
 {
-    if(func_code == 0xA0)
+    if(func_code == 0xA0 && GetInstance()._host_ctrl)
     {
         Vec3 slam_pos;
         slam_pos.FromBytes(payload);
         GetInstance().targ_ges.x = slam_pos.x;
         GetInstance().targ_ges.y = slam_pos.y;
         GetInstance().targ_ges.z = slam_pos.z;
+        SendChasTargGes(slam_pos.x, slam_pos.y, slam_pos.z);
     }
 }
 

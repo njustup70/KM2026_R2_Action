@@ -16,14 +16,12 @@ LedWs2812 sys_ledband;
 
 void SystemType::Init(bool Sc)
 {
-  // 输出系统启动信息
-  BspLog_LogInfo("\n\n");
-  BspLog_LogSpec("/----^---^-- Welcome to REACTOR SYSTEM --^---^----/");
-  BspLog_LogInfo("Waiting for system initialization...\n\n");
+    // 输出系统启动信息
+    BspLog_LogInfo("\n\n");
+    BspLog_LogSpec("/----^---^-- Welcome to REACTOR SYSTEM --^---^----/");
+    BspLog_LogInfo("Waiting for system initialization...\n\n");
 
-    // 初始化DWT计时器（C板）
-    DWT_Init(CPU_HERT_C_BOARD_MHZ);
-
+    DWT_Init(CPU_HERT_A_BOARD_MHZ);
     // 初始化Monitor监视器
     // Monitor::GetInstance().Init(Hardware::huart_host, nullptr, false);
 
@@ -34,7 +32,7 @@ void SystemType::Init(bool Sc)
 
     farcon.init(Hardware::huart_farcon);
     
-    odometer.Init(Hardware::huart_odom, true, false, false, true);
+    // odometer.Init(Hardware::huart_odom, true, false, false, true);
 
     host_pc.Init(Hardware::huart_host);
 

@@ -41,7 +41,7 @@ class ChassisType : public Application
     private:
         /*<     底盘速度与加速度限制    >*/
         /// @param 最大加速度，单位m/s^2
-        float _max_accel = 4.0f;       
+        float _max_accel = 2.0f;       
         /// @param 最大线速度，单位m/s
         float _max_velo = 1.5f;
         /// @param 最大角速度，单位rad/s
@@ -80,7 +80,8 @@ class ChassisType : public Application
         bool _Rotating();
 
         void _SetCtrlMode();
-        void _HandleCmd();
+        void _HandleSpeedCmd();
+        void _JudgeJoyAct();
 
         Vec3 targ_ges = Vec3(0, 0, 0);      // 期望姿态，车体右手系，x向前，y向左，z从上向下看逆时针，单位m，rad
         Vec3 targ_speed;                    // 期望速度，车体右手系，x向前，y向左，z左转，单位m/s，rad/s
