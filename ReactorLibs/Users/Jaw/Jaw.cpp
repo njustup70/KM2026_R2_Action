@@ -152,6 +152,7 @@ void Jaw::Start()
 
 void Jaw::Update()
 {
+    // 如果退出调试模式，失能电机
     if(System.out_from_debugmode)
     {
         motor_3508_hori.Neutral();
@@ -160,6 +161,7 @@ void Jaw::Update()
         return;
     }
     
+    // 如果还没有完成调零，就执行调零流程；否则正常上传位置并响应状态
     if (!_origined)
     {
         if (!_hori_origined)
@@ -181,6 +183,7 @@ void Jaw::Update()
         }
         return;
     }
+    // 调零完成，正常运行
     else
     {
         _UploadPos();

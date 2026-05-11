@@ -161,10 +161,4 @@ public:
     void TrackLogJustFloat();
 };
 
-/**
- * @brief 全局监视器别名
- * @note 只允许在一个 .cpp 中定义，其他地方通过 extern 共享
- */
-extern Monitor &monit;
-
 #endif

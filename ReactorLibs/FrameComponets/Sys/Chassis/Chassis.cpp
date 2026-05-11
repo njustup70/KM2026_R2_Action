@@ -41,6 +41,7 @@ void ChassisType::Start()
     //     // motors[i].speed_pid.ForwardLize(PidGeneral::SpeedForward, 1.5f, 5, 4.8); 			// 速度型前馈
     //     // motors[i].Enable();
     // }
+    
     main_board.RegisterTask(1, ChasTaskCallback, this);
     host_pc.Regist(0xFA, 0xBB, HostCmdCallback, this);
     host_pc.Regist(0xFA, 0xA0, SlamRxCallback, this);
