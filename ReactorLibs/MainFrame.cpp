@@ -35,7 +35,7 @@ void MainFrameCpp()
   // 初始化遥控器
   farcon.init(Hardware::huart_farcon);
 
-  System.RegistApp(jaw);
+  // System.RegistApp(jaw);
   // System.RegistApp(key);
   // System.RegistApp(hand);
   

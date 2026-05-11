@@ -12,6 +12,9 @@
 #include "interboardcomm.hpp"
 
 SystemType& System = SystemType::GetInstance();
+static Monitor& monit = Monitor::GetInstance();
+static HostPC& host_pc = HostPC::GetInstance();
+
 LedWs2812 sys_ledband;
 
 void SystemType::Init(bool Sc)

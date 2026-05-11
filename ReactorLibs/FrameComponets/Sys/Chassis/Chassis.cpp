@@ -6,7 +6,9 @@
 #include "HostPC.hpp"
 #include "System.hpp"
 #include "bsp_log.hpp"
+#include "MainFrame.hpp"
 
+static HostPC &host_pc = HostPC::GetInstance();
 
 ChassisType &test_chas = ChassisType::GetInstance();
 // BoardComm main_board;
@@ -122,9 +124,9 @@ void ChassisType::_HandleSpeedCmd()
 
         case FARCON:
             // 读取遥控器数据到底盘控制变量
-            targ_speed.x = -farcon.jy_data_origin[3] * 1.0f / 100.f * _max_velo;  // 前后
-            targ_speed.y = -farcon.jy_data_origin[2] * 1.0f / 100.f * _max_velo;  // 左右
-            targ_speed.z = -farcon.jy_data_origin[0] * 1.0f / 100.f * _max_omega; // 旋转        
+            targ_speed.x = -farcon.jys_value[3] * 1.0f / 100.f * _max_velo;  // 前后
+            targ_speed.y = -farcon.jys_value[2] * 1.0f / 100.f * _max_velo;  // 左右
+            targ_speed.z = -farcon.jys_value[0] * 1.0f / 100.f * _max_omega; // 旋转        
         break;
 
         case API:
@@ -145,9 +147,9 @@ void ChassisType::_JudgeJoyAct()
 {
     // 检查摇杆是否被推动
     float joystick_deadband = 10.0f; 
-    bool joystick_active = (fabs(farcon.jy_data_origin[0]) > joystick_deadband || 
-                            fabs(farcon.jy_data_origin[2]) > joystick_deadband || 
-                            fabs(farcon.jy_data_origin[3]) > joystick_deadband);
+    bool joystick_active = (fabs(farcon.jys_value[0]) > joystick_deadband || 
+                            fabs(farcon.jys_value[2]) > joystick_deadband || 
+                            fabs(farcon.jys_value[3]) > joystick_deadband);
     
     if (!joystick_active) 
     {
