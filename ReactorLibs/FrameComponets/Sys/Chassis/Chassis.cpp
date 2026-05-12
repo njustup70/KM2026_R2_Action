@@ -77,6 +77,18 @@ void SendChasSpeedCmd(float vx, float vy, float vz)
     main_board.SendTask(0x210, 1, payload, 6, false);
 }
 
+void SendChasSLAMPos(float x, float y, float yaw)
+{
+    uint8_t payload[6];
+    const float scale = 1000.0f;
+    //发送SLAM坐标数据给底盘做闭环使用
+    PackFloatToInt16(&payload[0], x, scale);
+    PackFloatToInt16(&payload[2], y, scale);
+    PackFloatToInt16(&payload[4], yaw, scale);
+
+    main_board.SendTask(0x210, 0, payload, 6, false);
+}
+
 void SendChasTargGes(float x, float y, float z)
 {
     uint8_t payload[6];
@@ -504,10 +516,12 @@ void ChassisType::SlamRxCallback(uint8_t func_code, const uint8_t* payload, uint
     {
         Vec3 slam_pos;
         slam_pos.FromBytes(payload);
-        GetInstance().targ_ges.x = slam_pos.x;
-        GetInstance().targ_ges.y = slam_pos.y;
-        GetInstance().targ_ges.z = slam_pos.z;
-        SendChasTargGes(slam_pos.x, slam_pos.y, slam_pos.z);
+        //上位机传回数据
+        GetInstance().Slam_pos.x = slam_pos.x;
+        GetInstance().Slam_pos.y = slam_pos.y;
+        GetInstance().Slam_pos.z = slam_pos.z;
+        //发送给底盘上位机的数据
+        SendChasSLAMPos(slam_pos.x, slam_pos.y, slam_pos.z);
     }
 }
 

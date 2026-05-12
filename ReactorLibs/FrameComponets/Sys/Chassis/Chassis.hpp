@@ -85,6 +85,7 @@ class ChassisType : public Application
 
         Vec3 targ_ges = Vec3(0, 0, 0);      // 期望姿态，车体右手系，x向前，y向左，z从上向下看逆时针，单位m，rad
         Vec3 targ_speed;                    // 期望速度，车体右手系，x向前，y向左，z左转，单位m/s，rad/s
+        Vec3 Slam_pos;                      // SLAM传回数据
 
         typedef struct
         {
@@ -101,6 +102,7 @@ class ChassisType : public Application
             FARCON,     // 由遥控器控制
             OPEN,       // 开放控制（直接Move控制）
         }_ChasConMode;
+        
 
     public:
         // 分别对应四个底盘电机
