@@ -15,6 +15,7 @@ void Hardware::Config_Hardwares()
     Hardware::huart_host = ToID(&huart2);
     Hardware::huart_farcon = ToID(&huart3);
     Hardware::huart_odom = ToID(&huart6);
+    Hardware::huart_log = ToID(&huart7);
     Hardware::huart_other = nullptr;
  
     /**-----    配置SPI总线    -----**/
@@ -40,5 +41,6 @@ void Hardware::Config_Parameters()
     Hardware::MainFreq_MHz = 180;
 
     /// @brief 日志输出模式
-    Hardware::RTTLogAtUart = false;
+    Hardware::RTTLogAtUart = true;
+    Hardware::RTTLogUartItrp = true;
 }
