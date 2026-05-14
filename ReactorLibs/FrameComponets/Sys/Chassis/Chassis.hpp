@@ -85,7 +85,6 @@ class ChassisType : public Application
 
         Vec3 targ_ges = Vec3(0, 0, 0);      // 期望姿态，车体右手系，x向前，y向左，z从上向下看逆时针，单位m，rad
         Vec3 targ_speed;                    // 期望速度，车体右手系，x向前，y向左，z左转，单位m/s，rad/s
-        Vec3 Slam_pos;                      // SLAM传回数据
 
         typedef struct
         {
@@ -136,8 +135,6 @@ class ChassisType : public Application
 
         // 上位机速度指令回调
         static void HostCmdCallback(uint8_t func_code, const uint8_t* payload, uint8_t payload_len, void* user_ctx);
-
-        static void SlamRxCallback(uint8_t func_code, const uint8_t* payload, uint8_t payload_len, void* user_ctx);
 
         // c板返回的自解里程计回调
         static void ChasTaskCallback(uint8_t task_id, const uint8_t *payload, uint8_t payload_len, void *user_ctx);

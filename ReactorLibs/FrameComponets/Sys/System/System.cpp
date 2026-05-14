@@ -17,6 +17,34 @@ static HostPC& host_pc = HostPC::GetInstance();
 
 LedWs2812 sys_ledband;
 
+namespace   
+{
+    void SendChasSLAMPos(float x, float y, float yaw)   
+    {
+        uint8_t payload[6];
+        const float scale = 1000.0f;
+        //发送SLAM坐标数据给底盘做闭环使用
+        PackFloatToInt16(&payload[0], x, scale);
+        PackFloatToInt16(&payload[2], y, scale);
+        PackFloatToInt16(&payload[4], yaw, scale);
+
+        main_board.SendTask(0x210, 0, payload, 6, false);
+    }
+    void SlamRxCallback(uint8_t func_code, const uint8_t* payload, uint8_t payload_len, void* user_ctx)
+    {
+        if(func_code == 0xA0 )
+        {
+            Vec3 slam_pos;
+            slam_pos.FromBytes(payload);
+            //上位机传回数据
+            System.position.x = slam_pos.x;
+            System.position.y = slam_pos.y;
+            System.position.z = slam_pos.z;
+            //发送给底盘上位机的数据
+            SendChasSLAMPos(slam_pos.x, slam_pos.y, slam_pos.z);
+        }
+    }
+}
 void SystemType::Init(bool Sc)
 {
     // 输出系统启动信息
@@ -499,29 +527,6 @@ bool Application::CntFull()
     return false;
 }
 
-void SendChasSLAMPos(float x, float y, float yaw)
-{
-    uint8_t payload[6];
-    const float scale = 1000.0f;
-    //发送SLAM坐标数据给底盘做闭环使用
-    PackFloatToInt16(&payload[0], x, scale);
-    PackFloatToInt16(&payload[2], y, scale);
-    PackFloatToInt16(&payload[4], yaw, scale);
 
-    main_board.SendTask(0x210, 0, payload, 6, false);
-}
 
-void ChassisType::SlamRxCallback(uint8_t func_code, const uint8_t* payload, uint8_t payload_len, void* user_ctx)
-{
-    if(func_code == 0xA0 && GetInstance()._host_ctrl)
-    {
-        Vec3 slam_pos;
-        slam_pos.FromBytes(payload);
-        //上位机传回数据
-        System.position.x = slam_pos.x;
-        System.position.y = slam_pos.y;
-        System.position.z = slam_pos.z;
-        //发送给底盘上位机的数据
-        SendChasSLAMPos(slam_pos.x, slam_pos.y, slam_pos.z);
-    }
-}
+

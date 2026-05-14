@@ -11,6 +11,7 @@
 static StateCore &core = StateCore::GetInstance();
 static Monitor &monit = Monitor::GetInstance();
 static ChassisType &chas = ChassisType::GetInstance();
+static Jaw &jaw = Jaw::GetInstance();
 
 // 手动遥控的状态机
 StateGraph ManualGraph("Manual");
