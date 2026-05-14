@@ -10,7 +10,7 @@
 
 static HostPC &host_pc = HostPC::GetInstance();
 
-ChassisType &test_chas = ChassisType::GetInstance();
+ChassisType &chas = ChassisType::GetInstance();
 // BoardComm main_board;
 
 void ChassisType::ChasTaskCallback(uint8_t task_id, const uint8_t *payload, uint8_t payload_len, void *user_ctx)
@@ -512,7 +512,7 @@ bool ChassisType::_Rotating()
 
 void ChassisType::SlamRxCallback(uint8_t func_code, const uint8_t* payload, uint8_t payload_len, void* user_ctx)
 {
-    if(func_code == 0xA0 && GetInstance()._host_ctrl)
+    if(func_code == 0xA0)
     {
         Vec3 slam_pos;
         slam_pos.FromBytes(payload);

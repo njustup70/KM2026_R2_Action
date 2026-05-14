@@ -6,8 +6,7 @@
 #include "Get_Block.hpp"
 #include "HostPC.hpp"
 
-// 遥控器
-Farcon farcon;
+
 
 static StateCore &core = StateCore::GetInstance();
 static Monitor &monit = Monitor::GetInstance();
