@@ -90,3 +90,7 @@ public:
 
 extern int jaw_recv_cnt_test;
 
+namespace APP
+{
+    extern Jaw& jaw;
+}

@@ -39,12 +39,6 @@ void MainFrameCpp()
   // 底盘启动
   // System.RegistApp(chas);
   // chas.Enable();
-
-  
-
-  // System.RegistApp(jaw);
-  // System.RegistApp(key);
-  // System.RegistApp(hand);
   
   // 配置状态图
 
@@ -56,7 +50,6 @@ void MainFrameCpp()
 void Waiting_for_Start(StateCore *core)
 {
     // 等待
-    
 }
 
 void SlamRxCallback(uint8_t func_code, const uint8_t* payload, uint8_t payload_len, void* user_ctx)

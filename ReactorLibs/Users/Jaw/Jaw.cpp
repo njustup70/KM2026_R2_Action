@@ -1,5 +1,5 @@
 // 取矛头的库
-// 爪：减速齿轮齿比1：2，2006减速箱齿比36：1，给负值爪顺时针转
+// 爪：减速齿轮齿比1：2，2006减速箱齿比36：1，Pitch向上抬为正
 // 看向爪正面，x正方向（水平向右）：正值；y正方向（竖直向上）：正值
 #include "Jaw.hpp"
 #include "HostPC.hpp"
@@ -11,8 +11,18 @@
 #include <cmath>
 #include <string.h>
 
+Jaw& APP::jaw = Jaw::GetInstance();
+
 static Monitor& monit = Monitor::GetInstance();
 static HostPC& host_pc = HostPC::GetInstance();
+
+namespace JawConst 
+{
+    /// @brief 各方向上的最大行程
+    static const int _hori_max_travel_code = 299000;
+    static const int _vert_max_travel_code = 326000;
+    static const int _pitch_max_travel_code = 305000;
+}
 
 static float C620VertComp(const FeedforwardInfo& info);
 static float C620HoriFriction(const FeedforwardInfo& info);
@@ -52,11 +62,11 @@ void Jaw::Start()
     motor_3508_hori.ConfigADRC()
         .AsPosC()
         .ADRC_Womega(42.0f, 9.6f)
-        .ADRC_Physic(4.9e-4f, 0.30f, 0.005f)
-        .ADRC_Limit(18.0f)
+        .ADRC_Physic(5.4e-4f, 0.30f, 0.005f)
+        .ADRC_Limit(10.0f)
         .SpdLimit(8000.0f)
         .ADRC_MaxPlannedVel(8000.0f)
-        .ADRC_SOTF(0.9f)
+        .ADRC_SOTF(0.42f)
         .Feedforward(C620HoriFriction)
         .Apply();
     motor_3508_hori.driver.Enable();
@@ -65,10 +75,10 @@ void Jaw::Start()
         .AsPosC()
         .ADRC_Womega(42.0f, 9.6f)
         .ADRC_Physic(4.2e-4f, 0.30f, 0.005f)
-        .ADRC_Limit(18.0f)
+        .ADRC_Limit(10.0f)
         .SpdLimit(8000.0f)
         .ADRC_MaxPlannedVel(8000.0f)
-        .ADRC_SOTF(0.9f)
+        .ADRC_SOTF(0.42f)
         .Feedforward(C620VertComp)
         .Apply();
     motor_3508_vert.driver.Enable();
@@ -77,7 +87,7 @@ void Jaw::Start()
         .AsPosC()
         .ADRC_Womega(42.0f, 9.6f)
         .ADRC_Physic(6.9e-5f, 0.18f)
-        .ADRC_Limit(9.0f)
+        .ADRC_Limit(8.0f)
         .SpdLimit(5000.0f)
         .ADRC_MaxPlannedVel(5000.0f)
         .ADRC_SOTF(0.33f)
@@ -92,6 +102,15 @@ void Jaw::Start()
 
 void Jaw::Update()
 {
+    // 如果退出Debug，全部失能保障安全
+    if (System.out_from_debugmode)
+    {
+        motor_3508_hori.driver.Disable();
+        motor_3508_vert.driver.Disable();
+        motor_2006.driver.Disable();
+        return;
+    }
+
     // 如果尚未初始化，寻找初始化原点
     if (!_origined)
     {
@@ -132,9 +151,9 @@ void Jaw::_Update_GetOrigin()
     {
         _origined = true;
         _in_track_mode = true;
-        _hori_tracklim_max = _hori_origin_code - 8192;
-        _hori_tracklim_min = _hori_origin_code - 140000;
-        _vert_tracklim_max = _vert_origin_code - 8192;
+        _hori_tracklim_max = _hori_origin_code - _HoriMMToCode(4);
+        _hori_tracklim_min = _hori_origin_code - (JawConst::_hori_max_travel_code - _HoriMMToCode(4));
+        _vert_tracklim_max = _vert_origin_code - _VertMMToCode(4);
         _vert_tracklim_min = _vert_origin_code - 100000;
     }
 }
@@ -266,7 +285,7 @@ void Jaw::_GetHoriOrigin()
     motor_3508_hori.SetPos(hori_probe_code);
 
     // 如果撞到限位了（用eso的扰动观测来确定），连续5个Tick，就停止
-    if (fabs(motor_3508_hori.motor_adrc.eso.z3) > 1000 && runed_tick > 60)
+    if (fabs(motor_3508_hori.motor_adrc.eso.z3) > 1300 && runed_tick > 60)
     {
         hori_probe_cnt++;
         if (hori_probe_cnt >= 10)
@@ -276,7 +295,7 @@ void Jaw::_GetHoriOrigin()
             // 记录中点偏移
             _hori_origin_code = motor_3508_hori.driver.measure.total_angle;
             // 往回走到中点
-            motor_3508_hori.SetPos(_hori_origin_code - 70000);
+            motor_3508_hori.SetPos(_hori_origin_code - JawConst::_hori_max_travel_code / 2);
         }
     }
     else
@@ -285,7 +304,8 @@ void Jaw::_GetHoriOrigin()
         // 每周期（5ms）加 200 Code，每秒加 40000 Code
         if (runed_tick > 60)    hori_probe_code += 200;
         // 但是最开始缓慢前进，目的是破除静态库伦摩擦力
-        else                    hori_probe_code += 15;
+        else if (runed_tick > 30) hori_probe_code += 65;
+        else                    hori_probe_code += 20;
     }   
 }
 
@@ -300,7 +320,7 @@ void Jaw::_GetVertOrigin()
     motor_3508_vert.SetPos(vert_probe_code);
 
     // 如果撞到限位了（用eso的扰动观测来确定），连续5个Tick，就停止
-    if (fabs(motor_3508_vert.motor_adrc.eso.z3) > 1000 && runed_tick > 60)
+    if (fabs(motor_3508_vert.motor_adrc.eso.z3) > 1300 && runed_tick > 60)
     {
         vert_probe_cnt++;
         if (vert_probe_cnt >= 10)
@@ -309,8 +329,8 @@ void Jaw::_GetVertOrigin()
             _vert_origined = true;
             // 记录中点偏移
             _vert_origin_code = motor_3508_vert.driver.measure.total_angle;
-            // 往回走到中点
-            motor_3508_vert.SetPos(_vert_origin_code - 140000);
+            // 往回走到三分之一
+            motor_3508_vert.SetPos(_vert_origin_code - JawConst::_vert_max_travel_code / 3);
         }
     }
     else
@@ -319,7 +339,8 @@ void Jaw::_GetVertOrigin()
         // 每周期（5ms）加 200 Code，每秒加 40000 Code
         if (runed_tick > 60)    vert_probe_code += 200;
         // 但是最开始缓慢前进，目的是破除静态库伦摩擦力
-        else                    vert_probe_code += 15;
+        else if (runed_tick > 30) vert_probe_code += 65;
+        else                    vert_probe_code += 20;
     }   
 }
 
@@ -343,8 +364,8 @@ void Jaw::_GetPitchOrigin()
             _pitch_origined = true;
             // 记录中点偏移
             _pitch_origin_code = motor_2006.driver.measure.total_angle;
-            // 往回走到竖直
-            motor_2006.SetPos(_pitch_origin_code - 400);
+            // 往回一点点，不要堵转就行
+            motor_2006.SetPos(_pitch_origin_code - 500);
         }
     }
     else
@@ -387,8 +408,8 @@ static float C620HoriFriction(const FeedforwardInfo& info)
 {
     constexpr float kFricTorque = 0.33f;   // 动摩擦力矩 N*m
     constexpr float kKt = 0.30f;          // C620 (M3508) Kt
-    constexpr float kVelEpsMin = 0.5f;    // rad/s，低于该值不做摩擦补偿
-    constexpr float kVelEpsMax = 5.0f;    // rad/s，高于该值给到满补偿
+    constexpr float kVelEpsMin = 1.0f;    // rad/s，低于该值不做摩擦补偿
+    constexpr float kVelEpsMax = 10.0f;    // rad/s，高于该值给到满补偿
     constexpr float kTargetCurrent = kFricTorque / kKt;
 
     if (info.velocity > kVelEpsMax)

@@ -3,7 +3,7 @@
 
 namespace Hardware
 {
-    float MainFreq_MHz = 72.0f;
+    float MainFreq_MHz = 180.0f;
 
     bool RTTLogAtUart = false;
     bool RTTLogUartItrp = false;
