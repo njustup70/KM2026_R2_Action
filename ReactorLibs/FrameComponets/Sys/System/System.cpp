@@ -17,34 +17,6 @@ static HostPC& host_pc = HostPC::GetInstance();
 
 LedWs2812 sys_ledband;
 
-namespace   
-{
-    void SendChasSLAMPos(float x, float y, float yaw)   
-    {
-        uint8_t payload[6];
-        const float scale = 1000.0f;
-        //发送SLAM坐标数据给底盘做闭环使用
-        PackFloatToInt16(&payload[0], x, scale);
-        PackFloatToInt16(&payload[2], y, scale);
-        PackFloatToInt16(&payload[4], yaw, scale);
-
-        main_board.SendTask(0x210, 0, payload, 6, false);
-    }
-    void SlamRxCallback(uint8_t func_code, const uint8_t* payload, uint8_t payload_len, void* user_ctx)
-    {
-        if(func_code == 0xA0 )
-        {
-            Vec3 slam_pos;
-            slam_pos.FromBytes(payload);
-            //上位机传回数据
-            System.position.x = slam_pos.x;
-            System.position.y = slam_pos.y;
-            System.position.z = slam_pos.z;
-            //发送给底盘上位机的数据
-            SendChasSLAMPos(slam_pos.x, slam_pos.y, slam_pos.z);
-        }
-    }
-}
 void SystemType::Init(bool Sc)
 {
     // 输出系统启动信息
@@ -53,20 +25,14 @@ void SystemType::Init(bool Sc)
     BspLog_LogInfo("Waiting for system initialization...\n\n");
 
     DWT_Init(CPU_HERT_A_BOARD_MHZ);
+
     // 初始化Monitor监视器
-    // Monitor::GetInstance().Init(Hardware::huart_host, nullptr, false);
+    Monitor::GetInstance().Init(Hardware::huart_log, nullptr, false);
 
     // 初始化系统灯带
-    sys_ledband.Init(Hardware::htim_led, TIM_CHANNEL_1, 13);
+    // sys_ledband.Init(Hardware::htim_led, TIM_CHANNEL_1, 13);
     // 颜色偏置因子（用于校正颜色）
-    sys_ledband.BiasFactor = Vec3(0.843f, 1.0f, 0.843f); 
-    
-    // odometer.Init(Hardware::huart_odom, true, false, false, true);
-
-    host_pc.Init(Hardware::huart_host);
-
-    main_board.Init(Hardware::hcan_sub, 0x220, false);
-    host_pc.Regist(0xFA, 0xA0, SlamRxCallback, this);
+    // sys_ledband.BiasFactor = Vec3(0.843f, 1.0f, 0.843f); 
 
   // 自动开始自检
   if (Sc)
