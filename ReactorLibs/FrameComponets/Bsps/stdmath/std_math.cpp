@@ -242,7 +242,7 @@ Vec3 Quat::ToEuler() const
 }
 
 // float 4字节->2字节压缩函数
-void PackFloatToInt16(uint8_t* ptr, float val, float scale)
+void StdMath::PackFloatToInt16(uint8_t* ptr, float val, float scale)
 {
   float scaled = val * scale;
   if (scaled > 32767.0f)  scaled = 32767.0f;
@@ -255,7 +255,7 @@ void PackFloatToInt16(uint8_t* ptr, float val, float scale)
   ptr[1] = static_cast<uint8_t>((v >> 8) & 0xFF);  // 高8位
 }
 
-float UnpackInt16ToFloat(const uint8_t* ptr, float scale)
+float StdMath::UnpackInt16ToFloat(const uint8_t* ptr, float scale)
 {
   // 小端
   int16_t raw = static_cast<int16_t>((ptr[1] << 8) | ptr[0]);
