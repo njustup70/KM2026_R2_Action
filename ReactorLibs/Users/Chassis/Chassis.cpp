@@ -36,14 +36,6 @@ void ChassisType::ChasTaskCallback(uint8_t task_id, const uint8_t *payload, uint
 
 void ChassisType::Start()
 {
-    // // 初始化电机
-    // for (int i = 0; i < 4; i++)
-    // {
-    //     // motors[i].Init(Hardware::hcan_main, i + 1, MotorDJIMode::PID_SpeedControl);
-    //     // motors[i].speed_pid.Init(3.6, 2.4, 0.0);
-    //     // motors[i].speed_pid.ForwardLize(PidGeneral::SpeedForward, 1.5f, 5, 4.8); 			// 速度型前馈
-    //     // motors[i].Enable();
-    // }
     MOD::board_can.RegisterTask(1, ChasTaskCallback, this);
     MOD::host_pc.Regist(HostPC::FuncCode::ctrl_spd, HostCmdCallback, this);
     

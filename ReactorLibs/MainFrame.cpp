@@ -9,7 +9,6 @@
 #include "farcon.hpp"
 
 void SlamRxCallback(uint8_t func_code, const uint8_t* payload, uint8_t payload_len, void* user_ctx);
-inline void SendChasSLAMPos(float x, float y, float yaw);
 
 // 手动遥控的状态机
 StateGraph ManualGraph("Manual");
@@ -63,21 +62,16 @@ void SlamRxCallback(uint8_t func_code, const uint8_t* payload, uint8_t payload_l
         slam_pos.FromBytes(payload);
 
         // 更新系统位姿
-        // System.position = slam_pos;
+        System.position = slam_pos;
         
-        //发送给底盘上位机的数据
-        SendChasSLAMPos(slam_pos.x, slam_pos.y, slam_pos.z);
+        // 发送SLAM坐标数据转发给底盘
+        uint8_t data[6];
+        const float scale = 1000.0f;
+        
+        StdMath::PackFloatToInt16(&data[0], slam_pos.x, scale);
+        StdMath::PackFloatToInt16(&data[2], slam_pos.y, scale);
+        StdMath::PackFloatToInt16(&data[4], slam_pos.z, scale);
+
+        MOD::board_can.SendTask(0x210, 0, data, 6, false);
     }
 }
-
-inline void SendChasSLAMPos(float x, float y, float yaw)
-    {
-        uint8_t payload[6];
-        const float scale = 1000.0f;
-        //发送SLAM坐标数据给底盘做闭环使用
-        StdMath::PackFloatToInt16(&payload[0], x, scale);
-        StdMath::PackFloatToInt16(&payload[2], y, scale);
-        StdMath::PackFloatToInt16(&payload[4], yaw, scale);
-
-        MOD::board_can.SendTask(0x210, 0, payload, 6, false);
-    }
