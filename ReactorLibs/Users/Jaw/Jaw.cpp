@@ -42,8 +42,7 @@ void Jaw::_SpearHeadCb(uint8_t func_code, const uint8_t* payload, uint8_t payloa
 void Jaw::Start()
 {
     // 接收取矛头误差帧：SOF=0xFA, Func=0xB1, payload=[left_mm, up_mm]
-    host_pc.Init(Hardware::huart_odom);
-    host_pc.Regist(0xFA, 0xB1, Jaw::_SpearHeadCb, this);
+    MOD::host_pc.Regist(HostPC::FuncCode::dock_err, Jaw::_SpearHeadCb, this);
 
     motor_3508_hori.Init(Hardware::hcan_main, 1, DJI_C620);  // 水平方向
     motor_3508_vert.Init(Hardware::hcan_main, 2, DJI_C620);  // 竖直方向

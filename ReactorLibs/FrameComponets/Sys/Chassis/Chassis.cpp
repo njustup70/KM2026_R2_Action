@@ -23,9 +23,9 @@ void ChassisType::ChasTaskCallback(uint8_t task_id, const uint8_t *payload, uint
     // GetInstance().chas_odom.pos.y = ((int16_t)(payload[2] << 8 | payload[3])) / 1000.0f; 
     // GetInstance().chas_odom.pos.z = ((int16_t)(payload[4] << 8 | payload[5])) / 1000.0f; 
 
-    GetInstance().chas_odom.pos.x = UnpackInt16ToFloat(&payload[0], 1000.0f);
-    GetInstance().chas_odom.pos.y = UnpackInt16ToFloat(&payload[2], 1000.0f);
-    GetInstance().chas_odom.pos.z = UnpackInt16ToFloat(&payload[4], 1000.0f);
+    GetInstance().chas_odom.pos.x = StdMath::UnpackInt16ToFloat(&payload[0], 1000.0f);
+    GetInstance().chas_odom.pos.y = StdMath::UnpackInt16ToFloat(&payload[2], 1000.0f);
+    GetInstance().chas_odom.pos.z = StdMath::UnpackInt16ToFloat(&payload[4], 1000.0f);
 
     if(++send_cnt >= 2) 
     {
@@ -44,13 +44,12 @@ void ChassisType::Start()
     //     // motors[i].speed_pid.ForwardLize(PidGeneral::SpeedForward, 1.5f, 5, 4.8); 			// 速度型前馈
     //     // motors[i].Enable();
     // }
-    
-    main_board.RegisterTask(1, ChasTaskCallback, this);
-    host_pc.Regist(0xFA, 0xBB, HostCmdCallback, this);
+    MOD::board_can.RegisterTask(1, ChasTaskCallback, this);
+    MOD::host_pc.Regist(HostPC::FuncCode::ctrl_spd, HostCmdCallback, this);
     
 
     uint8_t payload[1] = {0x01}; // 发送重置底盘和腿的指令，包括电机和里程计
-    main_board.SendTask(0x210, 4, payload, 1, false); 
+    // main_board.SendTask(0x210, 4, payload, 1, false); 
 }
 
 void SendChasSpeedCmd(float vx, float vy, float vz)
@@ -72,10 +71,10 @@ void SendChasSpeedCmd(float vx, float vy, float vz)
 
     // payload[4] = (z >> 8) & 0xFF; // Vz 高8位
     // payload[5] = z & 0xFF;        // Vz 低8位
-    PackFloatToInt16(&payload[0], vx, scale);
-    PackFloatToInt16(&payload[2], vy, scale);
-    PackFloatToInt16(&payload[4], vz, scale);
-    main_board.SendTask(0x210, 1, payload, 6, false);
+    StdMath::PackFloatToInt16(&payload[0], vx, scale);
+    StdMath::PackFloatToInt16(&payload[2], vy, scale);
+    StdMath::PackFloatToInt16(&payload[4], vz, scale);
+    MOD::board_can.SendTask(0x210, 1, payload, 6, false);
 }
 
 
@@ -84,24 +83,11 @@ void SendChasTargGes(float x, float y, float z)
 {
     uint8_t payload[6];
     const float scale = 1000.0f;
-    PackFloatToInt16(&payload[0], x, scale);
-    PackFloatToInt16(&payload[2], y, scale);
-    PackFloatToInt16(&payload[4], z, scale);
+    StdMath::PackFloatToInt16(&payload[0], x, scale);
+    StdMath::PackFloatToInt16(&payload[2], y, scale);
+    StdMath::PackFloatToInt16(&payload[4], z, scale);
 
-    // int16_t x_int = (int16_t)(x * 1000.0f);
-    // int16_t y_int = (int16_t)(y * 1000.0f);
-    // int16_t z_int = (int16_t)(z * 1000.0f);
-
-    // payload[0] = (x_int >> 8) & 0xFF;
-    // payload[1] = x_int & 0xFF;
-
-    // payload[2] = (y_int >> 8) & 0xFF;
-    // payload[3] = y_int & 0xFF;
-
-    // payload[4] = (z_int >> 8) & 0xFF;
-    // payload[5] = z_int & 0xFF;
-
-    main_board.SendTask(0x210, 5, payload, sizeof(payload), false);
+    // main_board.SendTask(0x210, 1, payload, 6, false);
 }
 
 void ChassisType::_SetCtrlMode()
@@ -173,7 +159,7 @@ void ChassisType::Update()
     if(System.out_from_debugmode)
     {
         uint8_t payload[1] = {0x01}; // 发送重置底盘和腿的指令，包括电机和里程计
-        main_board.SendTask(0x210, 3, payload, 1, false); // 发送停止指令
+        // main_board.SendTask(0x210, 3, payload, 1, false); // 发送停止指令
     }
     
     // 管理发送，确保每次只有一个接口发送指令
