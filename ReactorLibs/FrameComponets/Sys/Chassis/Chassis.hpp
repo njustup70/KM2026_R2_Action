@@ -56,7 +56,7 @@ class ChassisType : public Application
         bool _is_yaw_locked = false;        // 常锁姿态环
 
         // 上位机控制标志位
-        bool _host_ctrl = false;
+        bool _host_ctrl = true;
 
         
         /// @param 四个电机的目标速度，单位m/s
