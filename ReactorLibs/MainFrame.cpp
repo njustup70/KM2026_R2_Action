@@ -6,12 +6,12 @@
 #include "Get_Block.hpp"
 #include "HostPC.hpp"
 
-// 遥控器
-Farcon farcon;
+
 
 static StateCore &core = StateCore::GetInstance();
 static Monitor &monit = Monitor::GetInstance();
 static ChassisType &chas = ChassisType::GetInstance();
+static Jaw &jaw = Jaw::GetInstance();
 
 // 手动遥控的状态机
 StateGraph ManualGraph("Manual");

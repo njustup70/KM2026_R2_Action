@@ -7,10 +7,11 @@
 #include "System.hpp"
 #include "bsp_log.hpp"
 #include "MainFrame.hpp"
+#include <cmath>
 
-static HostPC &host_pc = HostPC::GetInstance();
 
-ChassisType &test_chas = ChassisType::GetInstance();
+static HostPC& host_pc = HostPC::GetInstance();
+
 // BoardComm main_board;
 
 void ChassisType::ChasTaskCallback(uint8_t task_id, const uint8_t *payload, uint8_t payload_len, void *user_ctx)
@@ -46,7 +47,7 @@ void ChassisType::Start()
     
     main_board.RegisterTask(1, ChasTaskCallback, this);
     host_pc.Regist(0xFA, 0xBB, HostCmdCallback, this);
-    host_pc.Regist(0xFA, 0xA0, SlamRxCallback, this);
+    
 
     uint8_t payload[1] = {0x01}; // 发送重置底盘和腿的指令，包括电机和里程计
     main_board.SendTask(0x210, 4, payload, 1, false); 
@@ -76,6 +77,8 @@ void SendChasSpeedCmd(float vx, float vy, float vz)
     PackFloatToInt16(&payload[4], vz, scale);
     main_board.SendTask(0x210, 1, payload, 6, false);
 }
+
+
 
 void SendChasTargGes(float x, float y, float z)
 {
@@ -386,7 +389,7 @@ void ChassisType::Rotate(float omega)
         return;
 
     // 验证输入安全
-    if (isnan(omega) || omega == INFINITY)
+    if (!std::isfinite(omega))
     {
         Monitor::GetInstance().LogError("Chassis: Dangerous omega!");
         return;
@@ -498,18 +501,7 @@ bool ChassisType::_Rotating()
     return false;
 }
 
-void ChassisType::SlamRxCallback(uint8_t func_code, const uint8_t* payload, uint8_t payload_len, void* user_ctx)
-{
-    if(func_code == 0xA0 && GetInstance()._host_ctrl)
-    {
-        Vec3 slam_pos;
-        slam_pos.FromBytes(payload);
-        GetInstance().targ_ges.x = slam_pos.x;
-        GetInstance().targ_ges.y = slam_pos.y;
-        GetInstance().targ_ges.z = slam_pos.z;
-        SendChasTargGes(slam_pos.x, slam_pos.y, slam_pos.z);
-    }
-}
+
 
 void ChassisType::HostCmdCallback(uint8_t func_code, const uint8_t* payload, uint8_t payload_len, void* user_ctx)
 {

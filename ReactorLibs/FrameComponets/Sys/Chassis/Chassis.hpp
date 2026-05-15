@@ -56,7 +56,7 @@ class ChassisType : public Application
         bool _is_yaw_locked = false;        // 常锁姿态环
 
         // 上位机控制标志位
-        bool _host_ctrl = false;
+        bool _host_ctrl = true;
 
         
         /// @param 四个电机的目标速度，单位m/s
@@ -101,6 +101,7 @@ class ChassisType : public Application
             FARCON,     // 由遥控器控制
             OPEN,       // 开放控制（直接Move控制）
         }_ChasConMode;
+        
 
     public:
         // 分别对应四个底盘电机
@@ -134,8 +135,6 @@ class ChassisType : public Application
 
         // 上位机速度指令回调
         static void HostCmdCallback(uint8_t func_code, const uint8_t* payload, uint8_t payload_len, void* user_ctx);
-
-        static void SlamRxCallback(uint8_t func_code, const uint8_t* payload, uint8_t payload_len, void* user_ctx);
 
         // c板返回的自解里程计回调
         static void ChasTaskCallback(uint8_t task_id, const uint8_t *payload, uint8_t payload_len, void *user_ctx);
