@@ -140,5 +140,9 @@ class ChassisType : public Application
         static void ChasTaskCallback(uint8_t task_id, const uint8_t *payload, uint8_t payload_len, void *user_ctx);
 };
 
+namespace APP
+{
+    extern ChassisType& chas;
+}
 
 #endif

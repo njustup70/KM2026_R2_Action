@@ -9,28 +9,27 @@
 #include "MainFrame.hpp"
 #include <cmath>
 
+ChassisType& APP::chas = ChassisType::GetInstance();
 
-static HostPC& host_pc = HostPC::GetInstance();
-
-// BoardComm main_board;
-
+/**
+ * @brief 用于处理 C板 发回的自解里程计数据的回调
+ * @details 其用于接收消息的端口为 0x221 can_id
+ */
 void ChassisType::ChasTaskCallback(uint8_t task_id, const uint8_t *payload, uint8_t payload_len, void *user_ctx)
 {
-    // 这里处理C板发来的自解里程计数据,0x221
-    static int send_cnt = 0; // 发送计数器，板间通讯是200hz，算法组要求100hz
+    using namespace APP;
 
-    // GetInstance().chas_odom.pos.x = ((int16_t)(payload[0] << 8 | payload[1])) / 1000.0f; 
-    // GetInstance().chas_odom.pos.y = ((int16_t)(payload[2] << 8 | payload[3])) / 1000.0f; 
-    // GetInstance().chas_odom.pos.z = ((int16_t)(payload[4] << 8 | payload[5])) / 1000.0f; 
+    // 发送计数器，板间通讯是200hz，算法组要求100hz
+    static int send_cnt = 0; 
 
-    GetInstance().chas_odom.pos.x = StdMath::UnpackInt16ToFloat(&payload[0], 1000.0f);
-    GetInstance().chas_odom.pos.y = StdMath::UnpackInt16ToFloat(&payload[2], 1000.0f);
-    GetInstance().chas_odom.pos.z = StdMath::UnpackInt16ToFloat(&payload[4], 1000.0f);
+    chas.chas_odom.pos.x = StdMath::UnpackInt16ToFloat(&payload[0], 1000.0f);
+    chas.chas_odom.pos.y = StdMath::UnpackInt16ToFloat(&payload[2], 1000.0f);
+    chas.chas_odom.pos.z = StdMath::UnpackInt16ToFloat(&payload[4], 1000.0f);
 
     if(++send_cnt >= 2) 
     {
         send_cnt = 0;
-        host_pc.SendOdom(GetInstance().chas_odom.pos.x, GetInstance().chas_odom.pos.y, GetInstance().chas_odom.pos.z);
+        MOD::host_pc.SendOdom(chas.chas_odom.pos.x, chas.chas_odom.pos.y, chas.chas_odom.pos.z);
     }
 }
 
@@ -39,208 +38,135 @@ void ChassisType::Start()
     MOD::board_can.RegisterTask(1, ChasTaskCallback, this);
     MOD::host_pc.Regist(HostPC::FuncCode::ctrl_spd, HostCmdCallback, this);
     
-
-    uint8_t payload[1] = {0x01}; // 发送重置底盘和腿的指令，包括电机和里程计
-    // main_board.SendTask(0x210, 4, payload, 1, false); 
+    // 发送重置底盘和腿的指令，包括电机和里程计
+    uint8_t payload[1] = {0x01}; 
+    MOD::board_can.SendTask(0x210, 4, payload, 1, false); 
 }
 
-void SendChasSpeedCmd(float vx, float vy, float vz)
+/**
+ * @brief 向底盘发送速度指令
+ */
+void _SendSpd(Vec3 Spd)
 {
     // 6 字节 uint8，完全匹配接收端格式
     uint8_t payload[6];
     const float scale = 1000.0f;
-    // int16_t x = (int16_t)(vx * 1000.0f);
-    // int16_t y = (int16_t)(vy * 1000.0f);
-    // int16_t z = (int16_t)(vz * 1000.0f);
 
-    // // 大端格式：高字节 <<8 在前，低字节在后
-    // // 对应接收端：payload[0] <<8 | payload[1]
-    // payload[0] = (x >> 8) & 0xFF; // Vx 高8位
-    // payload[1] = x & 0xFF;        // Vx 低8位
-
-    // payload[2] = (y >> 8) & 0xFF; // Vy 高8位
-    // payload[3] = y & 0xFF;        // Vy 低8位
-
-    // payload[4] = (z >> 8) & 0xFF; // Vz 高8位
-    // payload[5] = z & 0xFF;        // Vz 低8位
-    StdMath::PackFloatToInt16(&payload[0], vx, scale);
-    StdMath::PackFloatToInt16(&payload[2], vy, scale);
-    StdMath::PackFloatToInt16(&payload[4], vz, scale);
+    StdMath::PackFloatToInt16(&payload[0], Spd.x, scale);
+    StdMath::PackFloatToInt16(&payload[2], Spd.y, scale);
+    StdMath::PackFloatToInt16(&payload[4], Spd.z, scale);
     MOD::board_can.SendTask(0x210, 1, payload, 6, false);
 }
 
 
 
-void SendChasTargGes(float x, float y, float z)
-{
-    uint8_t payload[6];
-    const float scale = 1000.0f;
-    StdMath::PackFloatToInt16(&payload[0], x, scale);
-    StdMath::PackFloatToInt16(&payload[2], y, scale);
-    StdMath::PackFloatToInt16(&payload[4], z, scale);
+// void SendChasTargGes(float x, float y, float z)
+// {
+//     uint8_t payload[6];
+//     const float scale = 1000.0f;
+//     StdMath::PackFloatToInt16(&payload[0], x, scale);
+//     StdMath::PackFloatToInt16(&payload[2], y, scale);
+//     StdMath::PackFloatToInt16(&payload[4], z, scale);
 
-    // main_board.SendTask(0x210, 1, payload, 6, false);
-}
+//     // main_board.SendTask(0x210, 1, payload, 6, false);
+// }
 
-void ChassisType::_SetCtrlMode()
-{
-    if (farcon.toggle[0] == 1)
-    {
-        control_mode = (farcon.toggle[1] == 1) ? HOST : FARCON;
-        _host_ctrl = (farcon.toggle[1] == 1) ? true : false;
-    }     
-    else
-	{
-        control_mode = (farcon.toggle[1] == 1) ? API : OPEN;
-        _host_ctrl = false;
-	}
-}
+// void ChassisType::_SetCtrlMode()
+// {
+//     if (farcon.toggle[0] == 1)
+//     {
+//         control_mode = (farcon.toggle[1] == 1) ? HOST : FARCON;
+//         _host_ctrl = (farcon.toggle[1] == 1) ? true : false;
+//     }     
+//     else
+// 	{
+//         control_mode = (farcon.toggle[1] == 1) ? API : OPEN;
+//         _host_ctrl = false;
+// 	}
+// }
 
-void ChassisType::_HandleSpeedCmd()
-{
-    switch(control_mode)
-    {
-        case OPEN:
-        break;
+// void ChassisType::_HandleSpeedCmd()
+// {
+//     switch(control_mode)
+//     {
+//         case OPEN:
+//         break;
 
-        case FARCON:
-            // 读取遥控器数据到底盘控制变量
-            targ_speed.x = -farcon.jys_value[3] * 1.0f / 100.f * _max_velo;  // 前后
-            targ_speed.y = -farcon.jys_value[2] * 1.0f / 100.f * _max_velo;  // 左右
-            targ_speed.z = -farcon.jys_value[0] * 1.0f / 100.f * _max_omega; // 旋转        
-        break;
+//         case FARCON:
+//             // 读取遥控器数据到底盘控制变量
+//             targ_speed.x = -MOD::farcon.jys_value[3] * 1.0f / 100.f * _max_velo;  // 前后
+//             targ_speed.y = -MOD::farcon.jys_value[2] * 1.0f / 100.f * _max_velo;  // 左右
+//             targ_speed.z = -MOD::farcon.jys_value[0] * 1.0f / 100.f * _max_omega; // 旋转        
+//         break;
 
-        case API:
-        break;
+//         case API:
+//         break;
 
-        case HOST:
-            _host_ctrl = true;
-        break;
+//         case HOST:
+//             _host_ctrl = true;
+//         break;
 
-        default:
-        break;      
-    }
-    SendChasSpeedCmd(targ_speed.x, targ_speed.y, targ_speed.z);
-}
+//         default:
+//         break;      
+//     }
+//     _SendSpd(targ_speed.x, targ_speed.y, targ_speed.z);
+// }
 
 // 可以在walking时出现意外时打断自动，手动控制
-void ChassisType::_JudgeJoyAct()
-{
-    // 检查摇杆是否被推动
-    float joystick_deadband = 10.0f; 
-    bool joystick_active = (fabs(farcon.jys_value[0]) > joystick_deadband || 
-                            fabs(farcon.jys_value[2]) > joystick_deadband || 
-                            fabs(farcon.jys_value[3]) > joystick_deadband);
+// void ChassisType::_JudgeJoyAct()
+// {
+//     // 检查摇杆是否被推动
+//     float joystick_deadband = 10.0f; 
+//     bool joystick_active = (fabs(farcon.jys_value[0]) > joystick_deadband || 
+//                             fabs(farcon.jys_value[2]) > joystick_deadband || 
+//                             fabs(farcon.jys_value[3]) > joystick_deadband);
     
-    if (!joystick_active) 
-    {
-        // 遥控器没动，此时不发送速度指令给C板，让 _Walking() 的指令生效
-        return; 
-    } 
-    else 
-    {
-        // 摇杆动了，打断位置环
-        _walking = false;
-        _rotating = false;
-        control_mode = FARCON;
-    }
-}
+//     if (!joystick_active) 
+//     {
+//         // 遥控器没动，此时不发送速度指令给C板，让 _Walking() 的指令生效
+//         return; 
+//     } 
+//     else 
+//     {
+//         // 摇杆动了，打断位置环
+//         _walking = false;
+//         _rotating = false;
+//         control_mode = FARCON;
+//     }
+// }
 
 void ChassisType::Update()
 {
     if(System.out_from_debugmode)
     {
         uint8_t payload[1] = {0x01}; // 发送重置底盘和腿的指令，包括电机和里程计
-        // main_board.SendTask(0x210, 3, payload, 1, false); // 发送停止指令
+        MOD::board_can.SendTask(0x210, 3, payload, 1, false); // 发送停止指令
     }
     
     // 管理发送，确保每次只有一个接口发送指令
-    Vec3 final_cmd(0, 0, 0);
+    // Vec3 final_cmd(0, 0, 0);
 
     // 设置控制模式
-    _SetCtrlMode();
+    // _SetCtrlMode();
     // control_mode = FARCON; // 调试
 
-    if(_walking)
-    {
+    // if(_walking)
+    // {
         // 判断有没有摇杆输入，摇杆输入打断自动走位
-        _JudgeJoyAct();
+        // _JudgeJoyAct();
         // 发姿态
-        SendChasTargGes(targ_ges.x, targ_ges.y, targ_ges.z);
-    }
-    else
-    {
-        // 发速度
-        _HandleSpeedCmd();   
-    }
+        // SendChasTargGes(targ_ges.x, targ_ges.y, targ_ges.z);
+    // }
+    // else
+    // {
+    //     // 发速度
+    //     _HandleSpeedCmd();   
+    // }
+    
+    // 将速度指令发送到 C板
+    _SendSpd(targ_speed);
 
     targ_velo = targ_speed.Length();
-
-    // // 遥控器控制逻辑
-
-    // 实现闭环的地方，A板在这里去掉，能理解我的恭喜到达阴间尽头
-    // if (_walking || _is_pos_locked)
-    // {
-    //     _Walking();
-    //     // SendChasTargGes(targ_ges.x, targ_ges.y, targ_ges.z);
-    // }
-    // if (_rotating || _is_yaw_locked)
-    // {
-    //     _Rotating();
-    // }
-
-    // // 将底盘的 速度targ_speed 上传到各个电机
-    // _UploadSpeed();
-
-    // // 更新自解算里程计
-    // _UpdateChasOdom();
-
-    // targ_velo = targ_speed.Length();
-
-    // // 安全锁倒计时
-    // _safe_lock_tick -= 5;
-}
-
-void ChassisType::_UpdateChasOdom()
-{
-    // （1）获得当前角度
-    float theta_distan = 0; // 单位：米
-    for (int i = 0; i < 4; i++)
-    {
-        theta_distan += motors[i].driver.measure.total_angle;
-    }
-    theta_distan = theta_distan / (MotorDJIConst::redu_M3508 * 8192) * (PI * WHEEL_DIAMETER) / 4.0f;
-    float chas_theta = theta_distan / ROTATE_RADIUS; // 单位：弧度
-
-    // （2）获取车体速度(读取而不是控制的速度，以减少误差)
-    Vec3 chas_speed; // 都是线速度
-    // 旋转分量
-    for (int i = 0; i < 4; i++)
-    {
-        chas_speed.z += motors[i].driver.measure.speed_rpm;
-    }
-    chas_speed.z = (chas_speed.z / 240.0f) / (MotorDJIConst::redu_M3508) * (PI * WHEEL_DIAMETER);
-
-    // 获得每个电机不带旋转速度的线速度分量（用于计算x, y方向上的速度）
-    float motor_spd_xy[4] = {0};
-    for (int i = 0; i < 4; i++)
-    {
-        motor_spd_xy[i] = (motors[i].driver.measure.speed_rpm / 60.0f / MotorDJIConst::redu_M3508) * (PI * WHEEL_DIAMETER) - chas_speed.z;
-    }
-
-    Vec2 chas_vxy;
-    chas_vxy.x = (motor_spd_xy[1] - motor_spd_xy[2]) / 2.0f;
-    chas_vxy.y = (motor_spd_xy[0] - motor_spd_xy[3]) / 2.0f;
-
-    // （3）更新里程计，还有速率
-    Vec2 delta_move = chas_vxy.Rotate(chas_theta + (PI / 4)) / 200.0f;
-    chas_odom.velocity = chas_vxy.Length();
-
-    chas_odom.speed = (delta_move * 200.0f).ToVec3();
-    chas_odom.speed.z = chas_speed.z;
-
-    chas_odom.pos = chas_odom.pos + delta_move.ToVec3();
-    chas_odom.pos.z = chas_theta;
 }
 
 void ChassisType::_UploadSpeed()

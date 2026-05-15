@@ -7,6 +7,7 @@
 #include "HostPC.hpp"
 #include "Interboardcomm.hpp"
 #include "farcon.hpp"
+#include "Jaw.hpp"
 
 void SlamRxCallback(uint8_t func_code, const uint8_t* payload, uint8_t payload_len, void* user_ctx);
 
@@ -29,7 +30,11 @@ void MainFrameCpp()
   // 初始化遥控器
   MOD::farcon.init(Hardware::huart_farcon);
 
+  // 注册工控机接收SLAM的回调
   MOD::host_pc.Regist(HostPC::FuncCode::slam_pos, SlamRxCallback, nullptr);
+
+  // 启动矛头控制应用
+  System.RegistApp(APP::jaw);
 
   // 底盘启动
   // System.RegistApp(chas);
@@ -67,7 +72,7 @@ void SlamRxCallback(uint8_t func_code, const uint8_t* payload, uint8_t payload_l
         // 发送SLAM坐标数据转发给底盘
         uint8_t data[6];
         const float scale = 1000.0f;
-        
+
         StdMath::PackFloatToInt16(&data[0], slam_pos.x, scale);
         StdMath::PackFloatToInt16(&data[2], slam_pos.y, scale);
         StdMath::PackFloatToInt16(&data[4], slam_pos.z, scale);
