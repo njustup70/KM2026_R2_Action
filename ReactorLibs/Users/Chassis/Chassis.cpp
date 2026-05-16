@@ -58,83 +58,6 @@ void _SendSpd(Vec3 Spd)
     MOD::board_can.SendTask(0x210, 1, payload, 6, false);
 }
 
-
-
-// void SendChasTargGes(float x, float y, float z)
-// {
-//     uint8_t payload[6];
-//     const float scale = 1000.0f;
-//     StdMath::PackFloatToInt16(&payload[0], x, scale);
-//     StdMath::PackFloatToInt16(&payload[2], y, scale);
-//     StdMath::PackFloatToInt16(&payload[4], z, scale);
-
-//     // main_board.SendTask(0x210, 1, payload, 6, false);
-// }
-
-// void ChassisType::_SetCtrlMode()
-// {
-//     if (farcon.toggle[0] == 1)
-//     {
-//         control_mode = (farcon.toggle[1] == 1) ? HOST : FARCON;
-//         _host_ctrl = (farcon.toggle[1] == 1) ? true : false;
-//     }     
-//     else
-// 	{
-//         control_mode = (farcon.toggle[1] == 1) ? API : OPEN;
-//         _host_ctrl = false;
-// 	}
-// }
-
-// void ChassisType::_HandleSpeedCmd()
-// {
-//     switch(control_mode)
-//     {
-//         case OPEN:
-//         break;
-
-//         case FARCON:
-//             // 读取遥控器数据到底盘控制变量
-//             targ_speed.x = -MOD::farcon.jys_value[3] * 1.0f / 100.f * _max_velo;  // 前后
-//             targ_speed.y = -MOD::farcon.jys_value[2] * 1.0f / 100.f * _max_velo;  // 左右
-//             targ_speed.z = -MOD::farcon.jys_value[0] * 1.0f / 100.f * _max_omega; // 旋转        
-//         break;
-
-//         case API:
-//         break;
-
-//         case HOST:
-//             _host_ctrl = true;
-//         break;
-
-//         default:
-//         break;      
-//     }
-//     _SendSpd(targ_speed.x, targ_speed.y, targ_speed.z);
-// }
-
-// 可以在walking时出现意外时打断自动，手动控制
-// void ChassisType::_JudgeJoyAct()
-// {
-//     // 检查摇杆是否被推动
-//     float joystick_deadband = 10.0f; 
-//     bool joystick_active = (fabs(farcon.jys_value[0]) > joystick_deadband || 
-//                             fabs(farcon.jys_value[2]) > joystick_deadband || 
-//                             fabs(farcon.jys_value[3]) > joystick_deadband);
-    
-//     if (!joystick_active) 
-//     {
-//         // 遥控器没动，此时不发送速度指令给C板，让 _Walking() 的指令生效
-//         return; 
-//     } 
-//     else 
-//     {
-//         // 摇杆动了，打断位置环
-//         _walking = false;
-//         _rotating = false;
-//         control_mode = FARCON;
-//     }
-// }
-
 void ChassisType::Update()
 {
     if(System.out_from_debugmode)
@@ -143,28 +66,8 @@ void ChassisType::Update()
         MOD::board_can.SendTask(0x210, 3, payload, 1, false); // 发送停止指令
     }
     
-    // 管理发送，确保每次只有一个接口发送指令
-    // Vec3 final_cmd(0, 0, 0);
-
-    // 设置控制模式
-    // _SetCtrlMode();
-    // control_mode = FARCON; // 调试
-
-    // if(_walking)
-    // {
-        // 判断有没有摇杆输入，摇杆输入打断自动走位
-        // _JudgeJoyAct();
-        // 发姿态
-        // SendChasTargGes(targ_ges.x, targ_ges.y, targ_ges.z);
-    // }
-    // else
-    // {
-    //     // 发速度
-    //     _HandleSpeedCmd();   
-    // }
-    
     // 将速度指令发送到 C板
-    _SendSpd(targ_speed);
+    _UploadSpeed();
 
     targ_velo = targ_speed.Length();
 }
@@ -176,7 +79,7 @@ void ChassisType::_UploadSpeed()
     if (enabled && _safe_lock_tick > 0)
     {
         runtime_cnt = 0;
-        _SendSpdToMotor();
+        _SendSpd(targ_speed);
     }
     else
     {
@@ -192,14 +95,13 @@ void ChassisType::_UploadSpeed()
             {
                 // 否定其他接口的控制权，并进行刹车
                 targ_speed = targ_speed * 0.96f;
-                _SendSpdToMotor();
+                _SendSpd(targ_speed);
             }
             else // (1.2) 1s还停不下来，强制进入空档
             {
                 for (int i = 0; i < 4; i++)
                 {
-                targ_speed = Vec3(0, 0, 0);
-                motors[i].Neutral();
+                    targ_speed = Vec3(0, 0, 0);
                 }
             }
         }
@@ -208,27 +110,26 @@ void ChassisType::_UploadSpeed()
             for (int i = 0; i < 4; i++)
             {
                 targ_speed = Vec3(0, 0, 0);
-                motors[i].Neutral();
             }
         }
     }
 }
 
-inline void ChassisType::_SendSpdToMotor()
-{
-    // 计算x, y, w合成分量
-    _motor_spd[0] = (-targ_speed.x + targ_speed.y) / (BSP_SQRT2) + targ_speed.z * ROTATE_RADIUS;
-    _motor_spd[1] = (targ_speed.x + targ_speed.y) / (BSP_SQRT2) + targ_speed.z * ROTATE_RADIUS;
-    _motor_spd[2] = (-targ_speed.x - targ_speed.y) / (BSP_SQRT2) + targ_speed.z * ROTATE_RADIUS;
-    _motor_spd[3] = (targ_speed.x - targ_speed.y) / (BSP_SQRT2) + targ_speed.z * ROTATE_RADIUS;
+// inline void ChassisType::_SendSpdToMotor()
+// {
+//     // 计算x, y, w合成分量
+//     _motor_spd[0] = (-targ_speed.x + targ_speed.y) / (BSP_SQRT2) + targ_speed.z * ROTATE_RADIUS;
+//     _motor_spd[1] = (targ_speed.x + targ_speed.y) / (BSP_SQRT2) + targ_speed.z * ROTATE_RADIUS;
+//     _motor_spd[2] = (-targ_speed.x - targ_speed.y) / (BSP_SQRT2) + targ_speed.z * ROTATE_RADIUS;
+//     _motor_spd[3] = (targ_speed.x - targ_speed.y) / (BSP_SQRT2) + targ_speed.z * ROTATE_RADIUS;
 
-    // 发送速度指令到电机
-    for (int i = 0; i < 4; i++)
-    {
-        // motors[i].SwitchMode(MotorDJIMode::PID_SpeedControl);
-        motors[i].SetSpd((_motor_spd[i] * 60.0f) / (PI * WHEEL_DIAMETER));
-    }
-}
+//     // 发送速度指令到电机
+//     for (int i = 0; i < 4; i++)
+//     {
+//         // motors[i].SwitchMode(MotorDJIMode::PID_SpeedControl);
+//         motors[i].SetSpd((_motor_spd[i] * 60.0f) / (PI * WHEEL_DIAMETER));
+//     }
+// }
 
 void ChassisType::Enable()
 {
