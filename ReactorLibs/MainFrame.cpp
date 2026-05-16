@@ -8,14 +8,11 @@
 #include "Interboardcomm.hpp"
 #include "farcon.hpp"
 #include "Jaw.hpp"
+#include "ManualGraph.hpp"
 
 void SlamRxCallback(uint8_t func_code, const uint8_t* payload, uint8_t payload_len, void* user_ctx);
 
-// 手动遥控的状态机
-StateGraph ManualGraph("Manual");
-
-
-void Action_of_Dege(StateCore *core);
+void Config_StateGraph();
 
 /**
  * @brief 程序主入口
@@ -37,21 +34,16 @@ void MainFrameCpp()
   System.RegistApp(APP::jaw);
 
   // 底盘启动
-  // System.RegistApp(chas);
-  // chas.Enable();
-  
-  // 配置状态图
+  System.RegistApp(APP::chas);
+  APP::chas.Enable();
 
-  // 向状态机核心注册
-  APP::state_core.RegistGraph(ManualGraph);
-  APP::state_core.Enable(0); // 启动状态机核心，指定初始状态图为0号图
+  Config_StateGraph();
 }
 
-void Waiting_for_Start(StateCore *core)
-{
-    // 等待
-}
-
+/***********    一些不通用的回调函数    ***********/
+/**
+ * @brief 接收SLAM位置信息的回调函数
+ */
 void SlamRxCallback(uint8_t func_code, const uint8_t* payload, uint8_t payload_len, void* user_ctx)
 {
     if(func_code == HostPC::FuncCode::slam_pos)

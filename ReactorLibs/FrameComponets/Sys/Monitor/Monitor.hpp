@@ -165,4 +165,9 @@ public:
     void TrackLogJustFloat();
 };
 
+namespace APP
+{
+    extern Monitor& monit;
+}
+
 #endif
