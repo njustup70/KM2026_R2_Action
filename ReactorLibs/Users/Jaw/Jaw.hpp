@@ -12,6 +12,14 @@ class Jaw : public Application
 private:    
     static void _SpearHeadCb(uint8_t func_code, const uint8_t* payload, uint8_t payload_len, void* user_ctx);
 
+    // 电机
+    MotorDJI motor_3508_hori;  // 3508 按 C620 协议接入
+    MotorDJI motor_3508_vert;  // 3508 按 C620 协议接入
+    MotorDJI motor_2006;     // 2006 按 C610 协议接入
+    
+    // 继电器
+    Relay relay;  // 继电器，控制夹爪
+
     void _UploadPos();
     void _Update_Log();
     void _Update_LogHead();
@@ -33,6 +41,7 @@ private:
     bool _vert_origined = false;
     bool _pitch_origined = false;
 
+    // 原点位置
     int _hori_origin_code = 0;
     int _vert_origin_code = 0;
     int _pitch_origin_code = 0;
@@ -68,24 +77,36 @@ private:
     static int _HoriMMToCode(float mm);
     static int _VertMMToCode(float mm);
 
+    // int GetPitchOriginCode() const { return _pitch_origin_code; }
+    // float GetSpearLeftErrMM() const { return _spear_left_err_mm; }
+    // float GetSpearUpErrMM() const { return _spear_up_err_mm; }
+    // bool HasSpearErr() const { return _spear_err_valid; }
+    // void ClearSpearErrFlag() { _spear_err_valid = false; }
+
 public:
     int GetPitchOriginCode() const { return _pitch_origin_code; }
+    bool IsOrigined() const { return _origined; }
 
-    float GetSpearLeftErrMM() const { return _spear_left_err_mm; }
-    float GetSpearUpErrMM() const { return _spear_up_err_mm; }
-    bool HasSpearErr() const { return _spear_err_valid; }
-    void ClearSpearErrFlag() { _spear_err_valid = false; }
+    /**
+     * @brief 设置是否进入随动模式，进入后会根据取矛头误差自动调整位置
+     * 
+     * @param enable 
+     */
+    void SetTrackMode(bool enable) { _in_track_mode = enable; }
 
-    // 电机
-    MotorDJI motor_3508_hori;  // 3508 按 C620 协议接入
-    MotorDJI motor_3508_vert;  // 3508 按 C620 协议接入
-    MotorDJI motor_2006;     // 2006 按 C610 协议接入
-    
-    // 继电器
-    Relay relay;  // 继电器，控制夹爪
-    
+    /**
+     * @brief 把夹爪竖起来
+     */
+    void PitchUp();
+
+    /**
+     * @brief 把夹爪放平
+     */
+    void PitchDown();
+
     void Enable();
     void Disable();
+    
 };
 
 extern int jaw_recv_cnt_test;

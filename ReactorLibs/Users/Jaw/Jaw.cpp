@@ -21,7 +21,7 @@ namespace JawConst
     /// @brief 各方向上的最大行程
     static const int _hori_max_travel_code = 299000;
     static const int _vert_max_travel_code = 326000;
-    static const int _pitch_max_travel_code = 305000;
+    static const int _pitch_max_travel_code = 300000;
 }
 
 static float C620VertComp(const FeedforwardInfo& info);
@@ -119,13 +119,11 @@ void Jaw::Update()
     }
     else
     {
-        // _UploadPos();
-        // _Update_Log();
         if (_in_track_mode)
         {
             _Track_Head();
+            // _Update_LogHead();
         }
-        _Update_LogHead();
     }
 }
 
@@ -150,7 +148,7 @@ void Jaw::_Update_GetOrigin()
     if (_hori_origined && _vert_origined && _pitch_origined)
     {
         _origined = true;
-        _in_track_mode = true;
+        // _in_track_mode = true;
         _hori_tracklim_max = _hori_origin_code - _HoriMMToCode(4);
         _hori_tracklim_min = _hori_origin_code - (JawConst::_hori_max_travel_code - _HoriMMToCode(4));
         _vert_tracklim_max = _vert_origin_code - _VertMMToCode(4);
@@ -269,6 +267,17 @@ void Jaw::Enable()
 void Jaw::Disable()
 {
     // _enabled = false;
+}
+
+void Jaw::PitchUp()
+{
+    // 减的这 500 是防堵转
+    motor_2006.SetPos(_pitch_origin_code - 500);
+}
+
+void Jaw::PitchDown()
+{
+    motor_2006.SetPos(_pitch_origin_code - (JawConst::_pitch_max_travel_code / 2 - 5000));
 }
 
 
