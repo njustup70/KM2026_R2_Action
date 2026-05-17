@@ -8,15 +8,24 @@ class Lift_Leg : public Application
     APPLICATION_OVERRIDE
 
 public:
-    MotorDJI motor_front_left;
-    MotorDJI motor_front_right;
+    int front_pos = 0; // 前腿位置，单位为mm
+    int back_pos = 0;  // 后腿位置，单位为mm
 
-    // 后腿是二合一的
-    MotorDJI motor_back;
+    void ChangeFrontPos(int16_t delta_pos)
+    {
+        front_pos += delta_pos;
+    }
 
-
-    MotorDJI motor_Test;
+    void ChangeBackPos(int16_t delta_pos)
+    {
+        back_pos += delta_pos;
+    }
 
 private:
     bool enabled_ = false;
 };
+
+namespace APP
+{
+    extern Lift_Leg& leg;
+}

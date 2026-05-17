@@ -3,9 +3,13 @@
 #include "Jaw.hpp"
 #include "Farcon.hpp"
 #include "Chassis.hpp"
+#include "Lift_Leg.hpp"
 
 // 手动遥控的状态机
 StateGraph ManualGraph("Manual");
+
+bool OK_Flag = true;
+
 
 void Waiting_for_Start(StateCore *core);
 void Response_Button(StateCore *core);
@@ -30,9 +34,12 @@ void Waiting_for_Start(StateCore *core)
 {
   APP::monit.LogInfo("I'm here...");
 
-  Seq::WaitUntil([](){
-    return APP::jaw.IsOrigined();
-  });
+  // Seq::WaitUntil([](){
+  //   return APP::jaw.IsOrigined();
+  // });
+  Seq::Wait(2.0f);
+
+  Seq::WaitUntil(OK_Flag);
 
   APP::monit.LogInfo("Ready to Response...");
 
@@ -51,11 +58,41 @@ void Response_Button(StateCore *core)
         APP::jaw.PitchUp();
     }
 
-    if (fabs(MOD::farcon.jys_value[3]) > 10)
+    Vec3 vel;
+    // 计算速度
+    vel.x = (-MOD::farcon.jys_value[3] / 100.0f) * 0.5f; // 最大速度0.5m/s
+    vel.y = (-MOD::farcon.jys_value[2] / 100.0f) * 0.5f;  // 最大速度0.5m/s
+    vel.z = (-MOD::farcon.jys_value[0] / 100.0f) * 1.0f;  // 最大角速度1.0rad/s
+
+    if (vel.Length() > 0.03f)
     {
-        // 计算速度
-        float v_x = MOD::farcon.jys_value[3] / 100.0f * 0.5f; // 最大速度0.5m/s
-        // 向底盘发送移动指令
-        APP::chas.Move(Vec3(v_x, 0, 0));
+      // 向底盘发送移动指令
+      APP::chas.Move(vel);
+    }
+
+    // 限制每 0.05 秒最多触发一次
+    static float trigger_cnt = 0;
+    if (DWT_GetTimeline_Sec() - trigger_cnt > 0.05f)
+    {
+      if (MOD::farcon.button_first_half[2] == 1)
+      {
+        APP::leg.ChangeFrontPos(3);
+      }
+
+      if (MOD::farcon.button_first_half[3] == 1)
+      {
+        APP::leg.ChangeFrontPos(-3);
+      }
+
+      if (MOD::farcon.button_first_half[6] == 1)
+      {
+        APP::leg.ChangeBackPos(3);
+      }
+
+      if (MOD::farcon.button_first_half[7] == 1)
+      {
+        APP::leg.ChangeBackPos(-3);
+      }
+      trigger_cnt = DWT_GetTimeline_Sec();
     }
 }

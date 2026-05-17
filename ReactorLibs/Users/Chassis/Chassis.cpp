@@ -66,10 +66,21 @@ void ChassisType::Update()
         MOD::board_can.SendTask(0x210, 3, payload, 1, false); // 发送停止指令
     }
     
-    // 将速度指令发送到 C板
-    _UploadSpeed();
-
+    if (_safe_lock_tick > 0)
+    {
+        // 将速度指令发送到 C板
+        // _UploadSpeed();
+        _SendSpd(targ_speed);
+    }
+    else
+    {
+        _SendSpd(Vec3(0, 0, 0));
+    }
+    
     targ_velo = targ_speed.Length();
+
+    // 更新安全锁
+    _safe_lock_tick -= 5;
 }
 
 void ChassisType::_UploadSpeed()
