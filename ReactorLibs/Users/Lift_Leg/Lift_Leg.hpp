@@ -11,6 +11,11 @@ public:
     int front_pos = 0; // 前腿位置，单位为mm
     int back_pos = 0;  // 后腿位置，单位为mm
 
+    int _front_max_lim = 200; // 前腿最大位置，单位为mm
+    int _front_min_lim = -200;   // 前腿最小位置，单位
+    int _back_max_lim = 0; // 后腿最大位置，单位为mm
+    int _back_min_lim = -200;   // 后腿最小位置，单位
+
     void ChangeFrontPos(int16_t delta_pos)
     {
         front_pos += delta_pos;
@@ -22,6 +27,9 @@ public:
     }
 
 private:
+    /// @brief 位置限幅用的
+    inline void PosLim();
+
     bool enabled_ = false;
 };
 
