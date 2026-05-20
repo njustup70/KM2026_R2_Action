@@ -58,7 +58,7 @@ void _SendSpd(Vec3 Spd)
     MOD::board_can.SendTask(0x210, 1, payload, 6, false);
 }
 
-void ChassisType::Update()
+void ChassisType::Update() 
 {
     if(System.out_from_debugmode)
     {

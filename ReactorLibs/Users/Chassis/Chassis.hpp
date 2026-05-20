@@ -15,10 +15,10 @@ class ChassisType;
 /**
  * @brief 路径类，包含了一系列路径点
  */
-class Path
-{
-    Vec2 key_points[32];            // 路径点数组
-};
+// class Path
+// {
+//     Vec2 key_points[32];            // 路径点数组
+// };
 
 
 class ChasAPIHandle
