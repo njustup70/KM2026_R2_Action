@@ -3,16 +3,16 @@
 #include "System.hpp"
 #include "Chassis.hpp"
 #include "Jaw.hpp"
-#include "farcon.hpp"
 #include "Get_Block.hpp"
+#include "HostPC.hpp"
+#include "Interboardcomm.hpp"
+#include "farcon.hpp"
+#include "Jaw.hpp"
+#include "ManualGraph.hpp"
 
-StateCore &core = StateCore::GetInstance();
-Monitor &monit = Monitor::GetInstance();
+void SlamRxCallback(uint8_t func_code, const uint8_t* payload, uint8_t payload_len, void* user_ctx);
 
-StateGraph example_graph("graph_name");
-void Action_of_Dege(StateCore *core);
-ChassisType &chas = ChassisType::GetInstance();
-
+void Config_StateGraph();
 
 /**
  * @brief 程序主入口
@@ -20,41 +20,48 @@ ChassisType &chas = ChassisType::GetInstance();
  */
 void MainFrameCpp()
 {
-  // System.RegistApp(lift_leg);
-  System.RegistApp(chas);
-  chas.Enable();
-  // System.RegistApp(jaw);
-  System.RegistApp(key);
-  // System.RegistApp(hand);
-  
-  // 配置状态图为简并模式
-  example_graph.Degenerate(Action_of_Dege);
+  // 初始化板间通信
+  MOD::board_can.Init(Hardware::hcan_sub, 0x220, false);
+  // 初始化工控机通信
+  MOD::host_pc.Init(Hardware::huart_host);
+  // 初始化遥控器
+  MOD::farcon.init(Hardware::huart_farcon);
 
-  // 向状态机核心注册
-  core.RegistGraph(example_graph);
-  core.Enable(0); // 启动状态机核心，指定初始状态图为0号图
+  // 注册工控机接收SLAM的回调
+  MOD::host_pc.Regist(HostPC::FuncCode::slam_pos, SlamRxCallback, nullptr);
+
+  // 启动矛头控制应用
+  System.RegistApp(APP::jaw);
+
+  // 底盘启动
+  System.RegistApp(APP::chas);
+  APP::chas.Enable();
+
+  Config_StateGraph();
 }
 
-void Action_of_Dege(StateCore *core)
+/***********    一些不通用的回调函数    ***********/
+/**
+ * @brief 接收SLAM位置信息的回调函数
+ */
+void SlamRxCallback(uint8_t func_code, const uint8_t* payload, uint8_t payload_len, void* user_ctx)
 {
+    if(func_code == HostPC::FuncCode::slam_pos)
+    {
+        Vec3 slam_pos;
+        slam_pos.FromBytes(payload);
 
-}
+        // 更新系统位姿
+        System.position = slam_pos;
+        
+        // 发送SLAM坐标数据转发给底盘
+        uint8_t data[6];
+        const float scale = 1000.0f;
 
-void Action_of_GetBlock(StateCore *core)
-{
-    hand.targ_pos = 1100000;
-    // Seq::WaitUntil([&](){return hand.reached;}); // 因为我弄的只读，所以只能用WaitUntil在.hpp里的模板函数。但是上电目标位置和读到位置都是0，所以会立刻返回，有bug
-    Seq::Wait(3);
-    hand.Cylinder_v_Open(); // 打开向下的气缸
+        StdMath::PackFloatToInt16(&data[0], slam_pos.x, scale);
+        StdMath::PackFloatToInt16(&data[2], slam_pos.y, scale);
+        StdMath::PackFloatToInt16(&data[4], slam_pos.z, scale);
 
-    Seq::Wait(0.5);
-    hand.PumpValve_Open(); // 打开负压泵连的电磁阀，不连接大气
-    hand.Pump_Open(); // 打开负压泵，取块
-
-    Seq::Wait(0.5);
-    hand.Cylinder_v_Close(); // 关气缸，收回去
-    Seq::Wait(0.5);
-    hand.targ_pos = 800000;
-
-    core->GetCurState().Complete = true; 
+        MOD::board_can.SendTask(0x210, 0, data, 6, false);
+    }
 }

@@ -5,6 +5,8 @@
 #include "System.hpp"
 #include "bsp_log.hpp"
 
+Monitor& APP::monit = Monitor::GetInstance();
+
 const static uint8_t LogPort = 0x01;    // 日志使用的端口号
 const static uint8_t WatchPort = 0x02;  // 监视使用的端口号
 const static uint8_t TrackPort = 0x03;  // 跟踪使用的端口号
@@ -30,8 +32,8 @@ void Monitor::TrackLog()
     if (track_count < 1)   return; // 没有跟踪变量，直接返回
 
     memset(track_send_buf, 0, 64);
-    track_send_buf[0] = '[';
-    size_t used_bytes = 1;
+    // track_send_buf[0] = '[';
+    size_t used_bytes = 0;
 
     for(int i = 0; i < track_count; i++)
     {
@@ -91,9 +93,9 @@ void Monitor::TrackLog()
     }
 
     // 发送编码后的数据
-    if (host_uart.IsValid())
+    if (track_uart.IsValid())
     {
-        host_uart.Transmit(track_send_buf, strlen((char*)track_send_buf));
+        track_uart.Transmit(track_send_buf, strlen((char*)track_send_buf));
     }
 }
 
@@ -140,9 +142,9 @@ void Monitor::TrackLogJustFloat()
     used_bytes += 4;
 
     // 发送原始二进制数据
-    if (host_uart.IsValid())
+    if (track_uart.IsValid())
     {
-        host_uart.Transmit(vofa_buf, used_bytes);
+        track_uart.Transmit(vofa_buf, used_bytes);
     }
 }
 
@@ -294,11 +296,19 @@ void Monitor::Perflize()
 }
 
 
-void Monitor::Init(BSP::UART::UartID huart_host, BSP::UART::UartID huart_farc, bool vofa_mode)
+/**
+ * @brief 初始化监视器
+ * 
+ * @param huart_track 用于发送跟踪数据的串口，传入 nullptr 则不启用跟踪功能；
+ * 请注意，huart_track 只负责track的数据，日志数据取决于bsp_log的配置！！
+ * @param huart_farc 暂未启用
+ * @param vofa_mode 
+ */
+void Monitor::Init(BSP::UART::UartID huart_track, BSP::UART::UartID huart_farc, bool vofa_mode)
 {
-    if (huart_host != nullptr)
+    if (huart_track != nullptr)
     {
-        host_uart = BSP::UART::Apply(huart_host);
+        track_uart = BSP::UART::Apply(huart_track);
     }
 
     if (huart_farc != nullptr)

@@ -178,7 +178,10 @@ namespace Seq
     }
 }
 
-
+namespace APP
+{
+    extern StateCore& state_core;
+}
 
 
 

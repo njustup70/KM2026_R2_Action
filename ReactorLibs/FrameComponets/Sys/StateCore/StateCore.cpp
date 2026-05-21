@@ -3,6 +3,9 @@
 #include "stdio.h"
 #include "Monitor.hpp"
 #include "cmsis_os.h"
+#include "bsp_hardware.hpp"
+
+StateCore& APP::state_core = StateCore::GetInstance();
 
 /**
  * @brief 为状态块添加状态链接
@@ -95,7 +98,6 @@ void StateCore::Run()
 
     // 执行 `当前状态图` 的 `对应状态`的 状态函数
     StateGraph& graph = *graphs[at_graph_id];
-    // StateBlock& state = graph.current_state;
     StateBlock* state = graph.current_state;
 
     // 执行当前状态图的全局状态函数
@@ -106,14 +108,9 @@ void StateCore::Run()
      * 所以后面应该会加入 在中间打断动作 的机制（确保动作打断是经过作者设计的）
      * @warning 只有非空状态函数才会被执行 
      */
-    // if (state.StateAction != nullptr) state.StateAction(this);
     if (state->StateAction != nullptr) state->StateAction(this);
 
     // 进行状态转移
-    // graph.executor_at_id = state.Transition();
-    // graph.current_state = graph.states[graph.executor_at_id];
-        // 改为指针操作
-    // 更新当前状态指针，而不是覆盖对象内存
     uint8_t next_id = state->Transition();
     if (next_id != graph.executor_at_id) 
     {
@@ -147,7 +144,7 @@ StateBlock& StateCore::GetCurState()
 void StateCore::CoreGraph(const StateGraph& graph)
 {
     uint8_t buf[60];
-    if (Monitor::GetInstance().host_uart.IsValid()) Monitor::GetInstance().host_uart.Transmit((uint8_t *)"StateGraph\n", 11);
+    // if (Hardware::huart_log != nullptr) Hardware::huart_log.Transmit((uint8_t *)"StateGraph\n", 11);
 
     HAL_Delay(10);
     for (uint8_t i = 0; i < graph.stateNums; i++)
@@ -156,7 +153,7 @@ void StateCore::CoreGraph(const StateGraph& graph)
         for (uint8_t j = 0; j < graph.states[i].linkNums; j++)
         {
             int len = snprintf((char *)buf, 48, "%s --> %s\n", graph.states[i].name, graph.states[i].links[j].nextState->name);
-            if (Monitor::GetInstance().host_uart.IsValid()) Monitor::GetInstance().host_uart.Transmit(buf, len);
+            // if (Hardware::huart_log != nullptr) Hardware::huart_log.Transmit(buf, len);
             HAL_Delay(10);
         }
     }

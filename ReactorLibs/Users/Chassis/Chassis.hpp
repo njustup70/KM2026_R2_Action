@@ -41,7 +41,7 @@ class ChassisType : public Application
     private:
         /*<     底盘速度与加速度限制    >*/
         /// @param 最大加速度，单位m/s^2
-        float _max_accel = 4.0f;       
+        float _max_accel = 2.0f;       
         /// @param 最大线速度，单位m/s
         float _max_velo = 1.5f;
         /// @param 最大角速度，单位rad/s
@@ -56,7 +56,7 @@ class ChassisType : public Application
         bool _is_yaw_locked = false;        // 常锁姿态环
 
         // 上位机控制标志位
-        bool _host_ctrl = false;
+        bool _host_ctrl = true;
 
         
         /// @param 四个电机的目标速度，单位m/s
@@ -80,7 +80,8 @@ class ChassisType : public Application
         bool _Rotating();
 
         void _SetCtrlMode();
-        void _HandleCmd();
+        void _HandleSpeedCmd();
+        void _JudgeJoyAct();
 
         Vec3 targ_ges = Vec3(0, 0, 0);      // 期望姿态，车体右手系，x向前，y向左，z从上向下看逆时针，单位m，rad
         Vec3 targ_speed;                    // 期望速度，车体右手系，x向前，y向左，z左转，单位m/s，rad/s
@@ -100,6 +101,7 @@ class ChassisType : public Application
             FARCON,     // 由遥控器控制
             OPEN,       // 开放控制（直接Move控制）
         }_ChasConMode;
+        
 
     public:
         // 分别对应四个底盘电机
@@ -134,11 +136,13 @@ class ChassisType : public Application
         // 上位机速度指令回调
         static void HostCmdCallback(uint8_t func_code, const uint8_t* payload, uint8_t payload_len, void* user_ctx);
 
-        static void SlamRxCallback(uint8_t func_code, const uint8_t* payload, uint8_t payload_len, void* user_ctx);
-
         // c板返回的自解里程计回调
         static void ChasTaskCallback(uint8_t task_id, const uint8_t *payload, uint8_t payload_len, void *user_ctx);
 };
 
+namespace APP
+{
+    extern ChassisType& chas;
+}
 
 #endif
