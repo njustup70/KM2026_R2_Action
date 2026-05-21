@@ -69,6 +69,16 @@ void Response_Button(StateCore *core)
       // 向底盘发送移动指令
       APP::chas.Move(vel);
     }
+    
+    // 切换控制模式
+    if(MOD::farcon.toggle[0]) // 最左上拨杆拨为1
+    {
+        APP::chas.control_mode = MOD::farcon.toggle[1] ? APP::chas.HOST : APP::chas.FARCON; // 左2拨杆也拨为1就是上位机控制，否则遥控器
+    }
+    else  
+    {
+        APP::chas.control_mode = MOD::farcon.toggle[1] ? APP::chas.API : APP::chas.OPEN;
+    } 
 
     // 限制每 0.05 秒最多触发一次
     static float trigger_cnt = 0;

@@ -317,11 +317,9 @@ bool ChassisType::_Rotating()
     return false;
 }
 
-
-
 void ChassisType::HostCmdCallback(uint8_t func_code, const uint8_t* payload, uint8_t payload_len, void* user_ctx)
 {
-    if(func_code == 0xBB && GetInstance()._host_ctrl)
+    if(func_code == 0xBB && GetInstance().control_mode == HOST)
     {
         Vec3 speed;
         speed.FromBytes(payload);
@@ -330,3 +328,4 @@ void ChassisType::HostCmdCallback(uint8_t func_code, const uint8_t* payload, uin
         GetInstance().targ_speed.z = speed.z;
     }
 }
+
