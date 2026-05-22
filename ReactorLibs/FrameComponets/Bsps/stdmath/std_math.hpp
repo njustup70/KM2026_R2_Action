@@ -43,6 +43,9 @@ public:
   void ToBytes(uint8_t *buffer) const;         // 将Vec2转换入buffer
   void FromBytes(const uint8_t *buffer); // 从buffer恢复Vec2
 
+  void Limit(float max);
+  Vec2 Limited(float max) const;
+
   // 友元函数重载运算符
   friend Vec2 operator+(const Vec2 &lhs, const Vec2 &rhs);
   friend Vec2 operator-(const Vec2 &lhs, const Vec2 &rhs);
@@ -111,6 +114,8 @@ public:
   void ToBytes(uint8_t *buffer) const; // 将Vec3转换入buffer
   void FromBytes(const uint8_t *buffer);
   Vec2 ToVec2() const;
+  void Limit(float max);                  // 自身限幅
+  Vec3 Limited(float max) const;
 
   // 友元函数重载运算符
   friend Vec3 operator+(const Vec3 &lhs, const Vec3 &rhs);

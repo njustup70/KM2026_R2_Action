@@ -5,8 +5,9 @@ Lift_Leg& APP::leg = Lift_Leg::GetInstance();
 
 
 
-void SendLegPos(int16_t fpos, int16_t bpos)
+void Lift_Leg::_SendLegPos(int16_t fpos, int16_t bpos)
 {
+    fpos += front_pos_bias;
     uint8_t payload[4];
 
     payload[0] = (fpos >> 8) & 0xFF;
@@ -14,11 +15,12 @@ void SendLegPos(int16_t fpos, int16_t bpos)
     payload[2] = (bpos >> 8) & 0xFF;
     payload[3] = bpos & 0xFF;
 
-    MOD::board_can.SendTask(0x210, 6, payload, 4, false);
+    MOD::board_can.SendTask(0x210, 6, payload, sizeof(payload), false);
 }
 
 void Lift_Leg::Start()
 {
+    front_pos_bias = -15;
 }
 
 
@@ -35,7 +37,7 @@ void Lift_Leg::Update()
     PosLim();
     
     // 发送腿部位置指令
-    SendLegPos(front_pos, back_pos);
+    _SendLegPos(front_pos, back_pos);
 }
 
 inline void Lift_Leg::PosLim()

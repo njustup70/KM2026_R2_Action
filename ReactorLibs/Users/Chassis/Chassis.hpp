@@ -55,7 +55,6 @@ class ChassisType : public Application
         bool _is_pos_locked = false;        // 常锁位置环
         bool _is_yaw_locked = false;        // 常锁姿态环
 
-
         
         /// @param 四个电机的目标速度，单位m/s
         float _motor_spd[4];
@@ -138,6 +137,10 @@ class ChassisType : public Application
 
         void MoveAt(Vec2 Pos);
         void RotateAt(float yaw);
+
+        // 设置运动参数限制
+        void SetMoveParams(float max_accel, float max_velo, float max_omega, float max_beta);
+
 
         // 上位机速度指令回调
         static void HostCmdCallback(uint8_t func_code, const uint8_t* payload, uint8_t payload_len, void* user_ctx);

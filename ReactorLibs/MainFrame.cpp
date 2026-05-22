@@ -40,6 +40,8 @@ void MainFrameCpp()
   System.RegistApp(APP::chas);
   APP::chas.Enable();
 
+  System.RegistApp(APP::leg);
+
   Config_StateGraph();
 }
 
