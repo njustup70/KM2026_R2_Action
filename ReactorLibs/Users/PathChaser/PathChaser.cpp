@@ -279,8 +279,8 @@ void PathChaserType::_update_cmd(const Vec3& now_pose)
     float omega = omega_ff + _kp_yaw * yaw_err;
     omega = StdMath::fclamp(omega, _max_omega);
 
-    // 转换到车体系
-    Vec2 body_xy = _cmd.world.ToVec2().Rotate(-now_pose.z);
+    // 转换到车体系（使用本周期新计算的世界系速度，避免一拍延迟）
+    Vec2 body_xy = v_world.Rotate(-now_pose.z);
 
     // 填写控制指令
     _cmd.world = Vec3(v_world.x, v_world.y, omega);
