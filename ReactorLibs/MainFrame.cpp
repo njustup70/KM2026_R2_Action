@@ -9,6 +9,9 @@
 #include "farcon.hpp"
 #include "Jaw.hpp"
 #include "ManualGraph.hpp"
+#include "Lift_Leg.hpp"
+#include "Jaw.hpp"
+#include "ManualGraph.hpp"
 
 void SlamRxCallback(uint8_t func_code, const uint8_t* payload, uint8_t payload_len, void* user_ctx);
 
@@ -36,6 +39,8 @@ void MainFrameCpp()
   // 底盘启动
   System.RegistApp(APP::chas);
   APP::chas.Enable();
+
+  System.RegistApp(APP::leg);
 
   Config_StateGraph();
 }

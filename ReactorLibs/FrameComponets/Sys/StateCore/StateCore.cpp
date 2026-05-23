@@ -114,8 +114,16 @@ void StateCore::Run()
     uint8_t next_id = state->Transition();
     if (next_id != graph.executor_at_id) 
     {
+        // 存储名称用于日志输出
+        char current_state_name[16];
+        strncpy(current_state_name, graph.current_state->name, 15);
+        current_state_name[15] = '\0';
+
         graph.executor_at_id = next_id;
         graph.current_state = &graph.states[next_id]; // 指针重定向
+
+        // 输出日志
+        APP::monit.LogInfo("[State] Transform From %s to %s", current_state_name, graph.current_state->name);
     }
 }
 

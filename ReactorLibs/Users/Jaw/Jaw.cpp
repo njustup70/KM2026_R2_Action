@@ -364,7 +364,7 @@ void Jaw::_GetPitchOrigin()
     motor_2006.SetPos(pitch_probe_code);
 
     // 如果撞到限位了（用eso的扰动观测来确定），连续5个Tick，就停止
-    if (fabs(motor_2006.motor_adrc.eso.z3) > 1300 && runed_tick > 30)
+    if (fabs(motor_2006.motor_adrc.eso.z3) > 2000 && runed_tick > 30)
     {
         pitch_probe_cnt++;
         if (pitch_probe_cnt >= 10)
@@ -381,7 +381,7 @@ void Jaw::_GetPitchOrigin()
     {
         pitch_probe_cnt = 0;
         // 每周期（5ms）加 20 Code，每秒加 4000 Code
-        if (runed_tick > 30)    pitch_probe_code += 30;
+        if (runed_tick > 30)    pitch_probe_code += 80;
         // 但是最开始缓慢前进，目的是破除静态库伦摩擦力
         else                    pitch_probe_code += 15;
     }   
