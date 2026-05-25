@@ -12,6 +12,7 @@
 #include "Lift_Leg.hpp"
 #include "Jaw.hpp"
 #include "ManualGraph.hpp"
+#include "board.hpp"
 
 void SlamRxCallback(uint8_t func_code, const uint8_t* payload, uint8_t payload_len, void* user_ctx);
 
@@ -24,7 +25,7 @@ void Config_StateGraph();
 void MainFrameCpp()
 {
   // 初始化板间通信
-  MOD::board_can.Init(Hardware::hcan_sub, 0x220, false);
+  MOD::board_can.Init(Hardware::hcan_sub, 0x240, false);
   // 初始化工控机通信
   MOD::host_pc.Init(Hardware::huart_host);
   // 初始化遥控器
@@ -41,6 +42,8 @@ void MainFrameCpp()
   APP::chas.Enable();
 
   System.RegistApp(APP::leg);
+
+  System.RegistApp(APP::get_block);
 
   Config_StateGraph();
 }
@@ -67,6 +70,7 @@ void SlamRxCallback(uint8_t func_code, const uint8_t* payload, uint8_t payload_l
         StdMath::PackFloatToInt16(&data[2], slam_pos.y, scale);
         StdMath::PackFloatToInt16(&data[4], slam_pos.z, scale);
 
-        MOD::board_can.SendTask(0x210, 0, data, 6, false);
+        MOD::board_can.SendTask(MOD::C_sub_ctrl_board_id, 0, data, 6, false);
     }
 }
+

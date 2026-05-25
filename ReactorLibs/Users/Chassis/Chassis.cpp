@@ -8,6 +8,7 @@
 #include "bsp_log.hpp"
 #include "MainFrame.hpp"
 #include <cmath>
+#include "board.hpp"
 
 ChassisType& APP::chas = ChassisType::GetInstance();
 
@@ -40,7 +41,7 @@ void ChassisType::Start()
     
     // 发送重置底盘和腿的指令，包括电机和里程计
     uint8_t payload[1] = {0x01}; 
-    MOD::board_can.SendTask(0x210, 4, payload, 1, false); 
+    MOD::board_can.SendTask(MOD::C_sub_ctrl_board_id, 4, payload, 1, false); 
 }
 
 /**
@@ -55,7 +56,7 @@ void _SendSpd(Vec3 Spd)
     StdMath::PackFloatToInt16(&payload[0], Spd.x, scale);
     StdMath::PackFloatToInt16(&payload[2], Spd.y, scale);
     StdMath::PackFloatToInt16(&payload[4], Spd.z, scale);
-    MOD::board_can.SendTask(0x210, 1, payload, 6, false);
+    MOD::board_can.SendTask(MOD::C_sub_ctrl_board_id, 1, payload, 6, false);
 }
 
 void ChassisType::Update() 
@@ -63,13 +64,13 @@ void ChassisType::Update()
     if(!enabled)
     {
         uint8_t payload[1] = {0x01}; // 发送失能指令
-        MOD::board_can.SendTask(0x210, 3, payload, 1, false); // 发送停止指令
+        MOD::board_can.SendTask(MOD::C_sub_ctrl_board_id, 3, payload, 1, false); // 发送停止指令
     }
 
     if(System.out_from_debugmode)
     {
         uint8_t payload[1] = {0x01}; // 发送失能指令
-        MOD::board_can.SendTask(0x210, 3, payload, 1, false); // 发送停止指令
+        MOD::board_can.SendTask(MOD::C_sub_ctrl_board_id, 3, payload, 1, false); // 发送停止指令
     }
     
     if (_safe_lock_tick > 0)

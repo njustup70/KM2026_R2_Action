@@ -1,5 +1,6 @@
 #include "Lift_Leg.hpp"
 #include "Interboardcomm.hpp"
+#include "board.hpp"
 
 Lift_Leg& APP::leg = Lift_Leg::GetInstance();
 
@@ -15,7 +16,7 @@ void Lift_Leg::_SendLegPos(int16_t fpos, int16_t bpos)
     payload[2] = (bpos >> 8) & 0xFF;
     payload[3] = bpos & 0xFF;
 
-    MOD::board_can.SendTask(0x210, 6, payload, sizeof(payload), false);
+    MOD::board_can.SendTask(MOD::C_sub_ctrl_board_id, 6, payload, sizeof(payload), false);
 }
 
 void Lift_Leg::Start()
