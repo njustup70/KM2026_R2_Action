@@ -8,6 +8,8 @@ class Lift_Leg : public Application
     APPLICATION_OVERRIDE
 
 public:
+    int front_pos_bias = 0;
+    int back_pos_bias = 0;
     int front_pos = 0; // 前腿位置，单位为mm
     int back_pos = 0;  // 后腿位置，单位为mm
 
@@ -29,6 +31,7 @@ public:
 private:
     /// @brief 位置限幅用的
     inline void PosLim();
+    void _SendLegPos(int16_t fpos, int16_t bpos);
 
     bool enabled_ = false;
 };

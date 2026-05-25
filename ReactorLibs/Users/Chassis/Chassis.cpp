@@ -8,6 +8,7 @@
 #include "bsp_log.hpp"
 #include "MainFrame.hpp"
 #include <cmath>
+#include "board.hpp"
 
 ChassisType& APP::chas = ChassisType::GetInstance();
 
@@ -40,7 +41,7 @@ void ChassisType::Start()
     
     // 发送重置底盘和腿的指令，包括电机和里程计
     uint8_t payload[1] = {0x01}; 
-    MOD::board_can.SendTask(0x210, 4, payload, 1, false); 
+    MOD::board_can.SendTask(MOD::C_sub_ctrl_board_id, 4, payload, 1, false); 
 }
 
 /**
@@ -55,20 +56,21 @@ void _SendSpd(Vec3 Spd)
     StdMath::PackFloatToInt16(&payload[0], Spd.x, scale);
     StdMath::PackFloatToInt16(&payload[2], Spd.y, scale);
     StdMath::PackFloatToInt16(&payload[4], Spd.z, scale);
-    MOD::board_can.SendTask(0x210, 1, payload, 6, false);
+    MOD::board_can.SendTask(MOD::C_sub_ctrl_board_id, 1, payload, 6, false);
 }
 
 void ChassisType::Update() 
 {
-    if (!enabled)
+    if(!enabled)
     {
-        return; // 底盘未使能，直接返回
+        uint8_t payload[1] = {0x01}; // 发送失能指令
+        MOD::board_can.SendTask(MOD::C_sub_ctrl_board_id, 3, payload, 1, false); // 发送停止指令
     }
 
     if(System.out_from_debugmode)
     {
-        uint8_t payload[1] = {0x01}; // 发送重置底盘和腿的指令，包括电机和里程计
-        MOD::board_can.SendTask(0x210, 3, payload, 1, false); // 发送停止指令
+        uint8_t payload[1] = {0x01}; // 发送失能指令
+        MOD::board_can.SendTask(MOD::C_sub_ctrl_board_id, 3, payload, 1, false); // 发送停止指令
     }
 
     // 工控机的刷新先放这里啊，只是图方便，不代表这么做是对的
@@ -325,16 +327,28 @@ bool ChassisType::_Rotating()
     return false;
 }
 
-
-
 void ChassisType::HostCmdCallback(uint8_t func_code, const uint8_t* payload, uint8_t payload_len, void* user_ctx)
 {
-    if(func_code == 0xBB && GetInstance()._host_ctrl)
+    using namespace APP;
+
+    if(func_code == 0xBB && chas.control_mode == HOST)
     {
         Vec3 speed;
+        float max_velo = 1.0f; // 发送方速度限幅
+
         speed.FromBytes(payload);
-        GetInstance().targ_speed.x = speed.x;
-        GetInstance().targ_speed.y = speed.y;
-        GetInstance().targ_speed.z = speed.z;
+        speed.Limit(max_velo);
+
+        // 调用速度控制指令下发
+        chas.Move(speed);
     }
 }
+
+void ChassisType::SetMoveParams(float max_accel, float max_velo, float max_omega, float max_beta)
+{
+    _max_accel = max_accel;
+    _max_velo = max_velo;
+    _max_omega = max_omega;
+    _max_beta = max_beta;
+}
+

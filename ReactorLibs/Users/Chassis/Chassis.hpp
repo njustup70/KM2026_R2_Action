@@ -55,9 +55,6 @@ class ChassisType : public Application
         bool _is_pos_locked = false;        // 常锁位置环
         bool _is_yaw_locked = false;        // 常锁姿态环
 
-        // 上位机控制标志位
-        bool _host_ctrl = true;
-
         
         /// @param 四个电机的目标速度，单位m/s
         float _motor_spd[4];
@@ -93,6 +90,17 @@ class ChassisType : public Application
             float velocity;     // 对应的线速度，单位m/s
         }_SelfResoOdom;
 
+        // /// @brief 底盘控制模式
+        // typedef enum
+        // {
+        //     API,        // 由电控API控制
+        //     HOST,       // 由工控机控制
+        //     FARCON,     // 由遥控器控制
+        //     OPEN,       // 开放控制（直接Move控制）
+        // }_ChasConMode;
+        
+
+    public:
         /// @brief 底盘控制模式
         typedef enum
         {
@@ -100,10 +108,7 @@ class ChassisType : public Application
             HOST,       // 由工控机控制
             FARCON,     // 由遥控器控制
             OPEN,       // 开放控制（直接Move控制）
-        }_ChasConMode;
-        
-
-    public:
+        }ChasConMode;
         // 分别对应四个底盘电机
         MotorDJI motors[4];
         
@@ -116,7 +121,7 @@ class ChassisType : public Application
         _SelfResoOdom chas_odom;
 
         /// @param 控制模式
-        _ChasConMode control_mode = OPEN;
+        ChasConMode control_mode = OPEN;
 
         float move_precision = 0.05f;       // 最小移动精度，单位m
         float rotate_precision = 0.02f;     // 最小旋转精度，单位rad    （0.017453 rad / 度）
@@ -132,6 +137,10 @@ class ChassisType : public Application
 
         void MoveAt(Vec2 Pos);
         void RotateAt(float yaw);
+
+        // 设置运动参数限制
+        void SetMoveParams(float max_accel, float max_velo, float max_omega, float max_beta);
+
 
         // 上位机速度指令回调
         static void HostCmdCallback(uint8_t func_code, const uint8_t* payload, uint8_t payload_len, void* user_ctx);

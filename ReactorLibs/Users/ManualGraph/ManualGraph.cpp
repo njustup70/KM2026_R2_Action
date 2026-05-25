@@ -57,17 +57,32 @@ void Response_Button(StateCore *core)
         APP::jaw.PitchUp();
     }
 
-    Vec3 vel;
-    // 计算速度
-    vel.x = (-MOD::farcon.jys_value[3] / 100.0f) * 0.5f; // 最大速度0.5m/s
-    vel.y = (-MOD::farcon.jys_value[2] / 100.0f) * 0.5f;  // 最大速度0.5m/s
-    vel.z = (-MOD::farcon.jys_value[0] / 100.0f) * 1.0f;  // 最大角速度1.0rad/s
-
-    if (vel.Length() > 0.03f)
+    if(APP::chas.control_mode == APP::chas.FARCON)
     {
-      // 向底盘发送移动指令
-      APP::chas.Move(vel);
+        float max_velo = 1.5f;
+        Vec3 vel;
+        // 计算速度
+        vel.x = (-MOD::farcon.jys_value[3] / 100.0f) * max_velo; // 最大速度0.5m/s
+        vel.y = (-MOD::farcon.jys_value[2] / 100.0f) * max_velo;  // 最大速度0.5m/s
+        vel.z = (-MOD::farcon.jys_value[0] / 100.0f) * max_velo;  // 最大角速度1.0rad/s
+
+        if (vel.Length() > 0.03f)
+        {
+        // 向底盘发送移动指令
+            APP::chas.Move(vel);
+        }
     }
+
+    
+    // 切换控制模式
+    if(MOD::farcon.toggle[0]) // 最左上拨杆拨为1
+    {
+        APP::chas.control_mode = MOD::farcon.toggle[1] ? APP::chas.HOST : APP::chas.FARCON; // 左2拨杆也拨为1就是上位机控制，否则遥控器
+    }
+    else  
+    {
+        APP::chas.control_mode = MOD::farcon.toggle[1] ? APP::chas.API : APP::chas.OPEN;
+    } 
 
     // 限制每 0.05 秒最多触发一次
     static float trigger_cnt = 0;

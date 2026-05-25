@@ -54,6 +54,26 @@ Vec2 Vec3::ToVec2() const
     return v;
 }
 
+/**********      Vec3自身限幅      *********/
+void Vec3::Limit(float max) 
+{
+    float len = Length();
+    if (len > max && len > 0.001f) 
+    {
+        float ratio = max / len;
+        x *= ratio;
+        y *= ratio;
+        z *= ratio;
+    }
+}
+    
+// 不修改自身，返回副本
+Vec3 Vec3::Limited(float max) const 
+{
+    Vec3 result = *this;
+    result.Limit(max);  
+    return result;
+}
 
 
 ///////////////////////////////////////////          VEC2        /////////////////////////////////////////////////////
@@ -124,6 +144,27 @@ Vec3 Vec2::ToVec3() const
     Vec3 v(this->x, this->y, 0);
     return v;
 }
+
+/**********      Vec3自身限幅      *********/
+void Vec2::Limit(float max) 
+{
+    float len = Length();
+    if (len > max && len > 0.001f) 
+    {
+        float ratio = max / len;
+        x *= ratio;
+        y *= ratio;
+    }
+}
+    
+// 不修改自身，返回副本
+Vec2 Vec2::Limited(float max) const 
+{
+    Vec2 result = *this;
+    result.Limit(max);  
+    return result;
+}
+
 ///////////////////////////////////////////          COLOR        /////////////////////////////////////////////////////
 Color Color::Red = Color(255.0f, 0.0f, 0.0f);   // 红色（r=1, g=0, b=0）
 Color Color::Green = Color(0.0f, 255.0f, 0.0f); // 绿色（r=0, g=1, b=0）
