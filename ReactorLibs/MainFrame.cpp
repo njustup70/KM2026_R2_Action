@@ -8,46 +8,48 @@
 #include "Interboardcomm.hpp"
 #include "farcon.hpp"
 #include "Jaw.hpp"
-#include "ManualGraph.hpp"
+// #include "ManualGraph.hpp"
+#include "AutoGraph.hpp"
 #include "Lift_Leg.hpp"
 
 StateGraph graph("LoopGraph");
 
 void SlamRxCallback(uint8_t func_code, const uint8_t *payload, uint8_t payload_len, void *user_ctx);
 
-void Config_StateGraph();
+// void Config_StateGraph();
 
-void State1Action(StateCore *core)
-{
-  APP::path_chaser.ChasePath(GeneratedPath);
-  Seq::Wait(1);
-  core->GetCurState().Complete = true;
-}
+// void State1Action(StateCore *core)
+// {
+//   APP::path_chaser.ChasePath(GeneratedPath);
+//   Seq::Wait(1);
+//   core->GetCurState().Complete = true;
+// }
 
-void State2Action(StateCore *core)
-{
-  Vec3 cmd_body = APP::path_chaser.GetCmdBody();
-  APP::chas.Move(cmd_body);
-  // core->GetCurState().Complete = true;
-}
-void SetUp()
-{
-  StateBlock &state1 = graph.AddState("state1");
-  StateBlock &state2 = graph.AddState("state2");
+// void State2Action(StateCore *core)
+// {
+//   Vec3 cmd_body = APP::path_chaser.GetCmdBody();
+//   APP::chas.Move(cmd_body);
+//   // core->GetCurState().Complete = true;
+// }
 
-  state1.StateAction = State1Action;
-  state2.StateAction = State2Action;
+// void SetUp()
+// {
+//   StateBlock &state1 = graph.AddState("state1");
+//   StateBlock &state2 = graph.AddState("state2");
 
-  // 状态1完成后 -> 状态2
-  state1.LinkTo(&state1.Complete, state2);
+//   state1.StateAction = State1Action;
+//   state2.StateAction = State2Action;
 
-  // 状态2完成后 -> 状态2自身（循环）
-  // state2.LinkTo(&state2.Complete, state2);
+//   // 状态1完成后 -> 状态2
+//   state1.LinkTo(&state1.Complete, state2);
 
-  StateCore &core = StateCore::GetInstance();
-  core.RegistGraph(graph);
-  core.Enable(0);
-}
+//   // 状态2完成后 -> 状态2自身（循环）
+//   // state2.LinkTo(&state2.Complete, state2);
+
+//   StateCore &core = StateCore::GetInstance();
+//   core.RegistGraph(graph);
+//   core.Enable(0);
+// }
 
 /**
  * @brief 程序主入口
@@ -66,16 +68,16 @@ void MainFrameCpp()
     MOD::host_pc.Regist(HostPC::FuncCode::slam_pos, SlamRxCallback, nullptr);
 
     // 启动矛头控制应用
-    //   System.RegistApp(APP::jaw);
+      System.RegistApp(APP::jaw);
     
     // 启动伸缩腿控制
-    System.RegistApp(APP::leg);
+    // System.RegistApp(APP::leg);
 
     // 底盘启动
     System.RegistApp(APP::chas);
-    APP::chas.Enable();
+    // APP::chas.Enable();
 
-    Config_StateGraph();
+    Config_AutoStateGraph();
 }
 
 /***********    一些不通用的回调函数    ***********/

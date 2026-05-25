@@ -8,11 +8,10 @@
 // 手动遥控的状态机
 StateGraph ManualGraph("Manual");
 
-bool OK_Flag = true;
+static bool OK_Flag = true;
 
-
-void Waiting_for_Start(StateCore *core);
-void Response_Button(StateCore *core);
+static void Waiting_for_Start(StateCore *core);
+static void Response_Button(StateCore *core);
 
 void Config_StateGraph()
 {

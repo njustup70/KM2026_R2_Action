@@ -60,11 +60,19 @@ void _SendSpd(Vec3 Spd)
 
 void ChassisType::Update() 
 {
+    if (!enabled)
+    {
+        return; // 底盘未使能，直接返回
+    }
+
     if(System.out_from_debugmode)
     {
         uint8_t payload[1] = {0x01}; // 发送重置底盘和腿的指令，包括电机和里程计
         MOD::board_can.SendTask(0x210, 3, payload, 1, false); // 发送停止指令
     }
+
+    // 工控机的刷新先放这里啊，只是图方便，不代表这么做是对的
+    MOD::host_pc.TickLoop();
     
     if (_safe_lock_tick > 0)
     {

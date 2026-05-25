@@ -7,8 +7,8 @@
 struct MissionCtx 
 {
     // 路径
-    static const Path<30> PATH_TO_SPEAR;      // 出发点 -> 取矛头点
-    static const Path<20> PATH_TO_DOCK;      // 取矛头点 -> 对接点
+    // static const Path<30> PATH_TO_SPEAR;      // 出发点 -> 取矛头点
+    // static const Path<20> PATH_TO_DOCK;      // 取矛头点 -> 对接点
     
     // 状态标志
     bool task_finished = false;
