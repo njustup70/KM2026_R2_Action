@@ -4,8 +4,19 @@
 #include "Monitor.hpp"
 #include "cmsis_os.h"
 #include "bsp_hardware.hpp"
+#include "cstring"
 
 StateCore& APP::state_core = StateCore::GetInstance();
+
+/**
+ * @brief 设置全局状态函数，其会先于每个状态函数执行
+ * 
+ * @param GlobalAction 
+ */
+void StateGraph::SetGlobalAct(void (*GlobalAction)(StateCore *core))
+{
+    this->GlobalAction = GlobalAction;
+}
 
 /**
  * @brief 为状态块添加状态链接
@@ -91,12 +102,15 @@ bool StateGraph::Degenerate(void (*DegenAction)(StateCore *core))
 void StateCore::Run()
 {
     // 避免空运行
-    if (graph_nums < 0 || !_enabled) return;
+    if (graph_nums == 0 || !_enabled) return;
     
     // 计算时间间隔
     _dt = DWT_GetDeltaTime(&_dwt_tick);
 
-    // 执行 `当前状态图` 的 `对应状态`的 状态函数
+    // 如果有图切换请求，在每个状态执行周期开始时进行响应
+    Apply_SwitchGraph();
+
+    // 执行 当前状态图 的 对应状态 的 状态函数
     StateGraph& graph = *graphs[at_graph_id];
     StateBlock* state = graph.current_state;
 
@@ -127,13 +141,69 @@ void StateCore::Run()
     }
 }
 
+void StateCore::Apply_SwitchGraph()
+{
+    // 如果没有待处理的图切换请求，直接返回
+    if (!_switch_graph_pending) return;
+
+    // 重置图切换请求标志，开始处理请求
+    _switch_graph_pending = false;
+
+    // 防越界
+    if (_switch_graph_targ_graph_id >= graph_nums)
+    {
+        APP::monit.LogWarning(
+            "[State] can't switch, graph_id:%d out of range!",
+            _switch_graph_targ_graph_id, graph_nums
+        );
+        return;
+    }
+    StateGraph& targ_graph = *graphs[_switch_graph_targ_graph_id];
+    if (_switch_graph_targ_state_id >= targ_graph.stateNums)
+    {
+        APP::monit.LogWarning(
+            "[State] can't switch, state_id:%d out of range in graph %s",
+            _switch_graph_targ_state_id, targ_graph.name
+        );
+        return;
+    }
+
+    uint8_t old_graph_id = at_graph_id;
+    StateGraph& old_graph = *graphs[old_graph_id];
+    
+    // 转到新的状态图
+    at_graph_id = _switch_graph_targ_graph_id;
+    targ_graph.executor_at_id = _switch_graph_targ_state_id;
+    targ_graph.current_state = &targ_graph.states[_switch_graph_targ_state_id];
+
+    // 转换成功日志
+    APP::monit.LogInfo(
+        "[State] switch %s -> %s, enter %s(%d)",
+        old_graph.name, targ_graph.name,
+        targ_graph.current_state->name, _switch_graph_targ_state_id
+    );
+}
+
 void StateCore::Enable(uint8_t first_graph)
 {
-    if (first_graph < graph_nums)
+    if (graph_nums == 0)
     {
-        at_graph_id = first_graph;
-        _enabled = true;
+        APP::monit.LogWarning("StateCore: no graph registered, enable failed.");
+        _enabled = false;
+        return;
     }
+
+    if (first_graph >= graph_nums)
+    {
+        APP::monit.LogWarning(
+            "StateCore: first_graph id %d out of range (graph_nums=%d), fallback to 0.",
+            first_graph, graph_nums
+        );
+        first_graph = 0;
+    }
+
+    at_graph_id = first_graph;
+    _enabled = true;
 }
 
 StateBlock& StateCore::GetCurState()
@@ -182,6 +252,48 @@ void StateCore::RegistGraph(StateGraph& graph)
     {
         Monitor::GetInstance().LogWarning("StateCore: Too much state graph!");
     }
+}
+
+void StateCore::SwitchGraph(uint8_t targ_graph_id, uint8_t targ_state_id)
+{
+    _switch_graph_targ_graph_id = targ_graph_id;
+    _switch_graph_targ_state_id = targ_state_id;
+    _switch_graph_pending = true;
+}
+
+void StateCore::SwitchGraph(const char* graph_name, const char* state_name)
+{
+    if (graph_name == nullptr || state_name == nullptr)
+    {
+        APP::monit.LogWarning("[State] SwitchGraph rejected: null graph/state name.");
+        return;
+    }
+
+    for (uint8_t gid = 0; gid < graph_nums; gid++)
+    {
+        StateGraph& graph = *graphs[gid];
+        if (std::strcmp(graph.name, graph_name) != 0) continue;
+
+        for (uint8_t sid = 0; sid < graph.stateNums; sid++)
+        {
+            if (std::strcmp(graph.states[sid].name, state_name) == 0)
+            {
+                SwitchGraph(gid, sid);
+                return;
+            }
+        }
+
+        APP::monit.LogWarning(
+            "[State] SwitchGraph rejected: state %s not found in graph %s.",
+            state_name, graph_name
+        );
+        return;
+    }
+
+    APP::monit.LogWarning(
+        "[State] SwitchGraph rejected: graph %s not found.",
+        graph_name
+    );
 }
 
 
