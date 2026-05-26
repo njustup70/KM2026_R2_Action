@@ -90,7 +90,7 @@ void Jaw::Start()
         .ADRC_Limit(8.0f)
         .SpdLimit(5000.0f)
         .ADRC_MaxPlannedVel(5000.0f)
-        .ADRC_SOTF(0.33f)
+        .ADRC_SOTF(0.1f)
         .Feedforward(M2006GravityComp)
         .Apply();
     motor_2006.driver.Enable();
