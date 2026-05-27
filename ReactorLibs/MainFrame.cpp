@@ -13,6 +13,7 @@
 #include "Jaw.hpp"
 #include "ManualGraph.hpp"
 #include "board.hpp"
+#include "SickPC.hpp"
 
 void SlamRxCallback(uint8_t func_code, const uint8_t* payload, uint8_t payload_len, void* user_ctx);
 
@@ -44,6 +45,8 @@ void MainFrameCpp()
   System.RegistApp(APP::leg);
 
   System.RegistApp(APP::get_block);
+
+  System.RegistApp(APP::sick_pc);
 
   Config_StateGraph();
 }

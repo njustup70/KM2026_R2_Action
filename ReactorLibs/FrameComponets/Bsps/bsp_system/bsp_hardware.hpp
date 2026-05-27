@@ -11,7 +11,7 @@ namespace Hardware
     /// @brief 遥控器串口
     extern BSP::UART::UartID huart_farcon;
     /// @brief 里程计串口
-    extern BSP::UART::UartID huart_odom;
+    extern BSP::UART::UartID huart_sick;
     /// @brief 其他串口
     extern BSP::UART::UartID huart_other;
     /// @brief 日志串口
