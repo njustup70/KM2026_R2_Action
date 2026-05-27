@@ -96,7 +96,7 @@ void Jaw::Start()
     motor_2006.driver.Enable();
 
     //继电器
-    Pin relay_pin = {'F', 1};
+    Pin relay_pin = {'I', 2};
     relay.Init(relay_pin, Relay::HIGH_ON);
 }
 
@@ -423,7 +423,7 @@ static float C620HoriFriction(const FeedforwardInfo& info)
 
     if (info.velocity > kVelEpsMax)
         return kTargetCurrent;
-    if (info.velocity > kVelEpsMin)
+    if (info.velocity > kVelEpsMin) 
     {
         float ratio = (info.velocity - kVelEpsMin) / (kVelEpsMax - kVelEpsMin);
         return kTargetCurrent * ratio;
