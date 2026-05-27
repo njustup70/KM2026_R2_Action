@@ -33,12 +33,13 @@ void Waiting_for_Start(StateCore *core)
 {
   APP::monit.LogInfo("I'm here...");
 
-  // Seq::WaitUntil([](){
-  //   return APP::jaw.IsOrigined();
-  // });
+  Seq::WaitUntil([](){
+    return APP::jaw.IsOrigined();
+  });
+
   Seq::Wait(2.0f);
 
-  Seq::WaitUntil(OK_Flag);
+  // Seq::WaitUntil(OK_Flag);
 
   APP::monit.LogInfo("Ready to Response...");
 
@@ -73,7 +74,6 @@ void Response_Button(StateCore *core)
         }
     }
 
-    
     // 切换控制模式
     if(MOD::farcon.toggle[0]) // 最左上拨杆拨为1
     {
@@ -84,29 +84,51 @@ void Response_Button(StateCore *core)
         APP::chas.control_mode = MOD::farcon.toggle[1] ? APP::chas.API : APP::chas.OPEN;
     } 
 
-    // 限制每 0.05 秒最多触发一次
-    static float trigger_cnt = 0;
-    if (DWT_GetTimeline_Sec() - trigger_cnt > 0.05f)
+    // 检测 9 号键，如果按下了，就开关爪子（每1s最多触发一次）
+    static float last_trigger_time = 0;
+    if (MOD::farcon.button_second_half[0] == 1 && DWT_GetTimeline_Sec() - last_trigger_time > 1.0f)
     {
-      if (MOD::farcon.button_first_half[2] == 1)
-      {
-        APP::leg.ChangeFrontPos(3);
-      }
-
-      if (MOD::farcon.button_first_half[3] == 1)
-      {
-        APP::leg.ChangeFrontPos(-3);
-      }
-
-      if (MOD::farcon.button_first_half[6] == 1)
-      {
-        APP::leg.ChangeBackPos(3);
-      }
-
-      if (MOD::farcon.button_first_half[7] == 1)
-      {
-        APP::leg.ChangeBackPos(-3);
-      }
-      trigger_cnt = DWT_GetTimeline_Sec();
+        static bool claw_open = false;
+        if (claw_open)
+        {
+            APP::jaw.CloseClaw();
+        }
+        else
+        {
+            APP::jaw.OpenClaw();
+        }
+        APP::monit.LogInfo("Claw %s", claw_open ? "Closed" : "Opened");
+        claw_open = !claw_open;
+        last_trigger_time = DWT_GetTimeline_Sec();
     }
+    else if (MOD::farcon.button_second_half[1] == 1)
+    {
+      APP::monit.LogInfo("In Cooldown.");  
+    }
+
+    // 限制每 0.05 秒最多触发一次
+    // static float trigger_cnt = 0;
+    // if (DWT_GetTimeline_Sec() - trigger_cnt > 0.05f)
+    // {
+    //   if (MOD::farcon.button_first_half[2] == 1)
+    //   {
+    //     APP::leg.ChangeFrontPos(3);
+    //   }
+
+    //   if (MOD::farcon.button_first_half[3] == 1)
+    //   {
+    //     APP::leg.ChangeFrontPos(-3);
+    //   }
+
+    //   if (MOD::farcon.button_first_half[6] == 1)
+    //   {
+    //     APP::leg.ChangeBackPos(3);
+    //   }
+
+    //   if (MOD::farcon.button_first_half[7] == 1)
+    //   {
+    //     APP::leg.ChangeBackPos(-3);
+    //   }
+    //   trigger_cnt = DWT_GetTimeline_Sec();
+    // }
 }

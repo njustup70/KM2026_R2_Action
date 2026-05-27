@@ -47,10 +47,14 @@ void Waiting_for_Start(StateCore *core)
     return APP::jaw.IsOrigined();
   });
 
+  APP::monit.LogInfo("Jaw Init OK.");
+
   // 等待工控机连接
   Seq::WaitUntil([](){
     return MOD::host_pc.IsOnline();
   });
+
+  APP::monit.LogInfo("HostPC Online.");
 
   // 等待一段时间，确保一切稳定
   Seq::Wait(5.0f);
@@ -75,24 +79,23 @@ void Walk_Fetch_TurnAround(StateCore *core)
 {
   // 先放平爪子并张开
   APP::jaw.PitchDown();
-  // APP::jaw.Open();
+  APP::jaw.OpenClaw();
 
   // 首先移动到矛台前
   APP::monit.LogInfo("Moving to Spear-Table...");
-  APP::path_chaser.ChasePath(Path_R2_Area1_1);
-
-  // 略微等待确保稳定
-  Seq::Wait(0.1f);
+  
+  // APP::path_chaser.ChasePath(Path_R2_Area1_1);
 
   // 等待路径跟踪完成
-  while(!APP::path_chaser.IsFinished())
-  {
-    // 获取理论移动速度（相对车体坐标系的）
-    Vec3 speed_vec = APP::path_chaser.GetCmdBody();
+  // while(!APP::path_chaser.IsFinished())
+  // {
+  //   // 获取理论移动速度（相对车体坐标系的）
+  //   // Vec3 speed_vec = APP::path_chaser.GetCmdBody();
+  //   Vec3 speed_vec = Vec3(0, 0, 0);
 
-    APP::chas.Move(speed_vec);
-    Seq::Wait(0.005f);  // 200Hz标准更新频率
-  }
+  //   APP::chas.Move(speed_vec);
+  //   Seq::Wait(0.005f);  // 200Hz标准更新频率
+  // }
 
   // 接近矛台后，执行取矛动作
   APP::monit.LogInfo("Arrived, Try to fetch.");
