@@ -133,12 +133,15 @@ static bool IsPortClockEnabled(void* port_opaque)
 }
 
 /**
- * @brief 检测引脚是否已在 CubeMX 中初始化
+ * @brief 轻量检测引脚是否已在 CubeMX 中配置
  * @param port_opaque 端口指针
  * @param pin_mask 引脚位掩码
- * @return true 已初始化（非 Analog 模式），false 未初始化
+ * @return true 已配置，false 未配置
  * @note 此处逻辑针对 STM32 F4/F7/H7/G4 等具有 MODER 寄存器的系列。
  *       F1 系列（使用 CRL/CRH 寄存器）需要另行适配。
+ * @note 这里按“是否偏离默认输入模式”做轻量判断：
+ *       - MODER != 00 认为已配置（输出/复用/模拟）；
+ *       - MODER == 00 认为未配置（包含默认输入态）。
  */
 static bool IsPinInitialized(void* port_opaque, uint16_t pin_mask)
 {
@@ -155,9 +158,11 @@ static bool IsPinInitialized(void* port_opaque, uint16_t pin_mask)
     }
 
     GPIO_TypeDef* GPIOx = static_cast<GPIO_TypeDef*>(port_opaque);
-    // MODER 寄存器每位占用 2 bits。复位值通常为 0x3 (Analog)，初始化后通常为 0x0, 0x1, 0x2
-    uint32_t mode = (GPIOx->MODER >> (index * 2)) & 0x03U;
-    return (mode != 0x03U);
+
+    // 轻量判定：仅检查 MODER 是否仍为默认输入态(00)。
+    // 只要不是输入态（即输出/复用/模拟），就视为已配置。
+    const uint32_t mode = (GPIOx->MODER >> (index * 2U)) & 0x03U;
+    return (mode != 0U);
 #else
     (void)port_opaque;
     (void)pin_mask;
