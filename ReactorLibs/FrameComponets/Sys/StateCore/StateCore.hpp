@@ -96,6 +96,7 @@ class StateGraph
 };
 
 
+
 /**
  * @brief 状态机核心，即状态机本体
  */
@@ -111,8 +112,17 @@ class StateCore
     /// @brief 两次状态切换的时间间隔，单位秒
     float _dt;                   
 
-    public:
+    /// @brief 在每个状态执行周期开始时，响应对应的状态图切换请求
+    void Apply_SwitchGraph();
 
+    /// @brief 是否存在待处理的状态图切换请求
+    bool _switch_graph_pending = false;
+    /// @brief 待切换目标状态图ID
+    uint8_t _switch_graph_targ_graph_id = 0;
+    /// @brief 待切换目标状态ID（在目标图中的ID）
+    uint8_t _switch_graph_targ_state_id = 0;
+
+    public:
     /// @brief 循环运行状态机核心 
     void Run(void);
 
@@ -121,6 +131,20 @@ class StateCore
     
     /// @brief 注册状态图
     void RegistGraph(StateGraph& graph);
+
+    /**
+     * @brief 转移到目标状态图的指定状态
+     * 
+     * @param targ_graph_id 目标的状态图的ID
+     * @param targ_state_id 在下个状态函数执行周期开始，即将转换到的状态块，在其对应图中的ID
+     * @note 这个函数并不会立即切换状态图，而是会在下一个状态函数执行周期开始时切换。
+     */
+    void SwitchGraph(uint8_t targ_graph_id, uint8_t targ_state_id);
+
+    /**
+     * @brief 上方的字符串查询重载版本
+     */
+    void SwitchGraph(const char* graph_name, const char* state_name);
 
     /// @brief 获得当前状态的引用
     StateBlock& GetCurState();

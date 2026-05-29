@@ -71,7 +71,7 @@ void Reactor46H_Initialize()
 
     // 必须要，因为很多外部设备都要时间初始化
     // 尤其是C620 / C610，第一次上电时如果不等它们自检完就发指令，可能会冲爆
-    HAL_Delay(4000);
+    HAL_Delay(6500);
 
     System.Init();
     MainFrameCpp();

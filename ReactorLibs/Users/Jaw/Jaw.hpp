@@ -104,6 +104,16 @@ public:
      */
     void PitchDown();
 
+    /**
+     * @brief 张开夹爪
+     */
+    void OpenClaw();
+
+    /**
+     * @brief 合上夹爪
+     */
+    void CloseClaw();
+
     void Enable();
     void Disable();
     

@@ -61,17 +61,16 @@ void _SendSpd(Vec3 Spd)
 
 void ChassisType::Update() 
 {
-    if(!enabled)
-    {
-        uint8_t payload[1] = {0x01}; // 发送失能指令
-        MOD::board_can.SendTask(MOD::C_sub_ctrl_board_id, 3, payload, 1, false); // 发送停止指令
-    }
+    if (!enabled) return;
 
     if(System.out_from_debugmode)
     {
         uint8_t payload[1] = {0x01}; // 发送失能指令
         MOD::board_can.SendTask(MOD::C_sub_ctrl_board_id, 3, payload, 1, false); // 发送停止指令
     }
+
+    // 工控机的刷新先放这里啊，只是图方便，不代表这么做是对的
+    MOD::host_pc.TickLoop();
     
     if (_safe_lock_tick > 0)
     {

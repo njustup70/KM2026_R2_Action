@@ -10,6 +10,7 @@
 #include <cstdio>
 #include <cmath>
 #include <string.h>
+#include "relay.hpp"
 
 Jaw& APP::jaw = Jaw::GetInstance();
 
@@ -90,13 +91,13 @@ void Jaw::Start()
         .ADRC_Limit(8.0f)
         .SpdLimit(5000.0f)
         .ADRC_MaxPlannedVel(5000.0f)
-        .ADRC_SOTF(0.33f)
+        .ADRC_SOTF(0.1f)
         .Feedforward(M2006GravityComp)
         .Apply();
     motor_2006.driver.Enable();
 
     //继电器
-    Pin relay_pin = {'F', 1};
+    Pin relay_pin = {'I', 2};
     relay.Init(relay_pin, Relay::HIGH_ON);
 }
 
@@ -267,6 +268,16 @@ void Jaw::Enable()
 void Jaw::Disable()
 {
     // _enabled = false;
+}
+
+void Jaw::OpenClaw()
+{
+    relay.On();
+}
+
+void Jaw::CloseClaw()
+{
+    relay.Off();
 }
 
 void Jaw::PitchUp()

@@ -16,9 +16,15 @@ void PathChaserType::Update()
 void PathChaserType::Reset()
 {
     _near_seg_idx = 0;
-    _progress_dist = 0.0f;
+    _elapsed_sec = 0.0f;
+    _s_cmd = 0.0f;
+    _s_ref = 0.0f;
+    _s_meas = 0.0f;
+    _s_dot_cmd = 0.0f;
     _finish_tick_cnt = 0;
     _finished = false;
+    _start_runtime_sec = System.runtime_tick;
+    _last_runtime_sec = _start_runtime_sec;
     _cmd.world = Vec3(0, 0, 0);
     _cmd.body = Vec3(0, 0, 0);
 }
@@ -60,6 +66,34 @@ float PathChaserType::_path_length() const
 }
 
 /**
+ * @brief 读取路径总时间（以首尾路点时间差为准）
+ * @return 路径总时间（单位s）
+ */
+float PathChaserType::_path_time() const
+{
+    if (_waypoints == nullptr || _waypoint_count < 2) return 0.0f;
+    float t0 = _waypoints[0].t_sec;
+    float t1 = _waypoints[_waypoint_count - 1].t_sec;
+    return t1 - t0;
+}
+
+/**
+ * @brief 检查路径合法性（时间必须严格递增）
+ */
+bool PathChaserType::_validate_path() const
+{
+    if (_waypoints == nullptr || _waypoint_count < 2) return false;
+    for (uint16_t i = 0; i + 1 < _waypoint_count; i++)
+    {
+        if (!(_waypoints[i + 1].t_sec > _waypoints[i].t_sec))
+        {
+            return false;
+        }
+    }
+    return _path_time() > 1e-6f;
+}
+
+/**
  * @brief 最近点投影求路径进度（弧长）
  * @param now_pos 当前世界坐标位置
  * @return 当前进度弧长（单位m）
@@ -81,7 +115,7 @@ float PathChaserType::_solve_progress(const Vec2& now_pos)
     }
 
     float best_dist2 = 1e30f;
-    float best_progress = _progress_dist;
+    float best_progress = _s_meas;
     float prefix = base_dist;
     uint16_t best_seg = idx_begin;
 
@@ -115,14 +149,49 @@ float PathChaserType::_solve_progress(const Vec2& now_pos)
     }
 
     // 避免进度大幅倒退（例如局部抖动/短时偏航），允许小范围容错回退
-    if (best_progress + 0.08f < _progress_dist)
+    if (best_progress + 0.08f < _s_meas)
     {
-        best_progress = _progress_dist - 0.08f;
+        best_progress = _s_meas - 0.08f;
     }
     if (best_progress < 0.0f) best_progress = 0.0f;
 
     _near_seg_idx = best_seg;
     return best_progress;
+}
+
+/**
+ * @brief 按时间采样参考弧长进度
+ * @param t_sec 相对路径起点时间（单位s）
+ * @return 对应的路径弧长进度（单位m）
+ */
+float PathChaserType::_sample_s_by_time(float t_sec) const
+{
+    if (_waypoints == nullptr || _waypoint_count < 2) return 0.0f;
+
+    float t0 = _waypoints[0].t_sec;
+    float t_end = _waypoints[_waypoint_count - 1].t_sec - t0;
+    if (t_sec <= 0.0f) return 0.0f;
+    if (t_sec >= t_end) return _path_total_len;
+
+    float acc_s = 0.0f;
+    for (uint16_t i = 0; i + 1 < _waypoint_count; i++)
+    {
+        float ta = _waypoints[i].t_sec - t0;
+        float tb = _waypoints[i + 1].t_sec - t0;
+        Vec2 pa = _waypoints[i].pos;
+        Vec2 pb = _waypoints[i + 1].pos;
+        float seg_len = (pb - pa).Length();
+
+        if (t_sec <= tb)
+        {
+            float dt = tb - ta;
+            float alpha = (dt < 1e-6f) ? 0.0f : ((t_sec - ta) / dt);
+            alpha = StdMath::fclamp(alpha, 0.0f, 1.0f);
+            return acc_s + seg_len * alpha;
+        }
+        acc_s += seg_len;
+    }
+    return _path_total_len;
 }
 
 /**
@@ -244,49 +313,67 @@ float PathChaserType::_sample_omega(float dist) const
 void PathChaserType::_update_cmd(const Vec3& now_pose)
 {
     // 路径点不足 或 已完成，就不给速度
-    if (_waypoints == nullptr || _waypoint_count == 0 || _finished)
+    if (_waypoints == nullptr || _waypoint_count == 0 || _finished || !_path_valid)
     {
         _cmd.world = Vec3(0, 0, 0);
         _cmd.body = Vec3(0, 0, 0);
         return;
     }
 
-    // 获取当前的二维位置
+    float now_rt = System.runtime_tick;
+    float dt = now_rt - _last_runtime_sec;
+    _last_runtime_sec = now_rt;
+    if (dt < 0.0f) dt = 0.0f;
+    if (dt > 0.05f) dt = 0.05f;
+
+    _elapsed_sec = now_rt - _start_runtime_sec;
+    if (_elapsed_sec < 0.0f) _elapsed_sec = 0.0f;
+
+    // 获取当前二维位置
     Vec2 now_pos = now_pose.ToVec2();
-    // 利用最近点机制，求取已经走过的路径长度
-    _progress_dist = _solve_progress(now_pos);
+    _s_meas = _solve_progress(now_pos);
 
-    // 获取路径总长度
-    float s_end = _path_total_len;
+    // 时间参考进度
+    _s_ref = _sample_s_by_time(_elapsed_sec);
 
-    // 获取前瞻点的目标状态（位置、速度、姿态、角速度）
-    float s_targ = _progress_dist + _lookahead_dist;
-    if (s_targ > s_end) s_targ = s_end;         // 防越界
-    Vec2 targ_pos = _sample_pos(s_targ);
-    Vec2 vel_ff = _sample_vel(s_targ);
-    float yaw_ref = _sample_yaw(s_targ);
-    float omega_ff = _sample_omega(s_targ);
+    // 基于 s_cmd 采样参考速度，融合推进更新 s_cmd
+    Vec2 vel_on_cmd = _sample_vel(_s_cmd);
+    float v_ref = vel_on_cmd.Length();
+    _s_dot_cmd = v_ref
+               + _k_sync_time * (_s_ref - _s_cmd)
+               + _k_sync_meas * (_s_meas - _s_cmd);
+    _s_dot_cmd = StdMath::fclamp(_s_dot_cmd, _min_s_dot, _max_s_dot);
+    _s_cmd += _s_dot_cmd * dt;
+    _s_cmd = StdMath::fclamp(_s_cmd, 0.0f, _path_total_len);
+
+    // 按 s_cmd 采样目标状态（位置、速度、姿态、角速度）
+    Vec2 targ_pos = _sample_pos(_s_cmd);
+    Vec2 vel_ff = _sample_vel(_s_cmd);
+    float yaw_ref = _sample_yaw(_s_cmd);
+    float omega_ff = _sample_omega(_s_cmd);
 
     // 计算误差
     Vec2 pos_err = targ_pos - now_pos;
     float yaw_err = _wrap_pi(yaw_ref - now_pose.z);
 
-    // 叠加前馈，得到世界系速度命令
-    Vec2 v_world = vel_ff + pos_err * _kp_pos;
+    // 叠加前馈与反馈，反馈项单独限幅，避免误差导致长时间满速追赶
+    Vec2 pos_fb = _limit_vec2(pos_err * _kp_pos, _max_pos_fb);
+    Vec2 v_world = vel_ff + pos_fb;
     v_world = _limit_vec2(v_world, _max_vel);
 
     // 角速度前馈+反馈
-    float omega = omega_ff + _kp_yaw * yaw_err;
+    float yaw_fb = StdMath::fclamp(_kp_yaw * yaw_err, -_max_yaw_fb, _max_yaw_fb);
+    float omega = omega_ff + yaw_fb;
     omega = StdMath::fclamp(omega, _max_omega);
 
-    // 转换到车体系
-    Vec2 body_xy = _cmd.world.ToVec2().Rotate(-now_pose.z);
+    // 转换到车体系（使用本周期新计算的世界系速度，避免一拍延迟）
+    Vec2 body_xy = v_world.Rotate(-now_pose.z);
 
     // 填写控制指令
     _cmd.world = Vec3(v_world.x, v_world.y, omega);
     _cmd.body = Vec3(body_xy.x, body_xy.y, _cmd.world.z);
 
-    // 终点完成判定，先获取终点的位置
+    // 终点完成判定，先获取终点状态
     Vec2 final_pos = _waypoints[_waypoint_count - 1].pos;
     float final_yaw = _waypoints[_waypoint_count - 1].yaw_rad;
 
@@ -294,8 +381,9 @@ void PathChaserType::_update_cmd(const Vec3& now_pose)
     float pos_err_len = (final_pos - now_pos).Length();
     float final_yaw_err = fabsf(_wrap_pi(final_yaw - now_pose.z));
 
-    // 如果满足要求的阈值
-    if (pos_err_len < _pos_tol && final_yaw_err < _yaw_tol)
+    // 完成条件：时间接近末端 + 位置姿态进入阈值
+    bool time_ready = _elapsed_sec >= (_path_total_time - _finish_time_margin);
+    if (time_ready && pos_err_len < _pos_tol && final_yaw_err < _yaw_tol)
     {
         // 如果还没计时结束，继续加
         if (_finish_tick_cnt < _finish_hold_ticks) _finish_tick_cnt++;
