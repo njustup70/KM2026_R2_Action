@@ -80,7 +80,7 @@ void MainFrameCpp()
     System.RegistApp(APP::chas);
     // APP::chas.Enable();
 
-    Config_AutoStateGraph();
+    Config_StateGraph();
 }
 
 /***********    一些不通用的回调函数    ***********/
