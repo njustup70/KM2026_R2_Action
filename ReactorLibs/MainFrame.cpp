@@ -78,7 +78,7 @@ void MainFrameCpp()
 
     // 底盘启动
     System.RegistApp(APP::chas);
-    // APP::chas.Enable();
+    APP::chas.Enable();
 
     Config_StateGraph();
 }
