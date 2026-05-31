@@ -97,8 +97,17 @@ void Walk_Fetch_TurnAround(StateCore *core)
   //   Seq::Wait(0.005f);  // 200Hz标准更新频率
   // }
 
+  // 等待路径跟踪到矛台
+  // MOVE::MoveToTargPos(Path_R2_Area1_Spear_Table);
+
   // 接近矛台后，执行取矛动作
   APP::monit.LogInfo("Arrived, Try to fetch.");
+  APP::jaw.CloseClaw();
+
+  // 取到矛头，移动到对接位置，准备对接
+  APP::jaw.PitchUp();
+  // MOVE::MoveToTargPos(Path_R2_Area1_Dock);
+  APP::monit.LogInfo("Fetch OK, Wait for Dock");
 
   // 无限等待，因为后面可能有问题。。
   Seq::WaitUntil([](){
