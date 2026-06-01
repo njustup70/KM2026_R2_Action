@@ -167,15 +167,12 @@ class SystemType
     }Display;
     
 
-    
-
     /// @brief 机器人当前系统状态
     Systems::SysStatus status = Systems::ORIGIN;           
     /// @brief 机器人所在阵营
     uint8_t camp = Systems::Camp_Blue;
-
     
-    LedWs2812*              led_band = nullptr;             // 仅指 "系统灯"
+
     Odometer_Ops9           odometer;             // 物理里程计
     Positioner              posner;
 
