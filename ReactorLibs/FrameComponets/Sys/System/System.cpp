@@ -15,8 +15,6 @@ SystemType& System = SystemType::GetInstance();
 static Monitor& monit = Monitor::GetInstance();
 static HostPC& host_pc = HostPC::GetInstance();
 
-LedWs2812 sys_ledband;
-
 void SystemType::Init(bool Sc)
 {
     // 输出系统启动信息
@@ -29,8 +27,6 @@ void SystemType::Init(bool Sc)
     // 初始化Monitor监视器
     Monitor::GetInstance().Init(Hardware::huart_log, nullptr, false);
 
-    // 初始化系统灯带
-    // sys_ledband.Init(Hardware::htim_led, TIM_CHANNEL_1, 13);
     // 颜色偏置因子（用于校正颜色）
     // sys_ledband.BiasFactor = Vec3(0.843f, 1.0f, 0.843f); 
 
@@ -97,9 +93,9 @@ void SystemType::Run()
                     status = Systems::STOP; 
                     // Display.ErrorBlink(24, 200);
                 }
-            } else if (s == App::Warning) {
-                // WarningBlink 等提示
-                Display.WarningBlink(3, 300);
+            } else if (s == App::Warning) 
+            {
+                // Warning提示
             }
         }
     }
@@ -119,32 +115,6 @@ void SystemType::PerformanceRun()
     if (Monitor::GetInstance().high_performance_mode)
     {
         Monitor::GetInstance().TrackLogJustFloat();
-    }
-}
-
-
-
-void SystemType::_Update_LedBand()
-{
-    static uint32_t prescaler_cnt = 0;
-    prescaler_cnt++;
-
-    if (prescaler_cnt >= ledband_prescaler)
-    {
-        prescaler_cnt = 0;
-
-        if (Display.display_overlay)
-        {
-            // 覆盖显示接口
-            _LedBandDisplayControl();
-        }
-        else
-        {
-            // 根据不同的要求来控制系统灯
-            _LedBandControl();
-        }
-
-        sys_ledband.Upload();
     }
 }
 
@@ -214,137 +184,6 @@ void SystemType::_Update_SelfCheck()
         }
     }
 }
-
-
-
-/**
- * @brief 默认情况下，系统的灯带控制逻辑
- * @note 可被Display接口覆盖
- */
-void SystemType::_LedBandControl()
-{
-    switch (status)
-    {
-        case Systems::ORIGIN:
-        {
-            // 正常：呼吸白灯
-            if (!is_retrying)
-                sys_ledband.Breath(Color(255.0f, 255.0f, 255.0f), 1.0f);
-            // 重试：呼吸橙灯
-            else
-                sys_ledband.Breath(Color(255.0f, 127.0f, 0.0f), 1.0f);
-            break;
-        }
-        case Systems::SELF_CHECK:
-        {
-            // 正常自检中：白色滚动
-            if (!is_retrying)
-                sys_ledband.Running(Color(255.0f, 255.0f, 255.0f), 0.2, 0.3);
-            // 重试自检中：橙色滚动
-            else
-                sys_ledband.GradientFlow(Color(255.0f, 127.0f, 0.0f), Color(0, 0, 0), 0.3);
-            break;
-        }
-        case Systems::READY:
-        {
-            // 准备好了：呼吸阵营灯
-            if (camp == Systems::Camp_Blue)
-                sys_ledband.Breath(Color(0.0f, 0.0f, 255.0f), 1.0f);
-            else
-                sys_ledband.Breath(Color(255.0f, 0.0f, 0.0f), 1.0f);
-            
-            break;
-        }
-        case Systems::WORKING:
-        {
-            // 分红蓝区
-            // 蓝区：常亮蓝灯
-            if (camp == Systems::Camp_Blue)     sys_ledband.Lit(Color(0.0f, 0.0f, 255.0f));
-            // 红区：常亮红灯
-            else    sys_ledband.Lit(Color(255.0f, 0.0f, 0.0f));
-            break;
-        }
-    }
-}
-
-
-
-
-
-
-
-
-
-
-
-
-/*****--<       灯带显示接口        >--*****/
-/**
- * @brief 系统灯带显示控制接口（可覆盖常态显示）
- */
-void SystemType::_LedBandDisplayControl()
-{
-    switch (Display.display_type)
-    {
-        case SystemType::_LedDisplayAPI::SysLEDDisp_WarningBlink:
-        {
-            // 闪烁逻辑（在周期的前一半亮，后一半灭）
-            if ((Display.blink_cnt * 5) % (Display.blink_interval) < (Display.blink_interval / 2))
-            {
-                sys_ledband.Lit(Color(255.0f, 255.0f, 0.0f));   // 黄色
-            }
-            else
-            {
-                sys_ledband.Lit(Color(0.0f, 0.0f, 0.0f));       // 熄灭
-            }
-            Display.blink_cnt++;
-            break;
-        }
-        case SystemType::_LedDisplayAPI::SysLEDDisp_ErrorBlink:
-        {
-            // 闪烁逻辑（在周期的前一半亮，后一半灭）
-            if ((Display.blink_cnt * 5) % (Display.blink_interval) < (Display.blink_interval / 2))
-            {
-                sys_ledband.Lit(Color(255.0f, 255.0f, 0.0f));   // 紫色
-            }
-            else
-            {
-                sys_ledband.Lit(Color(0.0f, 0.0f, 0.0f));     // 熄灭
-            }
-            Display.blink_cnt++;
-            break;
-        }
-    }
-
-    // 检查是否完成，如果闪烁时间大于要求次数乘以间隔时间，则结束
-    if (Display.blink_cnt * 5 >= Display.blink_times * Display.blink_interval)
-    {
-        // 结束覆盖显示
-        Display.display_overlay = false;
-        Display.display_type = SystemType::_LedDisplayAPI::SysLEDDisp_None;
-        Display.blink_cnt = 0;
-    }
-}
-
-/**
- * @brief 警告闪烁LED
- */
-void SystemType::_LedDisplayAPI::WarningBlink(uint8_t times, uint16_t interval)
-{
-    // 正在执行的话，就直接退出
-    if (display_overlay) return;
-    // 启用覆盖显示
-    display_overlay = true;
-
-    // 执行闪烁
-    display_type = SysLEDDisp_WarningBlink;
-    
-    // 设置参数
-    blink_times = times;
-    blink_interval = interval;
-    blink_cnt = 0;
-}
-
 
 /**
  * @brief 
@@ -492,7 +331,6 @@ bool Application::CntFull()
     }
     return false;
 }
-
 
 
 
