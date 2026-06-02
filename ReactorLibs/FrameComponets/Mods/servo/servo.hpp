@@ -7,7 +7,7 @@ class Servo
 {
 public:
     Servo() {};
-    void Init(BSP::TIM::TimID tim, uint32_t channel);
+    void Init(BSP::TIM::TimID tim, BSP::TIM::Channel channel);
     void Enable();              // 开始输出PWM信号
     void Disable();             // 停止输出PWM信号
     void SetAngle(float angle); // 角度制，单位：度DEG
@@ -16,7 +16,7 @@ public:
     
 private:
     BSP::TIM::TimID tim_id = nullptr;
-    uint32_t channel = 0;
+    BSP::TIM::Channel channel = BSP::TIM::CH1;
     bool initialized = false;
     bool enabled = false;
 };

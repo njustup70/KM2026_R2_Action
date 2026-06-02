@@ -1,7 +1,7 @@
 #include "servo.hpp"
 #include "arm_math.h"
 
-void Servo::Init(BSP::TIM::TimID tim, uint32_t channel)
+void Servo::Init(BSP::TIM::TimID tim, BSP::TIM::Channel channel)
 {
     // 确认参数合法性
     if (tim == nullptr || channel == 0) return;
