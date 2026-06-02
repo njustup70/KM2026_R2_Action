@@ -12,9 +12,6 @@
 #include "bsp_dwt.hpp"
 #include "bsp_log.hpp"
 
-extern TIM_HandleTypeDef* g_ws2812_callback_htim;
-extern uint32_t g_ws2812_callback_channel;
-
 /**
  * @brief WS2812 灯带驱动（PWM + DMA）
  * @tparam MaxLedNumsT 最大灯珠数，静态缓冲区
@@ -38,7 +35,7 @@ public:
     LedWs2812() {};
     ~LedWs2812() {};
 
-    TIM_HandleTypeDef *htim = nullptr;  // PWM定时器句柄
+    BSP::TIM::TimID tim_id = nullptr;
     uint32_t Channel = 0;
 
     uint8_t LedNums = 0;                // LED灯珠数量
@@ -57,11 +54,11 @@ public:
 
     /**
      * @brief 初始化灯带驱动
-     * @param htim PWM定时器句柄
+     * @param tim WS2812对应的定时器ID
      * @param Channel PWM通道
      * @note 实际灯珠数固定为模板参数 MaxLedNumsT
      */
-    void Init(TIM_HandleTypeDef *htim, uint32_t Channel);
+    void Init(BSP::TIM::TimID tim, uint32_t Channel);
 
 
     /*---   一些预设的动画  ---*/
@@ -71,36 +68,38 @@ public:
     void Running(Color color, float width, float period);
     void Lit(Color color); // 供外部调用的Fill，省算力
     void Expand(Color color_0, float period);
+
+    static void _PulseFinishedCb(BSP::TIM::TimID tim, uint32_t channel, void* user_ctx);
 };
 
 template <size_t MaxLedNumsT>
-void LedWs2812<MaxLedNumsT>::Init(TIM_HandleTypeDef *htim, uint32_t Channel)
+void LedWs2812<MaxLedNumsT>::Init(BSP::TIM::TimID tim, uint32_t Channel)
 {
-    if (htim == nullptr)
+    // 检查输入参数合法性
+    if (tim == nullptr || Channel == 0)
     {
-        BspLog_LogError("[WS2812]: Init at null timer!\r\n");
+        BspLog_LogError("[WS2812]: Init at null tim id or channel!\r\n");
         return;
     }
 
-    // 记录所用的PWM通道，灯数
-    this->htim = htim;
+    // 存储基本信息
+    this->tim_id = tim;
     this->Channel = Channel;
     this->LedNums = static_cast<uint8_t>(MaxLedNumsT);
 
+    // 灯带颜色默认全灭
     for (size_t i = 0; i < MaxLedNumsT; i++)
     {
         SetColor((int8_t)i, 0, 0, 0);
     }
 
     // 初始化PWM
-    PwmMaxValue = __HAL_TIM_GET_AUTORELOAD(this->htim);
+    PwmMaxValue = BSP::TIM::GetAutoReload(this->tim_id);
     HIGH_WS2812 = PwmMaxValue * 0.67f;
     LOW_WS2812 = PwmMaxValue * 0.33f;
 
-    // 注册回调目标
-    // 当前回调是“全局单目标”模型：最后一次Init的实例将成为DMA完成回调的匹配对象
-    g_ws2812_callback_htim = this->htim;
-    g_ws2812_callback_channel = this->Channel;
+    // 注册 PWM 完成回调
+    BSP::TIM::RegistPFCb(this->tim_id, this->Channel, _PulseFinishedCb, this);
 }
 
 template <size_t MaxLedNumsT>
@@ -231,10 +230,15 @@ void LedWs2812<MaxLedNumsT>::Fill(uint8_t R, uint8_t G, uint8_t B)
 template <size_t MaxLedNumsT>
 void LedWs2812<MaxLedNumsT>::Upload()
 {
-    // 维持原有发送策略：一次DMA发送整帧
-    // 回调 HAL_TIM_PWM_PulseFinishedCallback 中负责 Stop_DMA
-    htim->Instance->CNT = htim->Instance->ARR - 1;
-    HAL_TIM_PWM_Start_DMA(htim, Channel, (uint32_t*)WS2812buf2send, LedNums * 24 + 1);
+    BSP::TIM::StartDma(tim_id, Channel, (uint32_t*)WS2812buf2send, LedNums * 24 + 1);
+}
+
+template <size_t MaxLedNumsT>
+void LedWs2812<MaxLedNumsT>::_PulseFinishedCb(BSP::TIM::TimID tim, uint32_t channel, void* user_ctx)
+{
+    (void)user_ctx;
+    BSP::TIM::StopDma(tim, channel);
 }
 
 #endif
+
