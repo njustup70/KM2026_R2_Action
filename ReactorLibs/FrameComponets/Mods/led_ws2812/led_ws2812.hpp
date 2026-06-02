@@ -20,6 +20,9 @@ template <size_t MaxLedNumsT = 16>
 class LedWs2812
 {
 private:
+    static constexpr size_t kBitsPerLed = 24;
+    static constexpr size_t kResetSlots = 64; // >50us reset low at 800kHz
+
     uint32_t PwmMaxValue = 0;       // PWM最大值
     uint32_t HIGH_WS2812 = 0;       // PWM高电平数值
     uint32_t LOW_WS2812 = 0;        // PWM低电平数值
@@ -28,15 +31,15 @@ private:
     uint32_t dwt_tick = 0;
     float RuntimeCnt = 0;
 
-    // 灯带的写入缓冲区，每颗灯24bit，颜色顺序是GRB
-    uint32_t WS2812buf2send[MaxLedNumsT][24] = {0};
+    // 灯带的写入缓冲区，每颗灯24bit，颜色顺序是GRB，末尾补一段低电平用于锁存
+    uint32_t WS2812buf2send[MaxLedNumsT * kBitsPerLed + kResetSlots] = {0};
 
 public:
     LedWs2812() {};
     ~LedWs2812() {};
 
     BSP::TIM::TimID tim_id = nullptr;
-    uint32_t Channel = 0;
+    BSP::TIM::Channel Channel = BSP::TIM::CH1;
 
     uint8_t LedNums = 0;                // LED灯珠数量
     Vec3 BiasFactor;                    // 颜色偏置因子（用于校正颜色）
@@ -58,9 +61,18 @@ public:
      * @param Channel PWM通道
      * @note 实际灯珠数固定为模板参数 MaxLedNumsT
      */
-    void Init(BSP::TIM::TimID tim, uint32_t Channel);
+    void Init(BSP::TIM::TimID tim, BSP::TIM::Channel Channel);
 
+    private:
+    /**--- 预设动画的内部持续调用**/
+    // void Fill(uint8_t R, uint8_t G, uint8_t B);
+    // void Breath(Color color_0, float period);
+    // void GradientFlow(Color color_0, Color color_1, float period);
+    // void Running(Color color, float width, float period);
+    // void Lit(Color color); // 供外部调用的Fill，省算力
+    // void Expand(Color color_0, float period);
 
+    public:
     /*---   一些预设的动画  ---*/
     void Fill(uint8_t R, uint8_t G, uint8_t B);
     void Breath(Color color_0, float period);
@@ -69,11 +81,11 @@ public:
     void Lit(Color color); // 供外部调用的Fill，省算力
     void Expand(Color color_0, float period);
 
-    static void _PulseFinishedCb(BSP::TIM::TimID tim, uint32_t channel, void* user_ctx);
+    static void _PulseFinishedCb(BSP::TIM::TimID tim, BSP::TIM::Channel channel, void* user_ctx);
 };
 
 template <size_t MaxLedNumsT>
-void LedWs2812<MaxLedNumsT>::Init(BSP::TIM::TimID tim, uint32_t Channel)
+void LedWs2812<MaxLedNumsT>::Init(BSP::TIM::TimID tim, BSP::TIM::Channel Channel)
 {
     // 检查输入参数合法性
     if (tim == nullptr || Channel == 0)
@@ -86,17 +98,18 @@ void LedWs2812<MaxLedNumsT>::Init(BSP::TIM::TimID tim, uint32_t Channel)
     this->tim_id = tim;
     this->Channel = Channel;
     this->LedNums = static_cast<uint8_t>(MaxLedNumsT);
+    BiasFactor = Vec3(1.0f, 1.0f, 1.0f);
+
+    // 初始化PWM
+    PwmMaxValue = BSP::TIM::GetAutoReload(this->tim_id);
+    HIGH_WS2812 = PwmMaxValue * 0.7f;
+    LOW_WS2812 = PwmMaxValue * 0.3f;
 
     // 灯带颜色默认全灭
     for (size_t i = 0; i < MaxLedNumsT; i++)
     {
         SetColor((int8_t)i, 0, 0, 0);
     }
-
-    // 初始化PWM
-    PwmMaxValue = BSP::TIM::GetAutoReload(this->tim_id);
-    HIGH_WS2812 = PwmMaxValue * 0.67f;
-    LOW_WS2812 = PwmMaxValue * 0.33f;
 
     // 注册 PWM 完成回调
     BSP::TIM::RegistPFCb(this->tim_id, this->Channel, _PulseFinishedCb, this);
@@ -108,9 +121,11 @@ void LedWs2812<MaxLedNumsT>::SetColor(int8_t Led_id, uint8_t R, uint8_t G, uint8
     while (Led_id > (LedNums - 1)) Led_id -= LedNums;
     while (Led_id < 0) Led_id += LedNums;
 
-    for (int i = 0; i < 8; i++) WS2812buf2send[Led_id][i] = (G & (1 << (7 - i)) ? (HIGH_WS2812) : LOW_WS2812);
-    for (int i = 8; i < 16; i++) WS2812buf2send[Led_id][i] = (R & (1 << (15 - i)) ? (HIGH_WS2812) : LOW_WS2812);
-    for (int i = 16; i < 24; i++) WS2812buf2send[Led_id][i] = (B & (1 << (23 - i)) ? (HIGH_WS2812) : LOW_WS2812);
+    size_t base = static_cast<size_t>(Led_id) * kBitsPerLed;
+
+    for (int i = 0; i < 8; i++) WS2812buf2send[base + i] = (G & (1 << (7 - i)) ? (HIGH_WS2812) : LOW_WS2812);
+    for (int i = 8; i < 16; i++) WS2812buf2send[base + i] = (R & (1 << (15 - i)) ? (HIGH_WS2812) : LOW_WS2812);
+    for (int i = 16; i < 24; i++) WS2812buf2send[base + i] = (B & (1 << (23 - i)) ? (HIGH_WS2812) : LOW_WS2812);
 }
 
 template <size_t MaxLedNumsT>
@@ -230,15 +245,13 @@ void LedWs2812<MaxLedNumsT>::Fill(uint8_t R, uint8_t G, uint8_t B)
 template <size_t MaxLedNumsT>
 void LedWs2812<MaxLedNumsT>::Upload()
 {
-    BSP::TIM::StartDma(tim_id, Channel, (uint32_t*)WS2812buf2send, LedNums * 24 + 1);
+    BSP::TIM::StartDma(tim_id, Channel, WS2812buf2send, LedNums * kBitsPerLed + kResetSlots);
 }
 
 template <size_t MaxLedNumsT>
-void LedWs2812<MaxLedNumsT>::_PulseFinishedCb(BSP::TIM::TimID tim, uint32_t channel, void* user_ctx)
+void LedWs2812<MaxLedNumsT>::_PulseFinishedCb(BSP::TIM::TimID tim, BSP::TIM::Channel channel, void* user_ctx)
 {
-    (void)user_ctx;
     BSP::TIM::StopDma(tim, channel);
 }
 
 #endif
-
