@@ -1,26 +1,65 @@
 #ifndef BSP_TIM_PWM_H
 #define BSP_TIM_PWM_H
-#include "bsp_halport.hpp"
 
-typedef struct BspTIMPWM_t
+#include <stddef.h>
+#include <stdint.h>
+
+namespace BSP
 {
-    TIM_HandleTypeDef *htim;        // PWM定时器句柄
-    uint32_t channel;               // PWM通道
-    float freq;                     // PWM频率
-    uint8_t enabled;                // PWM使能标志
+namespace TIM
+{
+    /// @brief 不透明指针，等价于框架内部的 TIM 句柄
+    struct OpaqueTim;
+    using TimID = OpaqueTim*;
+    
+    /**
+     * @brief PWM DMA发送完成回调 
+     * @param user_ctx 用户上下文
+     */
+    using PulseFinishedCallback = void(*)(TimID tim, uint32_t channel, void* user_ctx);
 
-    uint32_t auto_reload_value;     // 自动重装载寄存器的值（ARR）
-    uint32_t compare_value;         // 比较寄存器的值（CCR）
+    /// @brief 使能某个 TIM 通道的 PWM 输出
+    void StartPWM(TimID tim, uint32_t channel);
 
-    float duty;                     // PWM占空比
-    float (*GetFreq)(struct BspTIMPWM_t pwm_inst);             // 获取PWM频率的函数指针    
-}BspTIMPWM_TypeDef;
+    /// @brief 关闭某个 TIM 通道的 PWM 输出
+    void StopPWM(TimID tim, uint32_t channel);
 
+    /// @brief 设置某个 TIM 通道的占空比，范围会被钳制到 0.0~1.0
+    void SetDuty(TimID tim, uint32_t channel, float duty);
+    
+    /// @brief 获取该定时器当前 PWM 基频
+    float GetFreq(TimID tim);
 
-void BspTIMPWM_InstRegist(BspTIMPWM_TypeDef *tim_inst, TIM_HandleTypeDef *htim, uint32_t channel);
+    /// @brief 获取该定时器的自动重装载值 ARR
+    uint32_t GetAutoReload(TimID tim);
 
-void BspTIMPWM_SetDuty(BspTIMPWM_TypeDef *tim_inst, float duty);
-void BspTIMPWM_Enable(BspTIMPWM_TypeDef *tim_inst);
-void BspTIMPWM_Disable(BspTIMPWM_TypeDef *tim_inst);
+    /// @brief 获取某个 TIM 通道当前比较寄存器值 CCR
+    uint32_t GetCCR(TimID tim, uint32_t channel);
+
+    /**
+     * @brief 启动某个 TIM 通道的 PWM DMA 发送
+     * @return 是否成功启动
+     */
+    bool StartDma(TimID tim, uint32_t channel, const uint32_t* buf, size_t len);
+
+    /// @brief 停止某个 TIM 通道的 PWM DMA 发送
+    void StopDma(TimID tim, uint32_t channel);
+    
+    /**
+     * @brief 注册某个 TIM 通道的 PWM DMA完成回调
+     * @note 全称 Pulse Finished Callback
+     * @return 是否注册成功 
+     */
+    bool RegistPFCb(
+        TimID tim,
+        uint32_t channel,
+        PulseFinishedCallback cb,
+        void* user_ctx
+    );
+
+    /// @brief 注销某个 TIM 通道的 PWM DMA完成回调
+    void UnRegistPFCb(TimID tim, uint32_t channel);
+}
+}
 
 #endif

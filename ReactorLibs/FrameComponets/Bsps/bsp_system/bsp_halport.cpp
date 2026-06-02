@@ -24,8 +24,8 @@ namespace Hardware
     BSP::SPI::SpiID spi_imu_bus = nullptr;
     BSP::SPI::SpiID spi_ext_bus = nullptr;
 
-    /**-----    配置定时器    -----**/
-    TIM_HandleTypeDef* htim_led = nullptr;
+    /**-----    配置TIM资源    -----**/
+    BSP::TIM::TimID tim_led = nullptr;
 
     /**-----    配置 GPIO   -----**/
     
