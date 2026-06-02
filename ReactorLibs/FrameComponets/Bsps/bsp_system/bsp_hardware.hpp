@@ -2,6 +2,7 @@
 #include "bsp_uart.hpp"
 #include "bsp_can.hpp"
 #include "bsp_spi.hpp"
+#include "bsp_tim_pwm.hpp"
 
 namespace Hardware
 {
@@ -31,6 +32,10 @@ namespace Hardware
     extern BSP::SPI::SpiID spi_imu_bus;
     /// @brief 扩展 SPI 总线
     extern BSP::SPI::SpiID spi_ext_bus;
+
+    /***---------------     框架TIM资源    ---------------***/
+    /// @brief WS2812灯带所在定时器
+    extern BSP::TIM::TimID tim_led;
 
     
 }

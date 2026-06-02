@@ -24,8 +24,8 @@ void Hardware::Config_Hardwares()
     Hardware::spi_imu_bus = nullptr;
     Hardware::spi_ext_bus = nullptr;
 
-    /**-----    配置定时器    -----**/
-    Hardware::htim_led = nullptr;
+    /**-----    配置TIM资源    -----**/
+    Hardware::tim_led = nullptr;
 
     /**-----    配置 GPIO   -----**/
 
