@@ -11,21 +11,30 @@ namespace TIM
     /// @brief 不透明指针，等价于框架内部的 TIM 句柄
     struct OpaqueTim;
     using TimID = OpaqueTim*;
+
+    /// @brief TIM 通道枚举，值与 STM32 HAL TIM_CHANNEL_x 对齐
+    enum Channel : uint32_t
+    {
+        CH1 = 0x00000000U,  // TIM_CHANNEL_1
+        CH2 = 0x00000004U,  // TIM_CHANNEL_2
+        CH3 = 0x00000008U,  // TIM_CHANNEL_3
+        CH4 = 0x0000000CU,  // TIM_CHANNEL_4
+    };
     
     /**
      * @brief PWM DMA发送完成回调 
      * @param user_ctx 用户上下文
      */
-    using PulseFinishedCallback = void(*)(TimID tim, uint32_t channel, void* user_ctx);
+    using PulseFinishedCallback = void(*)(TimID tim, Channel channel, void* user_ctx);
 
     /// @brief 使能某个 TIM 通道的 PWM 输出
-    void StartPWM(TimID tim, uint32_t channel);
+    void StartPWM(TimID tim, Channel channel);
 
     /// @brief 关闭某个 TIM 通道的 PWM 输出
-    void StopPWM(TimID tim, uint32_t channel);
+    void StopPWM(TimID tim, Channel channel);
 
     /// @brief 设置某个 TIM 通道的占空比，范围会被钳制到 0.0~1.0
-    void SetDuty(TimID tim, uint32_t channel, float duty);
+    void SetDuty(TimID tim, Channel channel, float duty);
     
     /// @brief 获取该定时器当前 PWM 基频
     float GetFreq(TimID tim);
@@ -34,16 +43,16 @@ namespace TIM
     uint32_t GetAutoReload(TimID tim);
 
     /// @brief 获取某个 TIM 通道当前比较寄存器值 CCR
-    uint32_t GetCCR(TimID tim, uint32_t channel);
+    uint32_t GetCCR(TimID tim, Channel channel);
 
     /**
      * @brief 启动某个 TIM 通道的 PWM DMA 发送
      * @return 是否成功启动
      */
-    bool StartDma(TimID tim, uint32_t channel, const uint32_t* buf, size_t len);
+    bool StartDma(TimID tim, Channel channel, const uint32_t* buf, size_t len);
 
     /// @brief 停止某个 TIM 通道的 PWM DMA 发送
-    void StopDma(TimID tim, uint32_t channel);
+    void StopDma(TimID tim, Channel channel);
     
     /**
      * @brief 注册某个 TIM 通道的 PWM DMA完成回调
@@ -52,13 +61,13 @@ namespace TIM
      */
     bool RegistPFCb(
         TimID tim,
-        uint32_t channel,
+        Channel channel,
         PulseFinishedCallback cb,
         void* user_ctx
     );
 
     /// @brief 注销某个 TIM 通道的 PWM DMA完成回调
-    void UnRegistPFCb(TimID tim, uint32_t channel);
+    void UnRegistPFCb(TimID tim, Channel channel);
 }
 }
 
