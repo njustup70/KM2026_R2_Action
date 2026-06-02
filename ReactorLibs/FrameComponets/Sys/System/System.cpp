@@ -50,7 +50,7 @@ void SystemType::Run()
   /*--<       正式运行        >--*/
 
   // 管理 主灯带 状态（50Hz分频）
-  _Update_LedBand();
+  // _Update_LedBand();
 
   // 提供位置
   if (pos_source != nullptr)
