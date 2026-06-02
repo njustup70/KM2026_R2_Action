@@ -6,7 +6,7 @@ namespace
     struct CallbackSlot
     {
         BSP::TIM::TimID tim = nullptr;
-        uint32_t channel = 0;
+        BSP::TIM::Channel channel = BSP::TIM::CH1;
         BSP::TIM::PulseFinishedCallback callback = nullptr;
         void* user_ctx = nullptr;
     };
@@ -19,20 +19,20 @@ namespace
         return reinterpret_cast<TIM_HandleTypeDef*>(tim);
     }
 
-    static uint32_t ExtractActiveChannel(TIM_HandleTypeDef* htim)
+    static BSP::TIM::Channel ExtractActiveChannel(TIM_HandleTypeDef* htim)
     {
 #ifdef USE_REAL_HAL
         switch (htim->Channel)
         {
-            case HAL_TIM_ACTIVE_CHANNEL_1: return TIM_CHANNEL_1;
-            case HAL_TIM_ACTIVE_CHANNEL_2: return TIM_CHANNEL_2;
-            case HAL_TIM_ACTIVE_CHANNEL_3: return TIM_CHANNEL_3;
-            case HAL_TIM_ACTIVE_CHANNEL_4: return TIM_CHANNEL_4;
-            default: return 0;
+            case HAL_TIM_ACTIVE_CHANNEL_1: return BSP::TIM::CH1;
+            case HAL_TIM_ACTIVE_CHANNEL_2: return BSP::TIM::CH2;
+            case HAL_TIM_ACTIVE_CHANNEL_3: return BSP::TIM::CH3;
+            case HAL_TIM_ACTIVE_CHANNEL_4: return BSP::TIM::CH4;
+            default: return static_cast<BSP::TIM::Channel>(0);
         }
 #else
         (void)htim;
-        return 0;
+        return static_cast<BSP::TIM::Channel>(0);
 #endif
     }
 
@@ -63,7 +63,7 @@ namespace
 #endif
     }
 
-    static CallbackSlot* FindCallbackSlot(BSP::TIM::TimID tim, uint32_t channel)
+    static CallbackSlot* FindCallbackSlot(BSP::TIM::TimID tim, BSP::TIM::Channel channel)
     {
         for (size_t i = 0; i < kMaxCallbackSlots; ++i)
         {
@@ -80,7 +80,7 @@ namespace BSP
 {
 namespace TIM
 {
-    void StartPWM(TimID tim, uint32_t channel)
+    void StartPWM(TimID tim, Channel channel)
     {
         if (tim == nullptr || channel == 0) return;
 #ifdef USE_REAL_HAL
@@ -88,7 +88,7 @@ namespace TIM
 #endif
     }
 
-    void StopPWM(TimID tim, uint32_t channel)
+    void StopPWM(TimID tim, Channel channel)
     {
         if (tim == nullptr || channel == 0) return;
 #ifdef USE_REAL_HAL
@@ -96,7 +96,7 @@ namespace TIM
 #endif
     }
 
-    void SetDuty(TimID tim, uint32_t channel, float duty)
+    void SetDuty(TimID tim, Channel channel, float duty)
     {
         if (tim == nullptr || channel == 0) return;
 
@@ -136,7 +136,7 @@ namespace TIM
 #endif
     }
 
-    uint32_t GetCCR(TimID tim, uint32_t channel)
+    uint32_t GetCCR(TimID tim, Channel channel)
     {
         if (tim == nullptr || channel == 0) return 0;
 #ifdef USE_REAL_HAL
@@ -146,7 +146,7 @@ namespace TIM
 #endif
     }
 
-    bool StartDma(TimID tim, uint32_t channel, const uint32_t* buf, size_t len)
+    bool StartDma(TimID tim, Channel channel, const uint32_t* buf, size_t len)
     {
         if (tim == nullptr || channel == 0 || buf == nullptr || len == 0) return false;
 
@@ -159,7 +159,7 @@ namespace TIM
 #endif
     }
 
-    void StopDma(TimID tim, uint32_t channel)
+    void StopDma(TimID tim, Channel channel)
     {
         if (tim == nullptr || channel == 0) return;
 #ifdef USE_REAL_HAL
@@ -169,7 +169,7 @@ namespace TIM
 
     bool RegistPFCb(
         TimID tim,
-        uint32_t channel,
+        Channel channel,
         PulseFinishedCallback cb,
         void* user_ctx
     )
@@ -198,13 +198,13 @@ namespace TIM
         return false;
     }
 
-    void UnRegistPFCb(TimID tim, uint32_t channel)
+    void UnRegistPFCb(TimID tim, Channel channel)
     {
         CallbackSlot* slot = FindCallbackSlot(tim, channel);
         if (slot == nullptr) return;
 
         slot->tim = nullptr;
-        slot->channel = 0;
+        slot->channel = BSP::TIM::CH1;
         slot->callback = nullptr;
         slot->user_ctx = nullptr;
     }
@@ -213,7 +213,7 @@ namespace TIM
 
 extern "C" void HAL_TIM_PWM_PulseFinishedCallback(TIM_HandleTypeDef* htim)
 {
-    uint32_t channel = ExtractActiveChannel(htim);
+    BSP::TIM::Channel channel = ExtractActiveChannel(htim);
     if (channel == 0) return;
 
     BSP::TIM::TimID tim = reinterpret_cast<BSP::TIM::TimID>(htim);

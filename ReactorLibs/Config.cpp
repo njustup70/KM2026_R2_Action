@@ -24,7 +24,7 @@ void Hardware::Config_Hardwares()
     Hardware::spi_ext_bus = nullptr;
 
     /**-----    配置TIM资源    -----**/
-    Hardware::tim_led = nullptr;
+    Hardware::tim_led = ToID(&htim5);
 
     /**-----    配置 GPIO   -----**/
 
