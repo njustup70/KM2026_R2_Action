@@ -16,6 +16,8 @@ private:
     void _UpdateStore();
     void _SetRelayState();
 
+    int _block_cnt;
+    static constexpr int MAX_BLOCK_CNT = 2;
     bool _reached;
     bool _store_flag; // 是否开始存块
 
@@ -45,6 +47,7 @@ public:
     bool &reached = _reached;
 
     void Store(); // 开摩擦带存块
+    void Put();
 
     // 管理四个继电器负载的方法
     void Pump_Open();

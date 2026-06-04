@@ -7,6 +7,7 @@
 #include "HostPC.hpp"
 #include "PathChaser.hpp"
 #include "ActionChain.hpp"
+#include "start_to_SpearTable.hpp"
 
 /// @brief 所有的路径文件
 // #include "r2_area1_1.hpp"
@@ -44,16 +45,16 @@ void Waiting_for_Start(StateCore *core)
   APP::monit.LogInfo("Waiting for start...");
 
   // 取矛头先初始化
-  Seq::WaitUntil([](){
-    return APP::jaw.IsOrigined();
-  });
+  // Seq::WaitUntil([](){
+  //   return APP::jaw.IsOrigined();
+  // });
 
   APP::monit.LogInfo("Jaw Init OK.");
 
   // 等待工控机连接
-  Seq::WaitUntil([](){
-    return MOD::host_pc.IsOnline();
-  });
+  // Seq::WaitUntil([](){
+  //   return MOD::host_pc.IsOnline();
+  // });
 
   APP::monit.LogInfo("HostPC Online.");
 
@@ -76,11 +77,25 @@ void Waiting_for_Start(StateCore *core)
  * 
  * @param core 
  */
-bool PitchDown() {APP::jaw.PitchDown(); return true;}
+bool PitchDown() 
+{
+    APP::jaw.PitchDown();
+    Seq::Wait(0.5);
+    return true;
+}
 bool PitchUp() {APP::jaw.PitchUp(); return true;}
-bool OpenClaw() {APP::jaw.OpenClaw(); return true;}
+bool OpenClaw() 
+{
+  APP::jaw.OpenClaw(); 
+  Seq::Wait(1.0);
+  return true;
+}
 bool CloseClaw() {APP::jaw.CloseClaw(); return true;}
-// bool MoveToTable() {APP::MOVE::MoveToTargPos();}
+bool MoveToTable() 
+{
+  bool success = MOVE::MoveToTargPos(StartToTablePath);
+  return success;
+}
 
 void Walk_Fetch_TurnAround(StateCore *core)
 {
@@ -120,6 +135,9 @@ void Walk_Fetch_TurnAround(StateCore *core)
   bool success = ActionChain("Walk_Fetch_TurnAround")
     .Add("jaw_down", PitchDown)
     .Add("claw_open", OpenClaw)
+    .Add("move_to_table", MoveToTable)
+    .Add("fetch_spear", CloseClaw)
+    .Add("jaw_up", PitchUp)
     .Run();
 
 
@@ -129,4 +147,14 @@ void Walk_Fetch_TurnAround(StateCore *core)
   });
 }
 
+/**
+ * @brief 一区第二个动作，取到矛头后，转身走到对接位置，准备对接
+ * 
+ * @param core 
+ */
+
+// void Walk_To_Dock()
+// {
+
+// }
 

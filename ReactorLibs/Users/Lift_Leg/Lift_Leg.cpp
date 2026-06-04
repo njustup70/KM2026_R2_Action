@@ -24,8 +24,6 @@ void Lift_Leg::Start()
     front_pos_bias = -15;
 }
 
-
-
 void Lift_Leg::Update()
 {
 
