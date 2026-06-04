@@ -7,32 +7,44 @@
 #include "HostPC.hpp"
 #include "PathChaser.hpp"
 #include "ActionChain.hpp"
-#include "start_to_SpearTable.hpp"
+
 
 /// @brief 所有的路径文件
 // #include "r2_area1_1.hpp"
-
+#include "start_to_SpearTable.hpp"
+#include "table_to_dock.hpp"
 
 // 自动状态机
 StateGraph AutoGraph("Auto");
 static void Waiting_for_Start(StateCore *core);
-static void Walk_Fetch_TurnAround(StateCore *core);
-
+static void Walk_Fetch(StateCore *core);
+static void Walk_To_Dock(StateCore *core);
 
 void Config_AutoStateGraph()
 {
   StateBlock& s_wait = AutoGraph.AddState("wait");
   StateBlock& s_area1_1 = AutoGraph.AddState("area1_1");
+  StateBlock& s_area1_2 = AutoGraph.AddState("area1_2");
 
   s_wait.StateAction = Waiting_for_Start;
-  s_area1_1.StateAction = Walk_Fetch_TurnAround;
+  s_area1_1.StateAction = Walk_Fetch;
+  s_area1_2.StateAction = Walk_To_Dock;
 
   s_wait.LinkTo(&s_wait.Complete, s_area1_1);
-  s_area1_1.LinkTo(&s_area1_1.Complete, s_wait);
+  s_area1_1.LinkTo(&s_area1_1.Complete, s_area1_2);
+  s_area1_2.LinkTo(&s_area1_2.Complete, s_wait);
 
   // 向状态机核心注册
   APP::state_core.RegistGraph(AutoGraph);
-  APP::state_core.Enable(0); // 启动状态机核心，指定初始状态图为0号图
+  // APP::state_core.Enable(0); // 启动状态机核心，指定初始状态图为0号图
+}
+
+void SwitchToManualGraph()
+{
+  Seq::WaitUntil([](){
+    return MOD::farcon.button_second_half[1] == 1;
+  });
+  APP::state_core.SwitchGraph("Manual","resp");
 }
 
 /**
@@ -59,7 +71,7 @@ void Waiting_for_Start(StateCore *core)
   APP::monit.LogInfo("HostPC Online.");
 
   // 等待一段时间，确保一切稳定
-  Seq::Wait(5.0f);
+  Seq::Wait(2.0f);
 
   // 等待出发信号
   APP::monit.LogInfo("Ready to Go...");
@@ -83,21 +95,30 @@ bool PitchDown()
     Seq::Wait(0.5);
     return true;
 }
-bool PitchUp() {APP::jaw.PitchUp(); return true;}
+bool PitchUp() 
+{
+  APP::jaw.PitchUp(); 
+  Seq::Wait(0.5);
+  return true;
+}
 bool OpenClaw() 
 {
   APP::jaw.OpenClaw(); 
   Seq::Wait(1.0);
   return true;
 }
-bool CloseClaw() {APP::jaw.CloseClaw(); return true;}
+bool CloseClaw() 
+{
+  APP::jaw.CloseClaw(); 
+  return true;
+}
 bool MoveToTable() 
 {
   bool success = MOVE::MoveToTargPos(StartToTablePath);
   return success;
 }
 
-void Walk_Fetch_TurnAround(StateCore *core)
+void Walk_Fetch(StateCore *core)
 {
   // // 先放平爪子并张开
   // APP::jaw.PitchDown();
@@ -140,11 +161,11 @@ void Walk_Fetch_TurnAround(StateCore *core)
     .Add("jaw_up", PitchUp)
     .Run();
 
-
-  // 无限等待，因为后面可能有问题。。
-  Seq::WaitUntil([](){
-    return false;
-  });
+  core->GetCurState().Complete = true; // 设置状态完成标志，触发状态转移
+  // // 无限等待，因为后面可能有问题。。
+  // Seq::WaitUntil([](){
+  //   return false;
+  // });
 }
 
 /**
@@ -153,8 +174,24 @@ void Walk_Fetch_TurnAround(StateCore *core)
  * @param core 
  */
 
-// void Walk_To_Dock()
-// {
+bool MoveToDock()
+{
+  bool success = MOVE::MoveToTargPos(TableToDockPath);
+  return success;
+}
 
-// }
+void Walk_To_Dock(StateCore *core)
+{
+  bool success = ActionChain("Walk_To_Dock")
+    .Add("move_to_dock", MoveToDock)
+    .Run();
+
+  // // 无限等待，因为后面可能有问题。。
+  // Seq::WaitUntil([](){
+  //   return false;
+  // });
+
+  SwitchToManualGraph();
+  // core->GetCurState().Complete = true; // 设置状态完成标志，触发状态转移
+}
 

@@ -57,8 +57,8 @@ void MainFrameCpp()
   System.RegistApp(APP::chas);
   APP::chas.Enable();
 
-  // Config_StateGraph();
-  Config_AutoStateGraph();
+  Config_AutoStateGraph(); // Auto：0
+  Config_StateGraph(); // Manul：1
 }
 
 /***********    一些不通用的回调函数    ***********/

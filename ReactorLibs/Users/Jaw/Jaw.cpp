@@ -99,12 +99,14 @@ void Jaw::Start()
     //继电器
     Pin relay_pin = {'I', 2};
     relay.Init(relay_pin, Relay::HIGH_ON);
+
+    _enabled = true;
 }
 
 void Jaw::Update()
 {
     // 如果退出Debug，全部失能保障安全
-    if (System.out_from_debugmode)
+    if (System.out_from_debugmode || !_enabled)
     {
         motor_3508_hori.driver.Disable();
         motor_3508_vert.driver.Disable();
