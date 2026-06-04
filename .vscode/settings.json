@@ -24,8 +24,14 @@
     },
     "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools",
     "C_Cpp.intelliSenseEngine": "disabled",
+    "editor.quickSuggestions": {
+        "other": true,
+        "comments": true,
+        "strings": true
+    },
+    "editor.suggestOnTriggerCharacters": true,
     "clangd.arguments": [
-        "--compile-commands-dir=build/Debug",
+        "--compile-commands-dir=${workspaceFolder}/build/Debug",
         "--query-driver=C:/Program Files (x86)/Arm GNU Toolchain arm-none-eabi/*/bin/arm-none-eabi-gcc*,C:/Program Files (x86)/Arm GNU Toolchain arm-none-eabi/*/bin/arm-none-eabi-g++*",
         "--all-scopes-completion",
         "--completion-style=detailed",
