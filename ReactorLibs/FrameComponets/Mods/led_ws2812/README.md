@@ -5,11 +5,14 @@
 - 单点设色：`SetColor`
 - 整带填充：`Fill`
 - 预设效果：`Breath / GradientFlow / Running / Lit / Expand`
-- 下发刷新：`Upload`
+- 循环维护：`Handle`
+- 底层下发：`Upload`
 
-核心流程是两步：
-1. 先改内部颜色缓冲区（`SetColor/Fill/动画函数`）
-2. 再调用 `Upload()` 把缓冲区真正发到灯带
+推荐流程是两步：
+1. 在需要切换灯效的地方，单次调用 `Breath / GradientFlow / Running / Expand / Fill / Lit / SetColor`
+2. 在某个固定循环里持续调用 `Handle()`，由模块自动推进动画并按需上传
+
+`Upload()` 仍然保留，供需要直接控制底层发送时使用。
 
 ## 模板参数与内存
 类定义是模板：
@@ -55,17 +58,27 @@ void MyLightApp::Start()
 ```cpp
 void MyLightApp::Update()
 {
-    // App的 Update 默认是200Hz，可以自行分频
-    led.Upload();
+    led.Handle();
+}
+```
+### 在需要切换效果的地方单次调用
+```cpp
+void MyLightApp::Start()
+{
+    led.Init(Hardware::tim_led, TIM_CHANNEL_1);
+    led.BiasFactor = Vec3(1.0f, 1.0f, 1.0f);
+    led.Breath(Color(32, 128, 255), 2.0f);
 }
 ```
 #### 额外包装
 也可以根据自己的需求，再额外包装几层
 
-注意：动画函数只更新内存，不会自动发出；必须 `Upload()` 才会生效。
+注意：
+- 新推荐用法下，动画和静态效果都由 `Handle()` 自动下发，不需要每轮手写 `Upload()`
+- 如果你仍然想走底层直控方式，`Fill()/SetColor()/动画函数` 后手动 `Upload()` 依然可用
 
 ## 注意事项（很重要）
 1. `Init()` 只需调用一次，通常放 `Start()`。
-2. `Update()` 不要阻塞；灯效靠周期调用推进内部时间。
+2. `Handle()` 所在的外部循环不要阻塞；灯效靠周期调用推进内部时间。
 3. DMA完成回调已由 BSP `pwm` 子系统统一分发，支持按 `TimID + channel` 路由。
 4. `Upload()` 依赖定时器/PWM/DMA配置正确；若不亮，优先检查 CubeMX 的 TIM+DMA 配置和通道匹配。
