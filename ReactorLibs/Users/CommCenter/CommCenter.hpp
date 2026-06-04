@@ -14,6 +14,7 @@ class CommCenter : public Application
 private:
 
 public:
+    Vec3 slam_pos;
     static void SlamRxCallback(uint8_t func_code, const uint8_t *payload, uint8_t payload_len, void *user_ctx);
 };
 

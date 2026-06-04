@@ -55,6 +55,7 @@ class ChassisType : public Application
         bool _is_pos_locked = false;        // 常锁位置环
         bool _is_yaw_locked = false;        // 常锁姿态环
 
+        // bool _is_pc_debug = false;
         
         /// @param 四个电机的目标速度，单位m/s
         float _motor_spd[4];

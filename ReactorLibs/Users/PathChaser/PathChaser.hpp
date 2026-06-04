@@ -76,9 +76,9 @@ class PathChaserType : public Application
     const PathWaypoint* _waypoints = nullptr;
     uint16_t _waypoint_count = 0;
     
-    float _kp_pos = 2.6f;              // 位置误差增益
-    float _kp_yaw = 4.5f;              // 姿态误差增益
-    float _k_sync_time = 1.0f;         // 与时间参考同步增益
+    float _kp_pos = 2.4f;              // 位置误差增益
+    float _kp_yaw = 2.2f;              // 姿态误差增益
+    float _k_sync_time = 1.0f;         // 与时间参考同步增益s
     float _k_sync_meas = 0.45f;        // 与实测进度同步增益
     float _max_vel = 1.0f;             // 合速度上限，单位m/s
     float _max_omega = 3.14f;           // 角速度上限，单位rad/s

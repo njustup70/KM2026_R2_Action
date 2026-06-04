@@ -41,7 +41,7 @@ void ChassisType::Start()
     
     // 发送重置底盘和腿的指令，包括电机和里程计
     uint8_t payload[1] = {0x01}; 
-    MOD::board_can.SendTask(MOD::C_sub_ctrl_board_id, 4, payload, 1, false); 
+    MOD::board_can.SendTask(MOD::C_sub_ctrl_board_id, 4, payload, sizeof(payload), false); 
 }
 
 /**
@@ -53,10 +53,30 @@ void _SendSpd(Vec3 Spd)
     uint8_t payload[6];
     const float scale = 1000.0f;
 
+    // 限幅
+    Spd.Limit(1.0f);
+
     StdMath::PackFloatToInt16(&payload[0], Spd.x, scale);
     StdMath::PackFloatToInt16(&payload[2], Spd.y, scale);
     StdMath::PackFloatToInt16(&payload[4], Spd.z, scale);
-    MOD::board_can.SendTask(MOD::C_sub_ctrl_board_id, 1, payload, 6, false);
+
+    MOD::board_can.SendTask(MOD::C_sub_ctrl_board_id, 1, payload, sizeof(payload), false);
+}
+
+/**
+ * @brief 向底盘发送速度指令
+ */
+void _SendGes(Vec3 Ges) //有bug
+{
+    // 6 字节 uint8，完全匹配接收端格式
+    uint8_t payload[6];
+    const float scale = 1000.0f;
+
+    StdMath::PackFloatToInt16(&payload[0], Ges.x, scale);
+    StdMath::PackFloatToInt16(&payload[2], Ges.y, scale);
+    StdMath::PackFloatToInt16(&payload[4], Ges.z, scale);
+
+    MOD::board_can.SendTask(MOD::C_sub_ctrl_board_id, 2, payload, sizeof(payload), false);
 }
 
 void ChassisType::Update() 
@@ -66,7 +86,7 @@ void ChassisType::Update()
     if(System.out_from_debugmode)
     {
         uint8_t payload[1] = {0x01}; // 发送失能指令
-        MOD::board_can.SendTask(MOD::C_sub_ctrl_board_id, 3, payload, 1, false); // 发送停止指令
+        MOD::board_can.SendTask(MOD::C_sub_ctrl_board_id, 3, payload, sizeof(payload), false); // 发送停止指令
     }
 
     // 工控机的刷新先放这里啊，只是图方便，不代表这么做是对的
@@ -170,6 +190,7 @@ void ChassisType::RotateAt(float yaw)
 {
     targ_ges.z = yaw;
     _rotating = true;
+
 }
 
 /**

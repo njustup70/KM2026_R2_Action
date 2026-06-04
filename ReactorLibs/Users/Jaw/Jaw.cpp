@@ -291,6 +291,11 @@ void Jaw::PitchDown()
     motor_2006.SetPos(_pitch_origin_code - (JawConst::_pitch_max_travel_code / 2 - 5000));
 }
 
+// void Jaw::Dock()
+// {
+
+// }
+
 
 /**---------------------------------    调零和前馈    ----------------------------------**/
 void Jaw::_GetHoriOrigin()

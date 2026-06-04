@@ -24,11 +24,17 @@ void CommCenter::SlamRxCallback(uint8_t func_code, const uint8_t *payload, uint8
     using namespace APP;
     if (func_code == HostPC::FuncCode::slam_pos)
     {
-        Vec3 slam_pos;
-        slam_pos.FromBytes(payload);
+        // Vec3 slam_pos;
+        comm_center.slam_pos.FromBytes(payload);
 
-        // 更新系统位姿
-        System.position = slam_pos;
+        // 车体坐标系->世界坐标系转换直接用偏移了
+        // Vec3 bias{0.39f, 4.610f, 0.0f};
+
+        // comm_center.slam_pos.x += bias.x;
+        // comm_center.slam_pos.y += bias.y;
+
+        // // 更新系统位姿
+        // System.position = comm_center.slam_pos;
 
         // // 发送SLAM坐标数据转发给底盘
         // uint8_t data[6];

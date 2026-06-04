@@ -75,6 +75,11 @@ void GetBlock::Start()
     // 小黄（检测物块到位）配置
     _pin_xiaohuang = {'E', 4};
     xiaohuang.Init(_pin_xiaohuang);
+
+    // 初始化标志位、变量
+    _reached = false;
+    _store_flag = false;
+    _block_cnt = 0;
 }
 
 void GetBlock::Update()
@@ -118,6 +123,12 @@ void GetBlock::_UpdateStore()
 {
     if(xiaohuang.Read()) // 检测到物块到位了
     {
+        // 如果是存块过程中触发小黄才算存入，避免误触发
+        if(_store_flag)
+        {
+            _block_cnt++;
+            APP::monit.LogInfo("[GetBlock]: block stored, current cnt: %d", _block_cnt);
+        }
         // 停止存块
         _store_flag = false;
         motor_2006_fric.SetSpd(0);
@@ -128,6 +139,24 @@ void GetBlock::_UpdateStore()
         motor_2006_fric.SetSpd(15 * MotorDJIConst::redu_M2006 * 60.0f / (2*PI) );
         motor_s2325.SetVel(15);
     }
+}
+
+// 存块
+void GetBlock::Store()
+{
+    // 存块前检查存储是否已满
+    if(_block_cnt >= MAX_BLOCK_CNT)
+    {
+        APP::monit.LogWarning("[GetBlock]: storage full (current: %d, max: %d)", _block_cnt, MAX_BLOCK_CNT);
+        return;
+    }
+    _store_flag = true;
+}
+
+// 放块
+void GetBlock::Put()
+{
+    
 }
 
 void GetBlock::_SetRelayState()
@@ -143,11 +172,6 @@ void GetBlock::_SetRelayState()
             _relay[i].Off();
         }
     }
-}
-
-void GetBlock::Store()
-{
-    _store_flag = true;
 }
 
 void GetBlock::Pump_Open()
