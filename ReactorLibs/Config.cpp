@@ -12,8 +12,8 @@ void Hardware::Config_Hardwares()
     Hardware::hcan_sub = ToID(&hcan2);
  
     /**-----    配置串口    -----**/
-    Hardware::huart_host = ToID(&huart2);
-    Hardware::huart_farcon = ToID(&huart3);
+    Hardware::huart_host = ToID(&huart3);
+    Hardware::huart_farcon = ToID(&huart2);
     Hardware::huart_odom = ToID(&huart6);
     Hardware::huart_log = ToID(&huart7);
     Hardware::huart_other = nullptr;

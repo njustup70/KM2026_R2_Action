@@ -6,6 +6,7 @@
 #include "Get_Block.hpp"
 #include "PathChaser.hpp"
 #include "CommCenter.hpp"
+#include "StateCore.hpp"
 
 HostPC& host_pc_debug = HostPC::GetInstance();
 Farcon& farcon_debug = Farcon::GetInstance();
@@ -15,3 +16,4 @@ ChassisType& chas_debug = ChassisType::GetInstance();
 GetBlock& get_block_debug = GetBlock::GetInstance();
 PathChaserType& path_chaser_debug = PathChaserType::GetInstance();
 CommCenter& comm_center_debug = CommCenter::GetInstance();
+StateCore& state_core_debug = StateCore::GetInstance();

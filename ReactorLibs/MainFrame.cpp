@@ -57,7 +57,7 @@ void MainFrameCpp()
   System.RegistApp(APP::chas);
   APP::chas.Enable();
 
-  Config_AutoStateGraph(); // Auto：0
+  // Config_AutoStateGraph(); // Auto：0
   Config_StateGraph(); // Manul：1
 }
 

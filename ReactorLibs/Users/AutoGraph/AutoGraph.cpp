@@ -37,16 +37,16 @@ void Config_AutoStateGraph()
 
   // 向状态机核心注册
   APP::state_core.RegistGraph(AutoGraph);
-  // APP::state_core.Enable(0); // 启动状态机核心，指定初始状态图为0号图
+  APP::state_core.Enable(0); // 启动状态机核心，指定初始状态图为0号图
 }
 
-void SwitchToManualGraph()
-{
-  Seq::WaitUntil([](){
-    return MOD::farcon.button_second_half[1] == 1;
-  });
-  APP::state_core.SwitchGraph("Manual","resp");
-}
+// void SwitchToManualGraph()
+// {
+//   Seq::WaitUntil([](){
+//     return MOD::farcon.button_second_half[1] == 1;
+//   });
+//   APP::state_core.SwitchGraph("Manual","resp");
+// }
 
 /**
  * @brief 刚开机时，等待出发信号的状态
@@ -58,16 +58,16 @@ void Waiting_for_Start(StateCore *core)
   APP::monit.LogInfo("Waiting for start...");
 
   // 取矛头先初始化
-  // Seq::WaitUntil([](){
-  //   return APP::jaw.IsOrigined();
-  // });
+  Seq::WaitUntil([](){
+    return APP::jaw.IsOrigined();
+  });
 
   APP::monit.LogInfo("Jaw Init OK.");
 
   // 等待工控机连接
-  // Seq::WaitUntil([](){
-  //   return MOD::host_pc.IsOnline();
-  // });
+  Seq::WaitUntil([](){
+    return MOD::host_pc.IsOnline();
+  });
 
   APP::monit.LogInfo("HostPC Online.");
 
@@ -121,39 +121,6 @@ bool MoveToTable()
 
 void Walk_Fetch(StateCore *core)
 {
-  // // 先放平爪子并张开
-  // APP::jaw.PitchDown();
-  // APP::jaw.OpenClaw();
-
-  // // 首先移动到矛台前
-  // APP::monit.LogInfo("Moving to Spear-Table...");
-  
-  // // APP::path_chaser.ChasePath(Path_R2_Area1_1);
-
-  // // 等待路径跟踪完成
-  // // while(!APP::path_chaser.IsFinished())
-  // // {
-  // //   // 获取理论移动速度（相对车体坐标系的）
-  // //   // Vec3 speed_vec = APP::path_chaser.GetCmdBody();
-  // //   Vec3 speed_vec = Vec3(0, 0, 0);
-
-  // //   APP::chas.Move(speed_vec);
-  // //   Seq::Wait(0.005f);  // 200Hz标准更新频率
-  // // }
-
-  // // 等待路径跟踪到矛台
-  // // MOVE::MoveToTargPos(Path_R2_Area1_Spear_Table);
-
-  // // 接近矛台后，执行取矛动作
-  // APP::monit.LogInfo("Arrived, Try to fetch.");
-  // APP::jaw.CloseClaw();
-
-  // // 取到矛头，移动到对接位置，准备对接
-  // APP::jaw.PitchUp();
-  // // MOVE::MoveToTargPos(Path_R2_Area1_Dock);
-  // APP::monit.LogInfo("Fetch OK, Wait for Dock");
-
-
   bool success = ActionChain("Walk_Fetch_TurnAround")
     .Add("jaw_down", PitchDown)
     .Add("claw_open", OpenClaw)
@@ -187,12 +154,11 @@ void Walk_To_Dock(StateCore *core)
     .Add("move_to_dock", MoveToDock)
     .Run();
 
-  // // 无限等待，因为后面可能有问题。。
-  // Seq::WaitUntil([](){
-  //   return false;
-  // });
-
-  SwitchToManualGraph();
+  // 无限等待，因为后面可能有问题。。
+  Seq::WaitUntil([](){
+    return false;
+  });
   // core->GetCurState().Complete = true; // 设置状态完成标志，触发状态转移
+  // SwitchToManualGraph();
 }
 
