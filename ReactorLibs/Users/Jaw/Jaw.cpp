@@ -441,7 +441,7 @@ static float C620HoriFriction(const FeedforwardInfo& info)
 
     if (info.velocity > kVelEpsMax)
         return kTargetCurrent;
-    if (info.velocity > kVelEpsMin)
+    if (info.velocity > kVelEpsMin) 
     {
         float ratio = (info.velocity - kVelEpsMin) / (kVelEpsMax - kVelEpsMin);
         return kTargetCurrent * ratio;

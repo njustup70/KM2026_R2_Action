@@ -15,7 +15,7 @@ namespace Hardware
     /**-----    配置串口    -----**/
     BSP::UART::UartID huart_host = nullptr;
     BSP::UART::UartID huart_farcon = nullptr;
-    BSP::UART::UartID huart_odom = nullptr;
+    BSP::UART::UartID huart_sick = nullptr;
     BSP::UART::UartID huart_other = nullptr;
     BSP::UART::UartID huart_log = nullptr;     
 

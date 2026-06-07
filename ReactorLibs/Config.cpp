@@ -14,7 +14,7 @@ void Hardware::Config_Hardwares()
     /**-----    配置串口    -----**/
     Hardware::huart_host = ToID(&huart3);
     Hardware::huart_farcon = ToID(&huart2);
-    Hardware::huart_odom = ToID(&huart6);
+    Hardware::huart_sick = ToID(&huart6);
     Hardware::huart_log = ToID(&huart7);
     Hardware::huart_other = nullptr;
  

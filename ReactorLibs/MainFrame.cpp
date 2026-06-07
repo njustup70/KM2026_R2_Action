@@ -15,6 +15,7 @@
 #include "ManualGraph.hpp"
 #include "board.hpp"
 #include "CommCenter.hpp"
+#include "SickPC.hpp"
 
 StateGraph graph("LoopGraph");
 
@@ -56,6 +57,12 @@ void MainFrameCpp()
   // 底盘启动s
   System.RegistApp(APP::chas);
   APP::chas.Enable();
+
+  System.RegistApp(APP::leg);
+
+  System.RegistApp(APP::get_block);
+
+  System.RegistApp(APP::sick_pc);
 
   // Config_AutoStateGraph(); // Auto：0
   Config_StateGraph(); // Manul：1
