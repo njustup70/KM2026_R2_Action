@@ -44,7 +44,7 @@ void MainFrameCpp()
   // 启动通信中心
   System.RegistApp(APP::comm_center);
 
-  // 启动矛头控制应用
+  // 启动矛头控制应用s
   System.RegistApp(APP::jaw);
 
   // 启动伸缩腿控制
