@@ -16,7 +16,8 @@ namespace Hardware
     extern BSP::UART::UartID huart_other;
     /// @brief 日志串口
     extern BSP::UART::UartID huart_log;     // 专用日志串口（如果需要）
-
+    /// @brief 光通信串口
+    extern BSP::UART::UartID huart_optical;
     /***---------------     框架CAN    ---------------***/
     /// @brief 框架所用CAN句柄
     extern BSP::CAN::CanID hcan_main;

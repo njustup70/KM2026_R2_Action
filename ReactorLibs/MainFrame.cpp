@@ -16,6 +16,7 @@
 #include "board.hpp"
 #include "CommCenter.hpp"
 #include "SickPC.hpp"
+#include "optical_comm.hpp"
 
 StateGraph graph("LoopGraph");
 
@@ -38,7 +39,8 @@ void MainFrameCpp()
 
   // // 注册工控机接收SLAM的回调
   // MOD::host_pc.Regist(HostPC::FuncCode::slam_pos, SlamRxCallback, nullptr);
-
+  // 初始化光通信模块
+  // MOD::optical_comm.Init(Hardware::huart_optical);
   System.SetPositionSource(APP::comm_center.slam_pos);
   // System.SetPositionSource(APP::chas.chas_odom.pos); // yaw太不准了，用不了
 
@@ -46,7 +48,7 @@ void MainFrameCpp()
   System.RegistApp(APP::comm_center);
 
   // 启动矛头控制应用s
-  System.RegistApp(APP::jaw);
+  // System.RegistApp(APP::jaw);
 
   // 启动伸缩腿控制
   // System.RegistApp(APP::leg);
@@ -58,11 +60,9 @@ void MainFrameCpp()
   System.RegistApp(APP::chas);
   APP::chas.Enable();
 
-  System.RegistApp(APP::leg);
+  // System.RegistApp(APP::get_block);
 
-  System.RegistApp(APP::get_block);
-
-  System.RegistApp(APP::sick_pc);
+  // System.RegistApp(APP::sick_pc);
 
   // Config_AutoStateGraph(); // Auto：0
   Config_StateGraph(); // Manul：1
