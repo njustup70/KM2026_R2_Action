@@ -77,19 +77,20 @@ class PathChaserType : public Application
     uint16_t _waypoint_count = 0;
     
     float _kp_pos = 1.5f;              // 位置误差增益
-    float _kp_yaw = 1.0f;              // 姿态误差增益
+    float _kp_yaw = 0.5f;              // 姿态误差增益
     float _k_sync_time = 0.5f;         // 与时间参考同步增益s
     float _k_sync_meas = 0.5f;        // 与实测进度同步增益
-    float _max_vel = 1.0f;             // 合速度上限，单位m/s
-    float _max_omega = 2.0f;           // 角速度上限，单位rad/s
+    float _max_vel = 1.5f;             // 合速度上限，单位m/s
+    float _max_omega = 3.14f;           // 角速度上限，单位rad/s
     float _max_pos_fb = 0.15f;         // 位置反馈速度上限，单位m/s
     float _max_yaw_fb = 0.5f;         // 姿态反馈角速度上限，单位rad/s
-    float _max_s_dot = 0.8f;          // 目标进度速度上限，单位m/s
-    float _min_s_dot = -0.01f;         // 目标进度速度下限，单位m/s
-    float _pos_tol = 0.01f;            // 终点位置阈值，单位m
-    float _yaw_tol = 0.03f;            // 终点姿态阈值，单位rad
-    float _finish_time_margin = 0.3f; // 完成时间容差，单位s
-    uint16_t _finish_hold_ticks = 10;  // 完成保持周期，24*5ms=120ms
+    float _yaw_ff_degrade_range = 0.3f;  // yaw误差在此范围内前馈线性衰减到0，单位rad
+    float _max_s_dot = 1.20f;          // 目标进度速度上限，单位m/s
+    float _min_s_dot = -0.15f;         // 目标进度速度下限，单位m/s
+    float _pos_tol = 0.02f;            // 终点位置阈值，单位m
+    float _yaw_tol = 0.05f;            // 终点姿态阈值，单位rad
+    float _finish_time_margin = 0.05f; // 完成时间容差，单位s
+    uint16_t _finish_hold_ticks = 15;  // 完成保持周期，24*5ms=120ms
 
     uint16_t _near_seg_idx = 0;        // 上一次最近段索引
     float _path_total_len = 0.0f;      // 路径总长度（SetPath时预计算）
