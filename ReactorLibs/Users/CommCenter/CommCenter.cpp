@@ -1,5 +1,7 @@
 #include "CommCenter.hpp"
 #include "HostPC.hpp"   
+#include "Sick.hpp"
+#include "optical_comm.hpp"
 
 CommCenter& APP::comm_center = CommCenter::GetInstance();
 
@@ -9,11 +11,45 @@ void CommCenter::Start()
 {
     // 注册工控机接收SLAM的回调
     MOD::host_pc.Regist(HostPC::FuncCode::slam_pos, SlamRxCallback, nullptr);
+
+    // 注册sick串口
+    MOD::sick.Init(Hardware::huart_sick, 0x03); // 使用通道0和1
 }
 
 void CommCenter::Update()
 {
+    /*************** sick ****************/
+    static int send_cnt = 0;
+    if (++send_cnt >= 4) // 50hz
+    {
+        send_cnt = 0;
+        // 发送SICK数据给工控机
+        _sick_ch0_data = MOD::sick.GetSingleChannel(0); // 留作调试时看
+        MOD::host_pc.SendSickData(MOD::sick.GetData().raw_frame);
+    }
+    // 发送SICK纠正指令
+    if(_is_send_sick_correction)
+    {
+        MOD::host_pc.SendSlamCorrectionCmd();
+        _is_send_sick_correction = false; // 重置标志位
+    }
 
+    /*************** KFS values ****************/
+    if(_send_kfs)
+    {
+        // 这里可以添加发送KFS的逻辑，例如：
+        // Vec3 kfs_values = ...; // 获取KFS数据
+        // uint8_t payload[12];
+        // kfs_values.ToBytes(payload);
+    }
+}
+
+/**
+ * @brief 触发sick纠正指令发送
+ */
+void CommCenter::SlamCorrection()
+{
+    _is_send_sick_correction = true;
 }
 
 /**
