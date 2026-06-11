@@ -13,6 +13,8 @@
 #include "start_to_table.hpp"
 #include "table_to_dock.hpp"
 
+static void Response_Button(StateCore *core);
+
 // 自动状态机
 StateGraph AutoGraph("Auto");
 static void RequestTakeover();
@@ -25,14 +27,19 @@ void Config_AutoStateGraph()
   StateBlock& s_wait = AutoGraph.AddState("wait");
   StateBlock& s_area1_1 = AutoGraph.AddState("area1_1");
   StateBlock& s_area1_2 = AutoGraph.AddState("area1_2");
+  StateBlock& s_manul = AutoGraph.AddState("manual");
 
   s_wait.StateAction = Waiting_for_Start;
   s_area1_1.StateAction = Walk_Fetch;
   s_area1_2.StateAction = Walk_To_Dock;
+  s_manul.StateAction = Response_Button;
 
   s_wait.LinkTo(&s_wait.Complete, s_area1_1);
   s_area1_1.LinkTo(&s_area1_1.Complete, s_area1_2);
   s_area1_2.LinkTo(&s_area1_2.Complete, s_wait);
+
+  s_area1_2.LinkTo(&s_area1_2.Complete, s_manul);
+  s_manul.LinkTo(&s_manul.Complete, s_wait);
 
   // 注册全局动作：在每个状态执行周期前检查遥控器接管按钮
   AutoGraph.SetGlobalAct([](StateCore *core) {
@@ -44,7 +51,7 @@ void Config_AutoStateGraph()
 
   // 向状态机核心注册
   APP::state_core.RegistGraph(AutoGraph);
-  // APP::state_core.Enable(0); // 启动状态机核心，指定初始状态图为0号图
+  APP::state_core.Enable(0); // 启动状态机核心，指定初始状态图为0号图
 }
 
 // void SwitchToManualGraph()
@@ -137,6 +144,7 @@ void Waiting_for_Start(StateCore *core)
   // 等待出发信号
   APP::monit.LogInfo("Ready to Go...");
 
+  APP::jaw.CloseClaw(); 
   // 等待遥控器的出发指令
   Seq::WaitUntil([](){
     return MOD::farcon.button_second_half[0] == 1;
@@ -210,19 +218,116 @@ bool MoveToDock()
   return success;
 }
 
+bool StartDock()
+{
+  // 等一会
+  Seq::Wait(1.0f);
+  // 开始接收对接偏移
+  APP::jaw.SetTrackMode(true);
+  return true;
+}
+
 void Walk_To_Dock(StateCore *core)
 {
   if (ExecuteTakeover()) return;
   bool success = ActionChain("Walk_To_Dock")
     .Add("move_to_dock", MoveToDock)
+    .Add("start_dock",StartDock)
     .Run();
 
   ExecuteTakeover();
   // 无限等待，因为后面可能有问题。。
-  Seq::WaitUntil([](){
-    return false;
-  });
-  // core->GetCurState().Complete = true; // 设置状态完成标志，触发状态转移
+  // Seq::WaitUntil([](){
+  //   return false;
+  // });
+  core->GetCurState().Complete = true; // 设置状态完成标志，触发状态转移
   // SwitchToManualGraph();
+}
+
+void Response_Button(StateCore *core)
+{
+    if (MOD::farcon.button_first_half[0] == 1)
+    {
+        APP::jaw.PitchDown();
+    }
+    
+    if (MOD::farcon.button_first_half[1] == 1)
+    {
+        APP::jaw.PitchUp();
+    }
+
+    if(APP::chas.control_mode == APP::chas.FARCON)
+    {
+        float max_velo = 1.5f;
+        Vec3 vel;
+        // 计算速度
+        vel.x = (-MOD::farcon.jys_value[3] / 100.0f) * max_velo; // 最大速度0.5m/s
+        vel.y = (-MOD::farcon.jys_value[2] / 100.0f) * max_velo;  // 最大速度0.5m/s
+        vel.z = (-MOD::farcon.jys_value[0] / 100.0f) * max_velo;  // 最大角速度1.0rad/s
+
+        if (vel.Length() > 0.03f)
+        {
+        // 向底盘发送移动指令
+            APP::chas.Move(vel);
+        }
+    }
+
+    // 切换控制模式
+    if(MOD::farcon.toggle[0]) // 最左上拨杆拨为1
+    {
+        APP::chas.control_mode = MOD::farcon.toggle[1] ? APP::chas.HOST : APP::chas.FARCON; // 左2拨杆也拨为1就是上位机控制，否则遥控器
+    }
+    else  
+    {
+        APP::chas.control_mode = MOD::farcon.toggle[1] ? APP::chas.API : APP::chas.OPEN;
+    } 
+
+    // 检测 9 号键，如果按下了，就开关爪子（每1s最多触发一次）
+    static float last_trigger_time = 0;
+    if (MOD::farcon.button_second_half[0] == 1 && DWT_GetTimeline_Sec() - last_trigger_time > 1.0f)
+    {
+        static bool claw_open = false;
+        if (claw_open)
+        {
+            APP::jaw.CloseClaw();
+        }
+        else
+        {
+            APP::jaw.OpenClaw();
+        }
+        APP::monit.LogInfo("Claw %s", claw_open ? "Closed" : "Opened");
+        claw_open = !claw_open;
+        last_trigger_time = DWT_GetTimeline_Sec();
+    }
+    else if (MOD::farcon.button_second_half[1] == 1)
+    {
+      APP::monit.LogInfo("In Cooldown.");  
+    }
+
+    // 限制每 0.05 秒最多触发一次
+    // static float trigger_cnt = 0;
+    // if (DWT_GetTimeline_Sec() - trigger_cnt > 0.05f)
+    // {
+    //   if (MOD::farcon.button_first_half[2] == 1)
+    //   {
+    //     APP::leg.ChangeFrontPos(3);
+    //   }
+
+    //   if (MOD::farcon.button_first_half[3] == 1)
+    //   {
+    //     APP::leg.ChangeFrontPos(-3);
+    //   }
+
+    //   if (MOD::farcon.button_first_half[6] == 1)
+    //   {
+    //     APP::leg.ChangeBackPos(3);
+    //   }
+
+    //   if (MOD::farcon.button_first_half[7] == 1)
+    //   {
+    //     APP::leg.ChangeBackPos(-3);
+    //   }
+    //   trigger_cnt = DWT_GetTimeline_Sec();
+    // }
 }
 

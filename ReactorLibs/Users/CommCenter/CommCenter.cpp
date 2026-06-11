@@ -2,10 +2,12 @@
 #include "HostPC.hpp"   
 #include "Sick.hpp"
 #include "optical_comm.hpp"
+#include "string.h"
 
 CommCenter& APP::comm_center = CommCenter::GetInstance();
 
 void SlamRxCallback(uint8_t func_code, const uint8_t *payload, uint8_t payload_len, void *user_ctx);
+void OpticalRxCallback(uint8_t *data, uint8_t len);
 
 void CommCenter::Start()
 {
@@ -14,6 +16,10 @@ void CommCenter::Start()
 
     // 注册sick串口
     MOD::sick.Init(Hardware::huart_sick, 0x03); // 使用通道0和1
+    // 初始化光通信模块
+    // MOD::optical_comm.Init(Hardware::huart_optical);
+    // // 注册光通信数据回调（如果需要）
+    // MOD::optical_comm.RegisterDataCallback(OpticalRxCallback);
 }
 
 void CommCenter::Update()
@@ -82,4 +88,13 @@ void CommCenter::SlamRxCallback(uint8_t func_code, const uint8_t *payload, uint8
 
         // MOD::board_can.SendTask(MOD::C_sub_ctrl_board_id, 0, data, 6, false);
     }
+}
+
+void CommCenter::OpticalRxCallback(uint8_t *data, uint8_t len)
+{
+    uint8_t kfs_values[12];
+    memcpy(kfs_values, data, len > 12 ? 12 : len);
+
+    // 发送给上位机
+    MOD::host_pc.SendKFSData(kfs_values);
 }
