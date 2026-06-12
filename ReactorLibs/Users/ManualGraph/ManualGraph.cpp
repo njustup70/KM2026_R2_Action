@@ -33,9 +33,9 @@ void Waiting_for_Start(StateCore *core)
 {
   APP::monit.LogInfo("I'm here...");
 
-  Seq::WaitUntil([](){
-    return APP::jaw.IsOrigined();
-  });
+//   Seq::WaitUntil([](){
+//     return APP::jaw.IsOrigined();
+//   });
 
   Seq::Wait(2.0f);
 
@@ -83,6 +83,16 @@ void Response_Button(StateCore *core)
     {
         APP::chas.control_mode = MOD::farcon.toggle[1] ? APP::chas.API : APP::chas.OPEN;
     } 
+
+    // 是否锁yaw
+    if(MOD::farcon.toggle[3]) // 最右上拨杆拨为1
+    {
+        APP::chas.LockYaw(true);
+    }
+    else
+    {
+        APP::chas.LockYaw(false);
+    }
 
     // 检测 9 号键，如果按下了，就开关爪子（每1s最多触发一次）
     static float last_trigger_time = 0;

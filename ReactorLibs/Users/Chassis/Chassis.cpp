@@ -92,6 +92,20 @@ void ChassisType::Update()
     // 工控机的刷新先放这里啊，只是图方便，不代表这么做是对的
     MOD::host_pc.TickLoop();
     
+    if (_is_yaw_locked && _safe_lock_tick > 0)
+    {
+        float yaw_err = _locked_yaw - System.position.z;
+        // 归一化到 [-PI, PI]
+        yaw_err = atan2f(sinf(yaw_err), cosf(yaw_err));
+        // P 控制
+        float omega = yaw_err * _yaw_lock_gain;
+        // 限幅
+        if (omega > _max_omega) omega = _max_omega;
+        if (omega < -_max_omega) omega = -_max_omega;
+        // 覆盖 z 通道，不干扰 x/y
+        targ_speed.z = omega;
+    }
+
     if (_safe_lock_tick > 0)
     {
         // 将速度指令发送到 C板
@@ -107,6 +121,23 @@ void ChassisType::Update()
 
     // 更新安全锁
     _safe_lock_tick -= 5;
+}
+
+void ChassisType::LockYaw(bool enable)
+{
+    if (enable == _is_yaw_locked)
+        return;
+
+    _is_yaw_locked = enable;
+    if (enable)
+    {
+        _locked_yaw = System.position.z;
+        APP::monit.LogInfo("[Chassis] Yaw locked at %.3f rad", _locked_yaw);
+    }
+    else
+    {
+        APP::monit.LogInfo("[Chassis] Yaw unlocked");
+    }
 }
 
 void ChassisType::_UploadSpeed()
