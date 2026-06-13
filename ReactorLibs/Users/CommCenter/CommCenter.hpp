@@ -15,10 +15,13 @@ private:
 
     float _sick_ch0_data; // sick测距值（ch0）
 
+
 public:
     Vec3 slam_pos;
+    uint8_t kfs_values[12];
     void SlamCorrection(); // 触发Sick纠正
     static void SlamRxCallback(uint8_t func_code, const uint8_t *payload, uint8_t payload_len, void *user_ctx);
+    static void OpticalRxCallback(uint8_t func_code, const uint8_t* payload, uint8_t payload_len, void* user_ctx);
 };
 
 namespace APP
