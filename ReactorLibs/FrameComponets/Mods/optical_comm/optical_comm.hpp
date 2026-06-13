@@ -39,7 +39,7 @@ public:
     OpticalComm& operator=(const OpticalComm&) = delete;
 
     void Init(BSP::UART::UartID uart_id);
-    void SendData(uint8_t* data, uint8_t len);
+    void SendData(uint8_t func_code, uint8_t* data, uint8_t len);
 
     /// @brief 注册数据接收回调（收到完整一帧时在中断中触发）
     void RegisterDataCallback(DataCallback callback);

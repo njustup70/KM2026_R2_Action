@@ -17,13 +17,13 @@ void OpticalComm::Init(BSP::UART::UartID uart_id)
     _data_callback = nullptr;
 }
 
-void OpticalComm::SendData(uint8_t* data, uint8_t len)
+void OpticalComm::SendData(uint8_t fun_code, uint8_t* payload, uint8_t len)
 {
     uint8_t buf[MAX_FRAME_SIZE] = {0};
     buf[0] = frame_head;
-    buf[1] = frame_type;
+    buf[1] = fun_code;
     buf[2] = len;
-    memcpy(&buf[3], data, len > MAX_DATA_SIZE ? MAX_DATA_SIZE : len);
+    memcpy(&buf[3], payload, len > MAX_DATA_SIZE ? MAX_DATA_SIZE : len);
     _uart.Transmit(buf, sizeof(buf));
 }
 
@@ -49,7 +49,7 @@ void OpticalComm::_RxCallback(BSP::UART::UartID id, uint8_t *rxData, uint8_t siz
     auto& self = GetInstance();
 
     // 检查帧头、帧类型
-    if (size < 3 || rxData[0] != frame_head || rxData[1] != frame_type)
+    if (size < 3 || rxData[0] != frame_head)
     {
         BspLog_LogError("[OpticalComm] Invalid frame received\n");
         return;
