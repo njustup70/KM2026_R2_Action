@@ -32,7 +32,7 @@ void CommCenter::Update()
         send_cnt = 0;
         // 发送SICK数据给工控机
         _sick_ch0_data = MOD::sick.GetSingleChannel(0); // 留作调试时看
-        MOD::host_pc.SendSickData(MOD::sick.GetData().raw_frame);
+        // MOD::host_pc.SendSickData(MOD::sick.GetData().raw_frame);
     }
     // 发送SICK纠正指令
     if(_is_send_sick_correction)
@@ -94,9 +94,15 @@ void CommCenter::SlamRxCallback(uint8_t func_code, const uint8_t *payload, uint8
 void CommCenter::OpticalRxCallback(uint8_t func_code, const uint8_t* payload, uint8_t payload_len, void* user_ctx)
 {
     using namespace APP;
-    // uint8_t kfs_values[12];
-    memcpy(comm_center.kfs_values, payload, payload_len > 12 ? 12 : payload_len);
+    
+    // R1 发来的顺序：逆序。12->1
+    uint8_t len = payload_len > 12 ? 12 : payload_len;
+
+    for (uint8_t i = 0; i < len; i++)
+    {
+        comm_center.kfs_values[i] = payload[len - 1 - i];
+    }
 
     // 发送给上位机
-    MOD::host_pc.SendKFSData(comm_center.kfs_values);
+    MOD::host_pc.SendKFSData(comm_center.kfs_values, len);
 }
