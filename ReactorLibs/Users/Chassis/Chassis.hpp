@@ -55,6 +55,10 @@ class ChassisType : public Application
         bool _is_pos_locked = false;        // 常锁位置环
         bool _is_yaw_locked = false;        // 常锁姿态环
 
+        float _locked_yaw = 0.0f;
+        float _yaw_lock_gain = 3.2f;
+
+        // bool _is_pc_debug = false;
         
         /// @param 四个电机的目标速度，单位m/s
         float _motor_spd[4];
@@ -137,6 +141,9 @@ class ChassisType : public Application
 
         void MoveAt(Vec2 Pos);
         void RotateAt(float yaw);
+
+        void LockYaw(bool enable);
+        bool IsYawLocked() const {return _is_yaw_locked;}
 
         // 设置运动参数限制
         void SetMoveParams(float max_accel, float max_velo, float max_omega, float max_beta);

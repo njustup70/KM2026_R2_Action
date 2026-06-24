@@ -41,7 +41,7 @@ void ChassisType::Start()
     
     // 发送重置底盘和腿的指令，包括电机和里程计
     uint8_t payload[1] = {0x01}; 
-    MOD::board_can.SendTask(MOD::C_sub_ctrl_board_id, 4, payload, 1, false); 
+    MOD::board_can.SendTask(MOD::C_sub_ctrl_board_id, 4, payload, sizeof(payload), false); 
 }
 
 /**
@@ -53,10 +53,30 @@ void _SendSpd(Vec3 Spd)
     uint8_t payload[6];
     const float scale = 1000.0f;
 
+    // 限幅
+    Spd.Limit(1.0f);
+
     StdMath::PackFloatToInt16(&payload[0], Spd.x, scale);
     StdMath::PackFloatToInt16(&payload[2], Spd.y, scale);
     StdMath::PackFloatToInt16(&payload[4], Spd.z, scale);
-    MOD::board_can.SendTask(MOD::C_sub_ctrl_board_id, 1, payload, 6, false);
+
+    MOD::board_can.SendTask(MOD::C_sub_ctrl_board_id, 1, payload, sizeof(payload), false);
+}
+
+/**
+ * @brief 向底盘发送速度指令
+ */
+void _SendGes(Vec3 Ges) //有bug
+{
+    // 6 字节 uint8，完全匹配接收端格式
+    uint8_t payload[6];
+    const float scale = 1000.0f;
+
+    StdMath::PackFloatToInt16(&payload[0], Ges.x, scale);
+    StdMath::PackFloatToInt16(&payload[2], Ges.y, scale);
+    StdMath::PackFloatToInt16(&payload[4], Ges.z, scale);
+
+    MOD::board_can.SendTask(MOD::C_sub_ctrl_board_id, 2, payload, sizeof(payload), false);
 }
 
 void ChassisType::Update() 
@@ -66,12 +86,26 @@ void ChassisType::Update()
     if(System.out_from_debugmode)
     {
         uint8_t payload[1] = {0x01}; // 发送失能指令
-        MOD::board_can.SendTask(MOD::C_sub_ctrl_board_id, 3, payload, 1, false); // 发送停止指令
+        MOD::board_can.SendTask(MOD::C_sub_ctrl_board_id, 3, payload, sizeof(payload), false); // 发送停止指令
     }
 
     // 工控机的刷新先放这里啊，只是图方便，不代表这么做是对的
     MOD::host_pc.TickLoop();
     
+    if (_is_yaw_locked && _safe_lock_tick > 0)
+    {
+        float yaw_err = _locked_yaw - System.position.z;
+        // 归一化到 [-PI, PI]
+        yaw_err = atan2f(sinf(yaw_err), cosf(yaw_err));
+        // P 控制
+        float omega = yaw_err * _yaw_lock_gain;
+        // 限幅
+        if (omega > _max_omega) omega = _max_omega;
+        if (omega < -_max_omega) omega = -_max_omega;
+        // 覆盖 z 通道，不干扰 x/y
+        targ_speed.z = omega;
+    }
+
     if (_safe_lock_tick > 0)
     {
         // 将速度指令发送到 C板
@@ -87,6 +121,23 @@ void ChassisType::Update()
 
     // 更新安全锁
     _safe_lock_tick -= 5;
+}
+
+void ChassisType::LockYaw(bool enable)
+{
+    if (enable == _is_yaw_locked)
+        return;
+
+    _is_yaw_locked = enable;
+    if (enable)
+    {
+        _locked_yaw = System.position.z;
+        APP::monit.LogInfo("[Chassis] Yaw locked at %.3f rad", _locked_yaw);
+    }
+    else
+    {
+        APP::monit.LogInfo("[Chassis] Yaw unlocked");
+    }
 }
 
 void ChassisType::_UploadSpeed()
@@ -170,6 +221,7 @@ void ChassisType::RotateAt(float yaw)
 {
     targ_ges.z = yaw;
     _rotating = true;
+
 }
 
 /**

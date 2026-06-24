@@ -99,12 +99,14 @@ void Jaw::Start()
     //继电器
     Pin relay_pin = {'I', 2};
     relay.Init(relay_pin, Relay::HIGH_ON);
+
+    _enabled = true;
 }
 
 void Jaw::Update()
 {
     // 如果退出Debug，全部失能保障安全
-    if (System.out_from_debugmode)
+    if (System.out_from_debugmode || !_enabled)
     {
         motor_3508_hori.driver.Disable();
         motor_3508_vert.driver.Disable();
@@ -291,6 +293,11 @@ void Jaw::PitchDown()
     motor_2006.SetPos(_pitch_origin_code - (JawConst::_pitch_max_travel_code / 2 - 5000));
 }
 
+// void Jaw::Dock()
+// {
+
+// }
+
 
 /**---------------------------------    调零和前馈    ----------------------------------**/
 void Jaw::_GetHoriOrigin()
@@ -350,7 +357,7 @@ void Jaw::_GetVertOrigin()
             // 记录中点偏移
             _vert_origin_code = motor_3508_vert.driver.measure.total_angle;
             // 往回走到三分之一
-            motor_3508_vert.SetPos(_vert_origin_code - JawConst::_vert_max_travel_code / 3);
+            motor_3508_vert.SetPos(_vert_origin_code - JawConst::_vert_max_travel_code * 2 / 3 + 32500); //后面加的是夹到矛头最好的位置偏移
         }
     }
     else
@@ -434,7 +441,7 @@ static float C620HoriFriction(const FeedforwardInfo& info)
 
     if (info.velocity > kVelEpsMax)
         return kTargetCurrent;
-    if (info.velocity > kVelEpsMin)
+    if (info.velocity > kVelEpsMin) 
     {
         float ratio = (info.velocity - kVelEpsMin) / (kVelEpsMax - kVelEpsMin);
         return kTargetCurrent * ratio;
