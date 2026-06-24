@@ -4,11 +4,9 @@
 #include "motor_dm.hpp"
 #include "infrared_detector.hpp"
 
-// ============ 传感器引脚（TODO: 按实际接线填写） ============
-#define PIN_SENSOR_ENTRY  {'?', 0}   // 入口：摩擦带末端，块准备进入下仓
+// ============ 小黄 ============
 #define PIN_SENSOR_LOWER  {'?', 1}   // 下仓：块在抬升平台上
 #define PIN_SENSOR_UPPER  {'?', 2}   // 上仓：单向门上方有块
-#define PIN_SENSOR_EXIT   {'?', 3}   // 出口：块被推出确认
 
 class GetBlock : public Application
 {
@@ -17,7 +15,6 @@ class GetBlock : public Application
     APPLICATION_OVERRIDE
 
 public:
-    // ==================== 公有接口 ====================
     void Store();
     void Put();
 
@@ -27,10 +24,11 @@ public:
     bool IsFull() const          { return _upper && _lower; }
 
     // ==================== 电机 ====================
-    MotorDM   motor_s2325;       // 下摩擦带 (DM, hcan_sub ID 9)
-    MotorDJI  motor_2006_fric;   // 上摩擦带 (2006, hcan_main ID 6)
-    MotorDM   motor_dm_lift;     // 抬升机构 (DM, hcan_sub ID 10)
-    MotorDJI  motor_2006_feed;   // 送块机构 (2006, hcan_main ID 7)
+    MotorDM  motor_s2325;       // 下摩擦带 (DM, hcan_sub ID 9)
+    MotorDJI motor_2006_fric;   // 上摩擦带 (2006, hcan_main ID 4)
+    MotorDM motor_dm_lift;     // 抬升机构 (DM, hcan_sub ID 10)
+    MotorDJI motor_2006_feed;   // 送块机构 (2006, hcan_main ID 5)
+    MotorDJI motor_3508_claw; // 取块爪机构 (3508, hcan_main ID 6)
 
 private:
     // ==================== 状态机 ====================
@@ -66,11 +64,11 @@ private:
 
     uint32_t _action_tick = 0;  // 阶段开始时间戳 (s)
 
-    // ==================== 四个传感器 ====================
-    // [0]=入口  [1]=下仓  [2]=上仓  [3]=出口
-    InfraredDetector _sensor[4];
-    Pin _pin_sensor[4];
-    bool _grid[4] = {false};  // 传感器缓存，_ReadSensors() 刷新
+    // ==================== 两个传感器 ====================
+    // [0]=下仓  [1]=上仓
+    InfraredDetector _sensor[2];
+    Pin _pin_sensor[2];
+    bool _grid[2] = {false};  // 传感器缓存，_ReadSensors() 刷新
 
     // ==================== 抬升DM位置常量（需标定） ====================
     float _lift_pos_lower = 0.0f;   // 低位（下仓接料位）

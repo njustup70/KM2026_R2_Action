@@ -18,8 +18,8 @@ void GetBlock::Start()
     motor_s2325.SetVelLimit(38);
     motor_s2325.Enable();
 
-    /**** 上摩擦带 2006 (hcan_main, ID 6) ****/
-    motor_2006_fric.Init(Hardware::hcan_main, 6, DJI_C610);
+    /**** 上摩擦带 2006 (hcan_main, ID 4) ****/
+    motor_2006_fric.Init(Hardware::hcan_main, 4, DJI_C610);
     motor_2006_fric.ConfigADRC()
         .AsSpeedC()
         .ADRC_Womega(42.0f, 9.6f)
@@ -31,17 +31,15 @@ void GetBlock::Start()
         .Apply();
     motor_2006_fric.driver.Enable();
 
-    /****  抬升 DM (hcan_sub, ID 10) ****/
+    /****  抬升 DM (hcan_sub, ID 10) ，向上为负，总行程 0 - 400 rad 左右****/
     motor_dm_lift.Init(Hardware::hcan_sub, 10, 19, POSANDVEL, DM_S2325);
     motor_dm_lift.SetFeedbackRange(3.14159f, 10.0f, 5.0f);
     motor_dm_lift.SetPosLimit(0.5f, -0.1f);
     motor_dm_lift.SetVelLimit(5.0f);
-    motor_dm_lift.SetZeroPosi();
-    Seq::Wait(0.03);
     motor_dm_lift.Enable();
 
-    /****  送块 2006 (hcan_main, ID 7)  ****/
-    motor_2006_feed.Init(Hardware::hcan_main, 7, DJI_C610);
+    /****  送块 2006 (hcan_main, ID 5)  ****/
+    motor_2006_feed.Init(Hardware::hcan_main, 5, DJI_C610);
     motor_2006_feed.ConfigADRC()
         .AsPosC()
         .ADRC_Womega(42.0f, 9.6f)
@@ -53,12 +51,10 @@ void GetBlock::Start()
         .Apply();
     motor_2006_feed.driver.Enable();
 
-    /****  四个传感器  ****/
-    _pin_sensor[0] = PIN_SENSOR_ENTRY;
-    _pin_sensor[1] = PIN_SENSOR_LOWER;
-    _pin_sensor[2] = PIN_SENSOR_UPPER;
-    _pin_sensor[3] = PIN_SENSOR_EXIT;
-    for (int i = 0; i < 4; i++)
+    /****  两个传感器（下仓、上仓） ****/
+    _pin_sensor[0] = PIN_SENSOR_LOWER;
+    _pin_sensor[1] = PIN_SENSOR_UPPER;
+    for (int i = 0; i < 2; i++)
         _sensor[i].Init(_pin_sensor[i]);
 
     /**** 初始位置 ****/
@@ -67,8 +63,8 @@ void GetBlock::Start()
 
     /**** 初始扫描 ****/
     _ReadSensors();
-    _upper = _grid[2];
-    _lower = _grid[1];
+    _upper = _grid[1];
+    _lower = _grid[0];
     APP::monit.LogInfo("[GetBlock] Init OK, upper=%d lower=%d", _upper, _lower);
 
     _fsm = FSM::IDLE;
@@ -95,11 +91,9 @@ void GetBlock::Update()
 // ==================== 传感器 ====================
 void GetBlock::_ReadSensors()
 {
-    // _sensor[0]=入口  [1]=下仓  [2]=上仓  [3]=出口
-    _grid[0] = _sensor[0].Read();
-    _grid[1] = _sensor[1].Read();
-    _grid[2] = _sensor[2].Read();
-    _grid[3] = _sensor[3].Read();
+    // _sensor[0]=下仓  [1]=上仓
+    _grid[0] = _sensor[0].Read();   // 下仓
+    _grid[1] = _sensor[1].Read();   // 上仓
 }
 
 // ==================== 辅助 ====================
@@ -123,14 +117,9 @@ void GetBlock::_StopBelt()
 // ==================== 存块 ====================
 void GetBlock::Store()
 {
-    // ★ 关键：如果在等待块2，直接启动入料（不排队）
+    // 在等待块2状态 → 直接入料块2
     if (_fsm_busy && _fsm == FSM::STORE_WAIT_SECOND)
     {
-        if (!_grid[0])
-        {
-            APP::monit.LogWarning("[GetBlock] Entry empty, can't store #2");
-            return;
-        }
         _fsm = FSM::STORE_BELT_IN;
         _storing_b2 = true;
         _action_tick = System.runtime_tick;
@@ -151,23 +140,13 @@ void GetBlock::Store()
     if (!_upper && !_lower)
     {
         // 空仓 → 块1
-        if (!_grid[0])
-        {
-            APP::monit.LogWarning("[GetBlock] Entry empty");
-            return;
-        }
         _fsm = FSM::STORE_BELT_IN;
         _storing_b2 = false;
         APP::monit.LogInfo("[GetBlock] Store #1: belt in");
     }
     else if (_upper && !_lower)
     {
-        // 上仓有块(刚抬升完)、下仓空 → 块2
-        if (!_grid[0])
-        {
-            APP::monit.LogWarning("[GetBlock] Entry empty, need block for lower");
-            return;
-        }
+        // 上仓有块、下仓空 → 块2
         _fsm = FSM::STORE_BELT_IN;
         _storing_b2 = true;
         APP::monit.LogInfo("[GetBlock] Store #2: belt in");
@@ -228,7 +207,7 @@ void GetBlock::_UpdateFSM()
     {
         _StartBelt();
 
-        if (_grid[1])  // 下仓检测到块
+        if (_grid[0])  // 下仓检测到块
         {
             _StopBelt();
             _lower = true;
@@ -261,7 +240,7 @@ void GetBlock::_UpdateFSM()
     {
         motor_dm_lift.SetPosVel(_lift_pos_upper, _lift_vel);
 
-        if (_grid[2])  // 上仓检测到块（通过单向门）
+        if (_grid[1])  // 上仓检测到块（通过单向门）
         {
             _upper = true;
             _lower = false;
@@ -294,8 +273,7 @@ void GetBlock::_UpdateFSM()
     {
         // 抬升机构保持在上位
         motor_dm_lift.SetPosVel(_lift_pos_upper, _lift_vel);
-        // 无超时 — 外部检测到入口有块后会调用 Store()
-        // Store() 会捕获 _fsm==STORE_WAIT_SECOND 并转入 STORE_BELT_IN
+        // 无超时 — 外部调用 Store() 会捕获此状态并转入 STORE_BELT_IN
         break;
     }
 
@@ -343,7 +321,7 @@ void GetBlock::_UpdateFSM()
     {
         motor_2006_feed.SetPos(_feed_pos_extend);
 
-        if (_grid[3] || !_grid[2])
+        if (_FeedNear(_feed_pos_extend))  // 送块到达头即认为成功
         {
             _upper = false;
             _action_tick = System.runtime_tick;
@@ -392,7 +370,7 @@ void GetBlock::_UpdateFSM()
     {
         motor_dm_lift.SetPosVel(_lift_pos_upper, _lift_vel);
 
-        if (_grid[2])
+        if (_grid[1])  // 上仓检测到块
         {
             _upper = true;
             _lower = false;
