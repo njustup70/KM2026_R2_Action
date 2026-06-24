@@ -8,6 +8,7 @@
 #include "CommCenter.hpp"
 #include "StateCore.hpp"
 #include "SickPC.hpp"
+#include "InterBoardComm.hpp"
 
 HostPC& host_pc_debug = HostPC::GetInstance();
 Farcon& farcon_debug = Farcon::GetInstance();
@@ -19,3 +20,4 @@ SickPC& sick_pc_debug = SickPC::GetInstance();
 PathChaserType& path_chaser_debug = PathChaserType::GetInstance();
 CommCenter& comm_center_debug = CommCenter::GetInstance();
 StateCore& state_core_debug = StateCore::GetInstance();
+BoardComm& board_can_debug = BoardComm::GetInstance();
