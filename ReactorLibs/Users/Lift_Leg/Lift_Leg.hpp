@@ -12,7 +12,7 @@ public:
     int front_pos = 0; // 前腿位置，单位为mm
     int back_pos = 0;  // 后腿位置，单位为mm
 
-    int _front_max_lim = 400; // 前腿最大位置，单位为mm
+    int _front_max_lim = 0; // 前腿最大位置，单位为mm
     int _front_min_lim = -400;   // 前腿最小位置，单位
     int _back_max_lim = 0; // 后腿最大位置，单位为mm
     int _back_min_lim = -400;   // 后腿最小位置，单位
@@ -39,7 +39,7 @@ public:
     void B_Down_200(); // 后腿放低200
     void B_Down_400(); // 后腿放低400
 
-    void Up_200();
+    void Up_200(); // 上200台阶
 
 private:
     /// @brief 位置限幅用的
