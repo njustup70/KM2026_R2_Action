@@ -33,9 +33,9 @@ void Waiting_for_Start(StateCore *core)
 {
   APP::monit.LogInfo("I'm here...");
 
-//   Seq::WaitUntil([](){
-//     return APP::jaw.IsOrigined();
-//   });
+  Seq::WaitUntil([](){
+    return APP::jaw.IsOrigined();
+  });
 
   Seq::Wait(2.0f);
 
@@ -111,34 +111,48 @@ void Response_Button(StateCore *core)
         claw_open = !claw_open;
         last_trigger_time = DWT_GetTimeline_Sec();
     }
-    else if (MOD::farcon.button_second_half[1] == 1)
-    {
-      APP::monit.LogInfo("In Cooldown.");  
-    }
+    // else if (MOD::farcon.button_second_half[1] == 1)
+    // {
+    //   APP::monit.LogInfo("In Cooldown.");  
+    // }
 
     // 限制每 0.05 秒最多触发一次
-    // static float trigger_cnt = 0;
-    // if (DWT_GetTimeline_Sec() - trigger_cnt > 0.05f)
-    // {
-    //   if (MOD::farcon.button_first_half[2] == 1)
-    //   {
-    //     APP::leg.ChangeFrontPos(3);
-    //   }
+    static float trigger_cnt = 0;
+    if (DWT_GetTimeline_Sec() - trigger_cnt > 0.05f)
+    {
+      // 10号，前放 200  
+      if (MOD::farcon.button_second_half[1] == 1)
+      {
+        APP::leg.F_Down_200();
+      }
+      // 14号，前放 400
+      if (MOD::farcon.button_second_half[5] == 1)
+      {
+        APP::leg.F_Down_400();
+      }
 
-    //   if (MOD::farcon.button_first_half[3] == 1)
-    //   {
-    //     APP::leg.ChangeFrontPos(-3);
-    //   }
+      // 11号，后放 200
+      if (MOD::farcon.button_second_half[2] == 1)
+      {
+        APP::leg.B_Down_200();
+      }
+      // 15号，后放 400
+      if (MOD::farcon.button_second_half[6] == 1)
+      {
+        APP::leg.B_Down_400();
+      }
 
-    //   if (MOD::farcon.button_first_half[6] == 1)
-    //   {
-    //     APP::leg.ChangeBackPos(3);
-    //   }
+      // 12号，前归 0 位
+      if (MOD::farcon.button_second_half[3] == 1)
+      {
+        APP::leg.F_Origin();
+      }
+      // 16号，后归 0 位
+      if (MOD::farcon.button_second_half[7] == 1)
+      {
+        APP::leg.B_Origin();
+      } 
 
-    //   if (MOD::farcon.button_first_half[7] == 1)
-    //   {
-    //     APP::leg.ChangeBackPos(-3);
-    //   }
-    //   trigger_cnt = DWT_GetTimeline_Sec();
-    // }
+      trigger_cnt = DWT_GetTimeline_Sec();
+    }
 }
