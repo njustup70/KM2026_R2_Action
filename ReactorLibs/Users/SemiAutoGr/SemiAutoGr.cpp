@@ -215,3 +215,67 @@ void Climb_Up400(StateCore *core)
   // 结束
   APP::chas.Move(Vec2(0.0f, 0.0f));
 }
+
+void Decend_200(StateCore *core)
+{
+  // 先缓慢向前走
+  APP::chas.Move(Vec2(0.3, 0));
+
+  // 等待小黄1号检测不到后，放下前腿
+  Seq::WaitUntil([&]()
+  {
+    return !APP::leg.detector[1].Read();
+  });
+  APP::chas.Move(Vec2(0, 0));
+  APP::leg.F_Down_200();
+  Seq::Wait(0.245f);
+
+  // 继续向前走。等待小黄3号检测不到后，放下后腿
+  APP::chas.Move(Vec2(0.3, 0));
+  Seq::WaitUntil([&]()
+  {
+    return !APP::leg.detector[3].Read();
+  });
+  APP::chas.Move(Vec2(0, 0));
+  APP::leg.B_Down_200();
+  Seq::Wait(0.245f);
+
+  // 继续向前走一点，然后放下整个腿
+  APP::chas.Move(Vec2(0.4, 0));
+  Seq::Wait(0.5f);
+  APP::chas.Move(Vec2(0.0, 0));
+  APP::leg.F_Origin();
+  APP::leg.B_Origin();
+}
+
+void Decend_400(StateCore *core)
+{
+  // 先缓慢向前走
+  APP::chas.Move(Vec2(0.15, 0));
+
+  // 等待小黄1号检测不到后，放下前腿
+  Seq::WaitUntil([&]()
+  {
+    return !APP::leg.detector[1].Read();
+  });
+  APP::chas.Move(Vec2(0, 0));
+  APP::leg.F_Down_400();
+  Seq::Wait(0.45f);
+
+  // 继续向前走。等待小黄3号检测不到后，放下后腿
+  APP::chas.Move(Vec2(0.15, 0));
+  Seq::WaitUntil([&]()
+  {
+    return !APP::leg.detector[3].Read();
+  });
+  APP::chas.Move(Vec2(0, 0));
+  APP::leg.B_Down_400();
+  Seq::Wait(0.45f);
+
+  // 继续向前走一点，然后放下整个腿
+  APP::chas.Move(Vec2(0.4, 0));
+  Seq::Wait(0.5f);
+  APP::chas.Move(Vec2(0.0, 0));
+  APP::leg.F_Origin();
+  APP::leg.B_Origin();
+}
