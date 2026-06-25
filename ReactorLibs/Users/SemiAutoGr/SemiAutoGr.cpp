@@ -14,6 +14,8 @@
 #include "start_to_table.hpp"
 #include "table_to_dock.hpp"
 
+void Response_Button();
+
 // 自动状态机
 StateGraph SemiAutoGr("SemiAuto");
 static void Waiting_for_Start(StateCore *core);
@@ -69,10 +71,17 @@ void Waiting_for_Start(StateCore *core)
   APP::monit.LogInfo("Ready to Go...");
 
   APP::jaw.CloseClaw(); 
+  
   // 等待遥控器的出发指令
-  Seq::WaitUntil([](){
-    return MOD::farcon.button_second_half[0] == 1;
-  });
+  // Seq::WaitUntil([](){
+  //   return MOD::farcon.button_second_half[0] == 1;
+  // });
+
+  while(MOD::farcon.button_second_half[0] != 1)
+  {
+    Response_Button();
+    Seq::Wait(0.01f);
+  }
 
   core->GetCurState().Complete = true; // 设置状态完成标志，触发状态转移
 }
@@ -100,10 +109,15 @@ void Walk_Fetch(StateCore *core)
   Seq::Wait(0.5);
 
   // 等待遥控器指令，然后才进入下一个状态
-  Seq::WaitUntil([]()
+  // Seq::WaitUntil([]()
+  // {
+  //   return MOD::farcon.button_first_half[0] == 1;
+  // });
+  while(MOD::farcon.button_second_half[0] != 1)
   {
-    return MOD::farcon.button_first_half[0] == 1;
-  });
+    Response_Button();
+    Seq::Wait(0.01f);
+  }
 
   core->GetCurState().Complete = true;
 }
@@ -125,157 +139,31 @@ void Walk_To_Dock(StateCore *core)
   // Seq::WaitUntil()
 
   // 等待遥控器指令，然后才进入下一个状态
-  Seq::WaitUntil([]()
+  // Seq::WaitUntil([]()
+  // {
+  //   return MOD::farcon.button_first_half[0] == 1;
+  // });
+  while(MOD::farcon.button_second_half[0] != 1)
   {
-    return MOD::farcon.button_first_half[0] == 1;
-  });
+    Response_Button();
+    Seq::Wait(0.01f);
+  }
 
   core->GetCurState().Complete = true;
 }
 
-/**
- * @brief 二区行为之——上200
- * @details 内部区分需不需要取块
- */
-void Climb_Up200(StateCore *core)
+void Response_Button()
 {
-  // 登200时，先放低前后腿
-  APP::leg.F_Down_200();
-  APP::leg.B_Down_200();
+  float max_velo = 1.5f;
+    Vec3 vel;
+    // 计算速度
+    vel.x = (-MOD::farcon.jys_value[3] / 100.0f) * max_velo; // 最大速度0.5m/s
+    vel.y = (-MOD::farcon.jys_value[2] / 100.0f) * max_velo;  // 最大速度0.5m/s
+    vel.z = (-MOD::farcon.jys_value[0] / 100.0f) * max_velo;  // 最大角速度1.0rad/s
 
-  // 如果需要取块，那么爪子也要有所行动。要先伸出来
-  // if (need_to_fetch) APP::vac_claw.StretchOut();
-
-  // 往前缓慢移动，直到抵靠到前端
-  APP::chas.Move(Vec2(0.3, 0));
-
-  // 等待小黄0号检测到可以抬前腿
-  Seq::WaitUntil([&]()
-  {
-    return APP::leg.detector[0].Read();
-  });
-
-  // 抬升前腿
-  APP::leg.F_Origin();
-  
-  // 往前移动
-  APP::chas.Move(Vec2(0.5, 0));
-
-  // 等待小黄2号检测到可以抬后腿
-  Seq::WaitUntil([&]()
-  {
-    return APP::leg.detector[0].Read();
-  });
-
-  // 抬升后腿
-  APP::leg.B_Origin();
-}
-
-/**
- * @brief 二区行为之——上400
- * @details 内部区分需不需要取块
- */
-void Climb_Up400(StateCore *core)
-{
-  // 登400时，先放低前后腿
-  APP::leg.F_Down_400();
-  APP::leg.B_Down_400();
-
-  // 如果需要取块，那么爪子也要有所行动。要先伸出来
-  // if (need_to_fetch) APP::vac_claw.StretchOut();
-
-  // 往前缓慢移动，直到抵靠到前端
-  APP::chas.Move(Vec2(0.3, 0));
-
-  // 等待小黄0号检测到可以抬前腿
-  Seq::WaitUntil([&]()
-  {
-    return APP::leg.detector[0].Read();
-  });
-
-  // 抬升前腿
-  APP::leg.F_Origin();
-  
-  // 往前移动
-  APP::chas.Move(Vec2(0.5, 0));
-
-  // 等待小黄2号检测到可以抬后腿
-  Seq::WaitUntil([&]()
-  {
-    return APP::leg.detector[0].Read();
-  });
-
-  // 抬升后腿
-  APP::leg.B_Origin();
-  
-  // 往前移动一点
-  APP::chas.Move(Vec2(0.5, 0));
-  Seq::Wait(1.0f);
-  
-  // 结束
-  APP::chas.Move(Vec2(0.0f, 0.0f));
-}
-
-void Decend_200(StateCore *core)
-{
-  // 先缓慢向前走
-  APP::chas.Move(Vec2(0.3, 0));
-
-  // 等待小黄1号检测不到后，放下前腿
-  Seq::WaitUntil([&]()
-  {
-    return !APP::leg.detector[1].Read();
-  });
-  APP::chas.Move(Vec2(0, 0));
-  APP::leg.F_Down_200();
-  Seq::Wait(0.245f);
-
-  // 继续向前走。等待小黄3号检测不到后，放下后腿
-  APP::chas.Move(Vec2(0.3, 0));
-  Seq::WaitUntil([&]()
-  {
-    return !APP::leg.detector[3].Read();
-  });
-  APP::chas.Move(Vec2(0, 0));
-  APP::leg.B_Down_200();
-  Seq::Wait(0.245f);
-
-  // 继续向前走一点，然后放下整个腿
-  APP::chas.Move(Vec2(0.4, 0));
-  Seq::Wait(0.5f);
-  APP::chas.Move(Vec2(0.0, 0));
-  APP::leg.F_Origin();
-  APP::leg.B_Origin();
-}
-
-void Decend_400(StateCore *core)
-{
-  // 先缓慢向前走
-  APP::chas.Move(Vec2(0.15, 0));
-
-  // 等待小黄1号检测不到后，放下前腿
-  Seq::WaitUntil([&]()
-  {
-    return !APP::leg.detector[1].Read();
-  });
-  APP::chas.Move(Vec2(0, 0));
-  APP::leg.F_Down_400();
-  Seq::Wait(0.45f);
-
-  // 继续向前走。等待小黄3号检测不到后，放下后腿
-  APP::chas.Move(Vec2(0.15, 0));
-  Seq::WaitUntil([&]()
-  {
-    return !APP::leg.detector[3].Read();
-  });
-  APP::chas.Move(Vec2(0, 0));
-  APP::leg.B_Down_400();
-  Seq::Wait(0.45f);
-
-  // 继续向前走一点，然后放下整个腿
-  APP::chas.Move(Vec2(0.4, 0));
-  Seq::Wait(0.5f);
-  APP::chas.Move(Vec2(0.0, 0));
-  APP::leg.F_Origin();
-  APP::leg.B_Origin();
+    if (vel.Length() > 0.03f)
+    {
+    // 向底盘发送移动指令
+        APP::chas.Move(vel);
+    }
 }
