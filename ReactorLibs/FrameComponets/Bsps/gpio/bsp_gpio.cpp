@@ -139,9 +139,10 @@ static bool IsPortClockEnabled(void* port_opaque)
  * @return true 已配置，false 未配置
  * @note 此处逻辑针对 STM32 F4/F7/H7/G4 等具有 MODER 寄存器的系列。
  *       F1 系列（使用 CRL/CRH 寄存器）需要另行适配。
- * @note 这里按“是否偏离默认输入模式”做轻量判断：
+ * @note 这里按“是否偏离上电复位态”做轻量判断：
  *       - MODER != 00 认为已配置（输出/复用/模拟）；
- *       - MODER == 00 认为未配置（包含默认输入态）。
+ *       - MODER == 00 时，再看 PUPDR 是否被配置了上下拉；
+ *       - 仅当 MODER == 00 且 PUPDR == 00 时，才认为仍是默认未配置态。
  */
 static bool IsPinInitialized(void* port_opaque, uint16_t pin_mask)
 {
@@ -159,10 +160,16 @@ static bool IsPinInitialized(void* port_opaque, uint16_t pin_mask)
 
     GPIO_TypeDef* GPIOx = static_cast<GPIO_TypeDef*>(port_opaque);
 
-    // 轻量判定：仅检查 MODER 是否仍为默认输入态(00)。
-    // 只要不是输入态（即输出/复用/模拟），就视为已配置。
+    // 轻量判定：优先看 MODER 是否已经被改成输出/复用/模拟。
+    // 对于输入脚，CubeMX 往往只会改 PUPDR；因此需要把“输入 + 上下拉已配置”也视为已初始化。
     const uint32_t mode = (GPIOx->MODER >> (index * 2U)) & 0x03U;
-    return (mode != 0U);
+    if (mode != 0U)
+    {
+        return true;
+    }
+
+    const uint32_t pull = (GPIOx->PUPDR >> (index * 2U)) & 0x03U;
+    return (pull != 0U);
 #else
     (void)port_opaque;
     (void)pin_mask;
@@ -210,6 +217,7 @@ bool Inst::Read() const
 {
     if (!this->valid)
     {
+        BspLog_LogWarning("Read Invalid Pin!");
         return false;
     }
 
