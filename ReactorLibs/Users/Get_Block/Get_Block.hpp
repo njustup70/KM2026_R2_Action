@@ -6,7 +6,7 @@
 
 // ============ 小黄 ============
 #define PIN_SENSOR_LOWER  {'?', 1}   // 下仓：块在抬升平台上
-#define PIN_SENSOR_UPPER  {'?', 2}   // 上仓：单向门上方有块
+#define PIN_SENSOR_UPPER  {'?', 2}   // 上仓：有块（被抬升挡片托住触发）
 
 class GetBlock : public Application
 {
@@ -38,10 +38,11 @@ private:
 
         // --- 存块链路 ---
         STORE_BELT_IN,         // 摩擦带入料(块1/块2共用)
-        STORE_LIFT_UP,         // 抬升 ↑ (块通过单向门到上仓)
-        STORE_WAIT_SECOND,     // 抬升保持↑，等待块2进入下仓托住块1
-        STORE_LIFT_DOWN,       // 抬升 ↓ (单向门打开穿过块2)
-        STORE_LIFT_BOTTOM,     // 到最底 → 单向门复位托住块2
+        STORE_LIFT_UP,         // 抬升 ↑ (挡片托着块到上仓)
+        STORE_WAIT_SECOND,     // 抬升保持↑，挡片托着块1，等待块2入料
+        STORE_HOLD_PUT,        // 块2已在下仓，但挡片托着块1不能降→等待Put推出块1
+        STORE_LIFT_DOWN,       // 抬升 ↓ (挡片从上往下穿过块2→被顶开→在块2下方闭合)
+        STORE_LIFT_BOTTOM,     // 到最底 → 挡片已在块2下方闭合，托住块2
 
         // --- 放块链路 ---
         PUT_FEED_PUSH,         // 送块2006伸出 → 上仓块从前方推出
@@ -72,7 +73,7 @@ private:
 
     // ==================== 抬升DM位置常量（需标定） ====================
     float _lift_pos_lower = 0.0f;   // 低位（下仓接料位）
-    float _lift_pos_upper = 0.3f;   // 高位（块通过单向门）TODO:标定
+    float _lift_pos_upper = 0.3f;   // 高位（挡片托块到上仓位）TODO:标定
     float _lift_vel       = 2.0f;   // 抬升速度 rad/s
 
     // ==================== 送块2006位置常量（需标定） ====================
