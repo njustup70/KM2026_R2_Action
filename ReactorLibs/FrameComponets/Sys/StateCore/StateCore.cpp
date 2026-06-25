@@ -2,8 +2,8 @@
 #include "bsp_dwt.hpp"
 #include "stdio.h"
 #include "Monitor.hpp"
+#include "bsp_log.hpp"
 #include "cmsis_os.h"
-#include "bsp_hardware.hpp"
 #include "cstring"
 
 StateCore& APP::state_core = StateCore::GetInstance();
@@ -221,18 +221,15 @@ StateBlock& StateCore::GetCurState()
  */
 void StateCore::CoreGraph(const StateGraph& graph)
 {
-    uint8_t buf[60];
-    // if (Hardware::huart_log != nullptr) Hardware::huart_log.Transmit((uint8_t *)"StateGraph\n", 11);
-
-    HAL_Delay(10);
+    BspLog_LogSpec("StateGraph");
     for (uint8_t i = 0; i < graph.stateNums; i++)
     {
         // 发送状态转换关系（mermaid格式）
         for (uint8_t j = 0; j < graph.states[i].linkNums; j++)
         {
-            int len = snprintf((char *)buf, 48, "%s --> %s\n", graph.states[i].name, graph.states[i].links[j].nextState->name);
-            // if (Hardware::huart_log != nullptr) Hardware::huart_log.Transmit(buf, len);
-            HAL_Delay(10);
+            BspLog_LogSpec("%s --> %s",
+                graph.states[i].name,
+                graph.states[i].links[j].nextState->name);
         }
     }
 }
