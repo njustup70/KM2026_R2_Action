@@ -24,6 +24,9 @@
 // 示例：获取工控机通信串口的句柄
 auto uart_handler = BSP::UART::Apply(Hardware::huart_host);
 
+// 也可以给实例起一个可选名字，便于日志定位
+auto uart_named_handler = BSP::UART::Apply(Hardware::huart_host, "hostpc");
+
 ```
 如果某个串口没有配置 `DMA`，也可以使用 **中断模式** 发送  
 使用前，请确认已经在 CubeMX 中正确配置了对应串口的全局中断
@@ -31,6 +34,9 @@ auto uart_handler = BSP::UART::Apply(Hardware::huart_host);
 ```cpp
 // 没有配置 TX DMA 的串口，可使用 TX 中断发送
 auto uart_it_handler = BSP::UART::Apply(Hardware::huart_other, BSP::UART::TxMode::Interrupt);
+
+// 也可以同时指定模式和名字
+auto uart_it_named_handler = BSP::UART::Apply(Hardware::huart_other, BSP::UART::TxMode::Interrupt, "other");
 ```
 
 ### 发送数据 (`Transmit`)
@@ -61,6 +67,7 @@ uart_handler.RegisterRx(64, MyRxCallback);
 
 - **单实例原则**：每个硬件串口只能申请一个 `Instance`。
 - **发送模式**：默认使用 `TxMode::Dma`；同一串口首次 `Apply` 时确定发送模式，后续重复申请不会动态切换。
+- **实例名**：实例名可选，最长 10 个字符，未设置时日志会显示为 `unknown`。
 - **回调限制**：每个实例仅允许注册 **一次** 接收回调。
 - **缓冲区大小**：
   - 发送 FIFO 默认为 `2048` 字节 (`BSP_UART_TX_BUF_SIZE`)。

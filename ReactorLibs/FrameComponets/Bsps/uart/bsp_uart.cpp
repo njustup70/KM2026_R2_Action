@@ -26,6 +26,39 @@ static inline const char* GetFileName(const char* path) {
     return filename;
 }
 
+static constexpr const char* kUnknownUartName = "unknown";
+static constexpr uint8_t max_bspuart_name_len = 10;
+
+static inline void CopyUartName(char* dst, size_t dst_size, const char* name)
+{
+    if (dst == nullptr || dst_size == 0)
+    {
+        return;
+    }
+
+    if (name == nullptr || name[0] == '\0')
+    {
+        strncpy(dst, kUnknownUartName, dst_size - 1U);
+        dst[dst_size - 1U] = '\0';
+        return;
+    }
+
+    size_t name_len = strlen(name);
+    if (name_len > max_bspuart_name_len)
+    {
+        BspLog_LogWarning("[Bsp][%s] Uart Name Too Long, Truncate To %u Chars!\n", name, max_bspuart_name_len);
+        name_len = max_bspuart_name_len;
+    }
+
+    if (name_len >= dst_size)
+    {
+        name_len = dst_size - 1U;
+    }
+
+    memcpy(dst, name, name_len);
+    dst[name_len] = '\0';
+}
+
 /// @brief 最大实例数量，取决于实际使用的 UART 数
 static constexpr uint8_t max_bspuart_inst_nums = 6;
 
@@ -59,22 +92,23 @@ static Instance *FindInstByHuart(UART_HandleTypeDef *huart)
 /**
  * @brief 申请一个默认 DMA 发送模式的 UART 实例句柄
  */
-Handler BSP::UART::Apply(UartID id, const char* file, int line)
+Handler BSP::UART::Apply(UartID id, const char* name, const char* file, int line)
 {
-    return Apply(id, TxMode::Dma, file, line);
+    return Apply(id, TxMode::Dma, name, file, line);
 }
 
 /**
  * @brief 按指定发送模式申请一个 UART 实例句柄
  */
-Handler BSP::UART::Apply(UartID id, TxMode tx_mode, const char* file, int line)
+Handler BSP::UART::Apply(UartID id, TxMode tx_mode, const char* name, const char* file, int line)
 {
     UART_HandleTypeDef *huart = ToHalHandle(id);
+    const char* fixed_name = (name == nullptr || name[0] == '\0') ? kUnknownUartName : name;
     
     // 确保不是空的 UART 句柄
     if (huart == NULL)
     {
-        BspLog_LogError("[Bsp] Empty UartHandle When Apply! [%s:%d]\n", GetFileName(file), line);
+        BspLog_LogError("[Bsp][%s] Empty UartHandle When Apply! [%s:%d]\n", fixed_name, GetFileName(file), line);
         return Handler(nullptr);
     }
 
@@ -84,10 +118,19 @@ Handler BSP::UART::Apply(UartID id, TxMode tx_mode, const char* file, int line)
     // 如果已经存在，直接返回对应的 Handler
     if (exist_inst != nullptr)
     {
+        if (exist_inst->GetName()[0] == '\0' && fixed_name[0] != '\0')
+        {
+            exist_inst->SetName(fixed_name);
+        }
+        else if (name != nullptr && name[0] != '\0' && strcmp(exist_inst->GetName(), fixed_name) != 0)
+        {
+            BspLog_LogWarning("[Bsp][%s] Uart Name Already Fixed, Ignore New Name! [%s:%d]\n", exist_inst->GetName(), GetFileName(file), line);
+        }
+
         // 同一硬件串口的发送模式以首次申请为准，避免运行期切换破坏状态机
         if (exist_inst->GetTxMode() != tx_mode)
         {
-            BspLog_LogWarning("[Bsp] Uart TxMode Already Fixed, Ignore New TxMode! [%s:%d]\n", GetFileName(file), line);
+            BspLog_LogWarning("[Bsp][%s] Uart TxMode Already Fixed, Ignore New TxMode! [%s:%d]\n", exist_inst->GetName(), GetFileName(file), line);
         }
         return Handler(exist_inst);
     }
@@ -95,12 +138,12 @@ Handler BSP::UART::Apply(UartID id, TxMode tx_mode, const char* file, int line)
     // 如果实例数量已达上限，无法创建新实例
     if (instance_count >= max_bspuart_inst_nums)
     {
-        BspLog_LogError("[Bsp] Too Many Uart Instance! [%s:%d]\n", GetFileName(file), line);
+        BspLog_LogError("[Bsp][%s] Too Many Uart Instance! [%s:%d]\n", fixed_name, GetFileName(file), line);
         return Handler(nullptr);
     }
     
     // 初始化新实例
-    insts[instance_count].Init(id, tx_mode);
+    insts[instance_count].Init(id, tx_mode, name);
 
     // 返回新实例的 Handler
     Instance *new_inst = &insts[instance_count];
@@ -117,7 +160,7 @@ void Handler::Transmit(const uint8_t *data, uint16_t len)
     // 确保不是无效调用
     if (instance == nullptr)
     {
-        BspLog_LogWarning("[Bsp] Invalid Transmit, Empty Handler!\n");
+        BspLog_LogWarning("[Bsp][%s] Invalid Transmit, Empty Handler!\n", kUnknownUartName);
         return;
     }
 
@@ -129,7 +172,7 @@ bool Handler::RegisterRx(uint16_t rx_setlen, RxCallback rx_callback, const char*
     // 确保不是无效调用
     if (instance == nullptr)
     {
-        BspLog_LogError("[Bsp] Invalid RxRegist, Empty Handler! [%s:%d]\n", GetFileName(file), line);
+        BspLog_LogError("[Bsp][%s] Invalid RxRegist, Empty Handler! [%s:%d]\n", kUnknownUartName, GetFileName(file), line);
         return false;
     }
 
@@ -145,24 +188,26 @@ bool Handler::IsValid() const
 
 Instance::Instance()
 {
-    Init(nullptr);
+    Init(nullptr, TxMode::Dma, nullptr);
 }
 
 Instance::Instance(UartID id, TxMode tx_mode)
 {
-    Init(id, tx_mode);
+    Init(id, tx_mode, nullptr);
 }
 
 /**
  * @brief 初始化实例，重置所有成员变量
  */
-void Instance::Init(UartID in_id, TxMode tx_mode)
+void Instance::Init(UartID in_id, TxMode tx_mode, const char* name)
 {
     this->id = in_id;
     this->tx_mode_ = tx_mode;
     this->rx_callback = nullptr;
     this->rx_setlen_ = 0;
     this->rx_registered_ = 0;
+    memset(this->name_, 0, sizeof(this->name_));
+    this->SetName(name);
 
     this->tx_fifo_.head = 0;
     this->tx_fifo_.tail = 0;
@@ -187,22 +232,32 @@ TxMode Instance::GetTxMode() const
     return this->tx_mode_;
 }
 
+const char* Instance::GetName() const
+{
+    return this->name_;
+}
+
+void Instance::SetName(const char* name)
+{
+    CopyUartName(this->name_, sizeof(this->name_), name);
+}
+
 void Instance::Transmit(const uint8_t *data, uint16_t len)
 {
     // 确保不是空调用
     if (this->id == nullptr)
     {
-        BspLog_LogWarning("[Bsp] Invalid Transmit, Empty Instance!\n");
+        BspLog_LogWarning("[Bsp][%s] Invalid Transmit, Empty Instance!\n", this->name_);
         return;
     }
     if (data == NULL)
     {
-        BspLog_LogWarning("[Bsp] Invalid Transmit, Empty Data Pointer!\n");
+        BspLog_LogWarning("[Bsp][%s] Invalid Transmit, Empty Data Pointer!\n", this->name_);
         return;
     }
     if (len == 0)
     {
-        BspLog_LogWarning("[Bsp] Invalid Transmit, Zero Length!\n");
+        BspLog_LogWarning("[Bsp][%s] Invalid Transmit, Zero Length!\n", this->name_);
         return;
     }
 
@@ -215,7 +270,7 @@ void Instance::Transmit(const uint8_t *data, uint16_t len)
         // 如果下一个头部位置与尾部重叠，说明缓冲区已满，无法继续写入
         if (next_head == this->tx_fifo_.tail)
         {
-            BspLog_LogWarning("[Bsp] UART Tx FIFO Full, Data Lost!\n");
+            BspLog_LogWarning("[Bsp][%s] UART Tx FIFO Full, Data Lost!\n", this->name_);
             break;
         }
 
@@ -238,24 +293,24 @@ bool Instance::RegisterRx(uint16_t rx_setlen, RxCallback rx_callback, const char
     // 确保参数有效
     if (this->id == nullptr)
     {
-        BspLog_LogWarning("[Bsp] RxRegist Failed, Empty Instance! [%s:%d]\n", GetFileName(file), line);
+        BspLog_LogWarning("[Bsp][%s] RxRegist Failed, Empty Instance! [%s:%d]\n", this->name_, GetFileName(file), line);
         return false;
     }
     if (rx_callback == nullptr)
     {
-        BspLog_LogWarning("[Bsp] RxRegist Failed, Empty Callback! [%s:%d]\n", GetFileName(file), line);
+        BspLog_LogWarning("[Bsp][%s] RxRegist Failed, Empty Callback! [%s:%d]\n", this->name_, GetFileName(file), line);
         return false;
     }
     if (rx_setlen == 0)
     {
-        BspLog_LogWarning("[Bsp] RxRegist Failed, Zero Length! [%s:%d]\n", GetFileName(file), line);
+        BspLog_LogWarning("[Bsp][%s] RxRegist Failed, Zero Length! [%s:%d]\n", this->name_, GetFileName(file), line);
         return false;
     }
 
     // 每个实例只允许注册一次接收回调
     if (this->rx_registered_ != 0)
     {
-        BspLog_LogWarning("[Bsp] RxRegist Failed, This Uart Already has RxCallback! [%s:%d]\n", GetFileName(file), line);
+        BspLog_LogWarning("[Bsp][%s] RxRegist Failed, This Uart Already has RxCallback! [%s:%d]\n", this->name_, GetFileName(file), line);
         return false;
     }
 
@@ -275,7 +330,7 @@ bool Instance::RegisterRx(uint16_t rx_setlen, RxCallback rx_callback, const char
 
     if (!this->RestartRxDMA())
     {
-        BspLog_LogError("[Bsp] Try Enable HAL_IdleRxCallback_DMA, but Failed!  [%s:%d]\n", GetFileName(file), line);
+        BspLog_LogError("[Bsp][%s] Try Enable HAL_IdleRxCallback_DMA, but Failed!  [%s:%d]\n", this->name_, GetFileName(file), line);
         this->rx_registered_ = 0;
         this->rx_setlen_ = 0;
         this->rx_callback = nullptr;
@@ -306,7 +361,7 @@ void Instance::TryStartTxDMA()
 {
     if (this->id == nullptr)
     {
-        BspLog_LogWarning("[Bsp] Unable to Start Tx DMA, Empty Instance!\n");
+        BspLog_LogWarning("[Bsp][%s] Unable to Start Tx DMA, Empty Instance!\n", this->name_);
         return;
     }
 
@@ -345,7 +400,7 @@ void Instance::TryStartTxDMA()
     }
     else
     {
-        BspLog_LogError("[Bsp] Failed to Start HAL_Tx_DMA!\n");
+        BspLog_LogError("[Bsp][%s] Failed to Start HAL_Tx_DMA!\n", this->name_);
         this->tx_fifo_.sending_len = 0;
     }
 }
@@ -357,7 +412,7 @@ void Instance::TryStartTxIT()
 {
     if (this->id == nullptr)
     {
-        BspLog_LogWarning("[Bsp] Unable to Start Tx IT, Empty Instance!\n");
+        BspLog_LogWarning("[Bsp][%s] Unable to Start Tx IT, Empty Instance!\n", this->name_);
         return;
     }
 
@@ -393,7 +448,7 @@ void Instance::TryStartTxIT()
     }
     else
     {
-        BspLog_LogError("[Bsp] Failed to Start HAL_Tx_IT!\n");
+        BspLog_LogError("[Bsp][%s] Failed to Start HAL_Tx_IT!\n", this->name_);
         this->tx_fifo_.sending_len = 0;
     }
 }
@@ -406,7 +461,7 @@ void Instance::OnTxCplt()
     // 确保不是空调用
     if (this->id == nullptr)
     {
-        BspLog_LogError("[Bsp] Meet Empty UartInst in TxCplt Callback!\n");
+        BspLog_LogError("[Bsp][unknown] Meet Empty UartInst in TxCplt Callback!\n");
         return;
     }
 
@@ -461,11 +516,11 @@ void Instance::OnError()
     {
         if (!this->RestartRxDMA())
         {
-            BspLog_LogError("[Bsp] UART Rx Recover Failed! ErrorCode=0x%08lx\n", error_code);
+            BspLog_LogError("[Bsp][%s] UART Rx Recover Failed! ErrorCode=0x%08lx\n", this->name_, error_code);
         }
         else
         {
-            BspLog_LogWarning("[Bsp] UART Rx Recovered From Error. ErrorCode=0x%08lx\n", error_code);
+            BspLog_LogWarning("[Bsp][%s] UART Rx Recovered From Error. ErrorCode=0x%08lx\n", this->name_, error_code);
         }
     }
 

@@ -38,9 +38,9 @@ namespace BSP
         ::__UART_HandleTypeDef* ToHalHandle(UartID id);
         UartID ToUartID(::__UART_HandleTypeDef* huart);
 
-        /// @brief 申请一个 UART 实例
-        Handler Apply(UartID id, const char* file = __builtin_FILE(), int line = __builtin_LINE());
-        Handler Apply(UartID id, TxMode tx_mode, const char* file = __builtin_FILE(), int line = __builtin_LINE());
+        /// @brief 申请一个 UART 实例，可选携带实例名
+        Handler Apply(UartID id, const char* name = nullptr, const char* file = __builtin_FILE(), int line = __builtin_LINE());
+        Handler Apply(UartID id, TxMode tx_mode, const char* name = nullptr, const char* file = __builtin_FILE(), int line = __builtin_LINE());
 
         class Handler
         {
@@ -73,7 +73,7 @@ namespace BSP
             explicit Instance(UartID id, TxMode tx_mode = TxMode::Dma);
 
             /// @brief 重置并初始化实例
-            void Init(UartID id, TxMode tx_mode = TxMode::Dma);
+            void Init(UartID id, TxMode tx_mode = TxMode::Dma, const char* name = nullptr);
 
             /// @brief 发送串口数据（带缓冲，默认DMA）
             void Transmit(const uint8_t *data, uint16_t len);
@@ -85,6 +85,12 @@ namespace BSP
 
             /// @brief 获取本实例发送模式
             TxMode GetTxMode() const;
+
+            /// @brief 获取实例名，未设置时返回空字符串
+            const char* GetName() const;
+
+            /// @brief 设置实例名，超过10个字符会被截断
+            void SetName(const char* name);
 
             /// @brief HAL UART 发送完成回调入口（DMA/IT共用）
             void OnTxCplt();
@@ -101,6 +107,9 @@ namespace BSP
 
             /// @brief 本实例对应的接收回调函数
             RxCallback rx_callback;
+
+            /// @brief 本实例名称，最长10个字符，空字符串表示未命名
+            char name_[11];
 
         private:
             struct TxFIFO
