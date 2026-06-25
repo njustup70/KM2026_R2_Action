@@ -95,6 +95,24 @@ public:
     void SetTrackMode(bool enable) { _in_track_mode = enable; }
 
     /**
+     * @brief 设置 **相对于中心的** 取矛头位置。向上和向右为正。
+     * @details 所谓中心，就是完成初始化后，机构测得的中心。这个位置是由机械限位和自动调零结果决定的。
+     * @warning 需要注意的是————完成调零后，机构并不是回到原点。
+     * 
+     * @param x_mm 
+     * @param y_mm 
+     */
+    void SetPos(float x_mm, float y_mm);
+
+    /**
+     * @brief 相对当前位置改变位置。会被其他自动位置控制覆盖。
+     * 
+     * @param delta_x_mm
+     * @param delta_y_mm
+     */
+    void ChangePos(float delta_x_mm, float delta_y_mm);
+
+    /**
      * @brief 把夹爪竖起来
      */
     void PitchUp();

@@ -127,6 +127,9 @@ void Jaw::Update()
             _Track_Head();
             // _Update_LogHead();
         }
+
+        // 真正上传位置到电机
+        _UploadPos();
     }
 }
 
@@ -177,9 +180,8 @@ void Jaw::_Track_Head()
     if (target_vert_code > _vert_tracklim_max) target_vert_code = _vert_tracklim_max;
     if (target_vert_code < _vert_tracklim_min) target_vert_code = _vert_tracklim_min;
 
-    // 跟随目标位置
-    motor_3508_hori.SetPos(target_hori_code);
-    motor_3508_vert.SetPos(target_vert_code);
+    _x_pos = target_hori_code;
+    _y_pos = target_vert_code;
 }
 
 /**
@@ -259,7 +261,10 @@ void Jaw::_Update_LogHead()
 
 void Jaw::_UploadPos()
 {
-
+    // 上传位置到电机
+    motor_3508_hori.SetPos(_x_pos);
+    motor_3508_vert.SetPos(_y_pos);
+    motor_2006.SetPos(_pitch_pos);
 }
 
 void Jaw::Enable()
@@ -285,12 +290,56 @@ void Jaw::CloseClaw()
 void Jaw::PitchUp()
 {
     // 减的这 500 是防堵转
-    motor_2006.SetPos(_pitch_origin_code - 500);
+    _pitch_pos = _pitch_origin_code - 500;
 }
 
 void Jaw::PitchDown()
 {
-    motor_2006.SetPos(_pitch_origin_code - (JawConst::_pitch_max_travel_code / 2 - 5000));
+    _pitch_pos = _pitch_origin_code - (JawConst::_pitch_max_travel_code / 2 - 5000);
+}
+
+void Jaw::SetPos(float x_mm, float y_mm)
+{
+    if (!_origined) return;
+
+    int hori_center = _hori_origin_code - JawConst::_hori_max_travel_code / 2;
+    int vert_center = _vert_origin_code - JawConst::_vert_max_travel_code / 2;
+
+    int target_hori = hori_center + _HoriMMToCode(x_mm);
+    int target_vert = vert_center + _VertMMToCode(y_mm);
+
+    // 限幅后修改
+    int hori_min = _hori_origin_code - JawConst::_hori_max_travel_code;
+    int hori_max = _hori_origin_code;
+    if (target_hori > hori_max) target_hori = hori_max;
+    if (target_hori < hori_min) target_hori = hori_min;
+
+    int vert_min = _vert_origin_code - JawConst::_vert_max_travel_code;
+    int vert_max = _vert_origin_code;
+    if (target_vert > vert_max) target_vert = vert_max;
+    if (target_vert < vert_min) target_vert = vert_min;
+
+    _x_pos = target_hori;
+    _y_pos = target_vert;
+}
+
+void Jaw::ChangePos(float delta_x_mm, float delta_y_mm)
+{
+    if (!_origined) return;
+
+    _x_pos += _HoriMMToCode(delta_x_mm);
+    _y_pos += _VertMMToCode(delta_y_mm);
+
+    // 限幅后修改
+    int hori_min = _hori_origin_code - JawConst::_hori_max_travel_code;
+    int hori_max = _hori_origin_code;
+    if (_x_pos > hori_max) _x_pos = hori_max;
+    if (_x_pos < hori_min) _x_pos = hori_min;
+
+    int vert_min = _vert_origin_code - JawConst::_vert_max_travel_code;
+    int vert_max = _vert_origin_code;
+    if (_y_pos > vert_max) _y_pos = vert_max;
+    if (_y_pos < vert_min) _y_pos = vert_min;
 }
 
 // void Jaw::Dock()
