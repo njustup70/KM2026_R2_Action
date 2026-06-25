@@ -28,5 +28,5 @@ namespace MOVE
     }
 }
 
-void Config_AutoStateGraph();
-extern StateGraph AutoGraph;
+void Config_SemiAutoStateGraph();
+extern StateGraph SemiAutoGr;

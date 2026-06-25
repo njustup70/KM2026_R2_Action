@@ -6,6 +6,7 @@
 #include "Lift_Leg.hpp"
 #include "HostPC.hpp"
 #include "PathChaser.hpp"
+#include "VacuumClaw.hpp"
 
 
 /// @brief 所有的路径文件
@@ -14,16 +15,16 @@
 #include "table_to_dock.hpp"
 
 // 自动状态机
-StateGraph AutoGraph("Auto");
+StateGraph SemiAutoGr("SemiAuto");
 static void Waiting_for_Start(StateCore *core);
 static void Walk_Fetch(StateCore *core);
 static void Walk_To_Dock(StateCore *core);
 
-void Config_AutoStateGraph()
+void Config_SemiAutoStateGraph()
 {
-  StateBlock& s_wait = AutoGraph.AddState("wait");
-  StateBlock& s_area1_1 = AutoGraph.AddState("area1_1");
-  StateBlock& s_area1_2 = AutoGraph.AddState("area1_2");
+  StateBlock& s_wait = SemiAutoGr.AddState("wait");
+  StateBlock& s_area1_1 = SemiAutoGr.AddState("area1_1");
+  StateBlock& s_area1_2 = SemiAutoGr.AddState("area1_2");
 
   s_wait.StateAction = Waiting_for_Start;
   s_area1_1.StateAction = Walk_Fetch;
@@ -34,7 +35,7 @@ void Config_AutoStateGraph()
   s_area1_2.LinkTo(&s_area1_2.Complete, s_wait);
 
   // 向状态机核心注册
-  APP::state_core.RegistGraph(AutoGraph);
+  APP::state_core.RegistGraph(SemiAutoGr);
   APP::state_core.Enable(0); // 启动状态机核心，指定初始状态图为0号图
 }
 
@@ -99,7 +100,10 @@ void Walk_Fetch(StateCore *core)
   Seq::Wait(0.5);
 
   // 等待遥控器指令，然后才进入下一个状态
-  Seq::WaitUntil(MOD::farcon.button_first_half[0]);
+  Seq::WaitUntil([]()
+  {
+    return MOD::farcon.button_first_half[0] == 1;
+  });
 
   core->GetCurState().Complete = true;
 }
@@ -121,7 +125,93 @@ void Walk_To_Dock(StateCore *core)
   // Seq::WaitUntil()
 
   // 等待遥控器指令，然后才进入下一个状态
-  Seq::WaitUntil(MOD::farcon.button_first_half[0]);
+  Seq::WaitUntil([]()
+  {
+    return MOD::farcon.button_first_half[0] == 1;
+  });
 
   core->GetCurState().Complete = true;
+}
+
+/**
+ * @brief 二区行为之——上200
+ * @details 内部区分需不需要取块
+ */
+void Climb_Up200(StateCore *core)
+{
+  // 登200时，先放低前后腿
+  APP::leg.F_Down_200();
+  APP::leg.B_Down_200();
+
+  // 如果需要取块，那么爪子也要有所行动。要先伸出来
+  // if (need_to_fetch) APP::vac_claw.StretchOut();
+
+  // 往前缓慢移动，直到抵靠到前端
+  APP::chas.Move(Vec2(0.3, 0));
+
+  // 等待小黄0号检测到可以抬前腿
+  Seq::WaitUntil([&]()
+  {
+    return APP::leg.detector[0].Read();
+  });
+
+  // 抬升前腿
+  APP::leg.F_Origin();
+  
+  // 往前移动
+  APP::chas.Move(Vec2(0.5, 0));
+
+  // 等待小黄2号检测到可以抬后腿
+  Seq::WaitUntil([&]()
+  {
+    return APP::leg.detector[0].Read();
+  });
+
+  // 抬升后腿
+  APP::leg.B_Origin();
+}
+
+/**
+ * @brief 二区行为之——上400
+ * @details 内部区分需不需要取块
+ */
+void Climb_Up400(StateCore *core)
+{
+  // 登400时，先放低前后腿
+  APP::leg.F_Down_400();
+  APP::leg.B_Down_400();
+
+  // 如果需要取块，那么爪子也要有所行动。要先伸出来
+  // if (need_to_fetch) APP::vac_claw.StretchOut();
+
+  // 往前缓慢移动，直到抵靠到前端
+  APP::chas.Move(Vec2(0.3, 0));
+
+  // 等待小黄0号检测到可以抬前腿
+  Seq::WaitUntil([&]()
+  {
+    return APP::leg.detector[0].Read();
+  });
+
+  // 抬升前腿
+  APP::leg.F_Origin();
+  
+  // 往前移动
+  APP::chas.Move(Vec2(0.5, 0));
+
+  // 等待小黄2号检测到可以抬后腿
+  Seq::WaitUntil([&]()
+  {
+    return APP::leg.detector[0].Read();
+  });
+
+  // 抬升后腿
+  APP::leg.B_Origin();
+  
+  // 往前移动一点
+  APP::chas.Move(Vec2(0.5, 0));
+  Seq::Wait(1.0f);
+  
+  // 结束
+  APP::chas.Move(Vec2(0.0f, 0.0f));
 }

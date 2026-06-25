@@ -46,3 +46,8 @@ class VacuumClaw : public Application
      */
 
 };
+
+namespace APP
+{
+    extern VacuumClaw& vac_claw;
+}
