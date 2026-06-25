@@ -92,6 +92,9 @@ namespace BSP
             /// @brief HAL UART DMA接收事件回调入口
             void OnRxEvent(uint16_t size);
 
+            /// @brief HAL UART 错误回调入口，尝试恢复接收
+            void OnError();
+
             /*---   成员变量    ---*/
             /// @brief 本实例对应的硬件 UART 的模糊句柄
             UartID id;
@@ -117,6 +120,9 @@ namespace BSP
 
             /// @brief 尝试启动 TX 中断发送
             void TryStartTxIT();
+
+            /// @brief 清理错误状态并重新启动 ReceiveToIdle DMA
+            bool RestartRxDMA();
 
             TxMode tx_mode_;
             TxFIFO tx_fifo_;

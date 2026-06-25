@@ -273,20 +273,13 @@ bool Instance::RegisterRx(uint16_t rx_setlen, RxCallback rx_callback, const char
     // 启动DMA接收
     memset(this->rx_buffer_, 0, sizeof(this->rx_buffer_));
 
-    if (HAL_UARTEx_ReceiveToIdle_DMA(ToHalHandle(this->id), this->rx_buffer_, this->rx_setlen_) != HAL_OK)
+    if (!this->RestartRxDMA())
     {
         BspLog_LogError("[Bsp] Try Enable HAL_IdleRxCallback_DMA, but Failed!  [%s:%d]\n", GetFileName(file), line);
         this->rx_registered_ = 0;
         this->rx_setlen_ = 0;
         this->rx_callback = nullptr;
         return false;
-    }
-
-    // 关闭DMA半满中断，避免在接收过程中被过早触发
-    UART_HandleTypeDef* h = ToHalHandle(this->id);
-    if (h->hdmarx != NULL)
-    {
-        __HAL_DMA_DISABLE_IT(h->hdmarx, DMA_IT_HT);
     }
 
     return true;
@@ -448,13 +441,68 @@ void Instance::OnRxEvent(uint16_t size)
 
     this->rx_callback(this->id, this->rx_buffer_, real_size);
 
-    memset(this->rx_buffer_, 0, this->rx_setlen_);
+    if (!this->RestartRxDMA())
+    {
+        BspLog_LogError("[Bsp] Failed to Restart HAL_IdleRxCallback_DMA in RxEvent!\n");
+    }
+}
+
+void Instance::OnError()
+{
+    if (this->id == nullptr)
+    {
+        return;
+    }
+
     UART_HandleTypeDef* h = ToHalHandle(this->id);
-    HAL_UARTEx_ReceiveToIdle_DMA(h, this->rx_buffer_, this->rx_setlen_);
+    uint32_t error_code = h->ErrorCode;
+
+    if (this->rx_registered_ != 0 && this->rx_callback != nullptr)
+    {
+        if (!this->RestartRxDMA())
+        {
+            BspLog_LogError("[Bsp] UART Rx Recover Failed! ErrorCode=0x%08lx\n", error_code);
+        }
+        else
+        {
+            BspLog_LogWarning("[Bsp] UART Rx Recovered From Error. ErrorCode=0x%08lx\n", error_code);
+        }
+    }
+
+    this->TryStartTx();
+}
+
+bool Instance::RestartRxDMA()
+{
+    if (this->id == nullptr || this->rx_registered_ == 0 || this->rx_setlen_ == 0)
+    {
+        return false;
+    }
+
+    UART_HandleTypeDef* h = ToHalHandle(this->id);
+
+    HAL_UART_AbortReceive(h);
+    __HAL_UART_CLEAR_PEFLAG(h);
+    __HAL_UART_CLEAR_FEFLAG(h);
+    __HAL_UART_CLEAR_NEFLAG(h);
+    __HAL_UART_CLEAR_OREFLAG(h);
+    __HAL_UART_CLEAR_IDLEFLAG(h);
+    h->ErrorCode = HAL_UART_ERROR_NONE;
+
+    memset(this->rx_buffer_, 0, this->rx_setlen_);
+
+    if (HAL_UARTEx_ReceiveToIdle_DMA(h, this->rx_buffer_, this->rx_setlen_) != HAL_OK)
+    {
+        return false;
+    }
+
+    // 关闭DMA半满中断，避免在接收过程中被过早触发
     if (h->hdmarx != NULL)
     {
         __HAL_DMA_DISABLE_IT(h->hdmarx, DMA_IT_HT);
     }
+
+    return true;
 }
 
 
@@ -480,4 +528,15 @@ void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
     }
 
     inst->OnTxCplt();
+}
+
+void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
+{
+    Instance *inst = FindInstByHuart(huart);
+    if (inst == nullptr)
+    {
+        return;
+    }
+
+    inst->OnError();
 }
