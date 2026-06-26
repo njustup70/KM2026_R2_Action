@@ -90,36 +90,89 @@ bool PathChaserType::_validate_path() const
             return false;
         }
     }
-    return _path_time() > 1e-6f;
+    return _path_time() > 1e-6f && _path_length() > 1e-6f;
+}
+
+PathChaserType::PathFrame PathChaserType::_sample_frame(float dist) const
+{
+    PathFrame frame;
+    if (_waypoints == nullptr || _waypoint_count == 0) return frame;
+
+    if (_waypoint_count == 1 || _path_total_len <= 1e-6f)
+    {
+        frame.pos = _waypoints[0].pos;
+        frame.tangent = Vec2(1.0f, 0.0f);
+        frame.normal = Vec2(0.0f, 1.0f);
+        frame.yaw = 0.0f;
+        frame.curvature = 0.0f;
+        return frame;
+    }
+
+    dist = StdMath::fclamp(dist, 0.0f, _path_total_len);
+
+    float probe = StdMath::fclamp(_path_total_len * 0.015f, 0.03f, 0.08f);
+    float s0 = StdMath::fclamp(dist - probe, 0.0f, _path_total_len);
+    float s1 = dist;
+    float s2 = StdMath::fclamp(dist + probe, 0.0f, _path_total_len);
+
+    Vec2 p0 = _sample_pos(s0);
+    Vec2 p1 = _sample_pos(s1);
+    Vec2 p2 = _sample_pos(s2);
+    Vec2 d0 = p1 - p0;
+    Vec2 d1 = p2 - p1;
+    Vec2 d2 = p2 - p0;
+
+    float d2_len = d2.Length();
+    if (d2_len > 1e-6f)
+    {
+        frame.tangent = d2 * (1.0f / d2_len);
+    }
+    else if (d1.Length() > 1e-6f)
+    {
+        frame.tangent = d1.Norm();
+    }
+    else if (d0.Length() > 1e-6f)
+    {
+        frame.tangent = d0.Norm();
+    }
+    else
+    {
+        frame.tangent = Vec2(1.0f, 0.0f);
+    }
+
+    frame.normal = Vec2(-frame.tangent.y, frame.tangent.x);
+    frame.pos = p1;
+    frame.yaw = atan2f(frame.tangent.y, frame.tangent.x);
+
+    float yaw0 = atan2f(d0.y, d0.x);
+    float yaw1 = atan2f(d1.y, d1.x);
+    float dyaw = _wrap_pi(yaw1 - yaw0);
+    frame.curvature = (probe > 1e-6f) ? (dyaw / (2.0f * probe)) : 0.0f;
+    if (!std::isfinite(frame.curvature))
+    {
+        frame.curvature = 0.0f;
+    }
+
+    frame.s = dist;
+    return frame;
 }
 
 /**
- * @brief 最近点投影求路径进度（弧长）
+ * @brief 最近点投影求路径进度（弧长）与局部几何参考
  * @param now_pos 当前世界坐标位置
- * @return 当前进度弧长（单位m）
+ * @return 当前投影点对应的局部路径信息
  */
-float PathChaserType::_solve_progress(const Vec2& now_pos)
+PathChaserType::PathFrame PathChaserType::_solve_progress(const Vec2& now_pos)
 {
-    if (_waypoints == nullptr || _waypoint_count < 2) return 0.0f;
+    PathFrame best;
+    if (_waypoints == nullptr || _waypoint_count < 2) return best;
 
-    // 只在上一次最近段附近做窗口搜索，降低每周期计算量
     uint16_t seg_max = static_cast<uint16_t>(_waypoint_count - 1);
-    uint16_t idx_begin = (_near_seg_idx > 2) ? (_near_seg_idx - 2) : 0;
-    uint16_t idx_end = (_near_seg_idx + 6 < seg_max) ? (_near_seg_idx + 6) : seg_max;
-
-    // 先累计到窗口起点的弧长，后续 prefix 在窗口内递推
-    float base_dist = 0.0f;
-    for (uint16_t i = 0; i < idx_begin; i++)
-    {
-        base_dist += (_waypoints[i + 1].pos - _waypoints[i].pos).Length();
-    }
-
+    float prefix = 0.0f;
     float best_dist2 = 1e30f;
-    float best_progress = _s_meas;
-    float prefix = base_dist;
-    uint16_t best_seg = idx_begin;
+    uint16_t best_seg = 0;
 
-    for (uint16_t i = idx_begin; i < idx_end; i++)
+    for (uint16_t i = 0; i < seg_max; i++)
     {
         Vec2 a = _waypoints[i].pos;
         Vec2 b = _waypoints[i + 1].pos;
@@ -138,25 +191,78 @@ float PathChaserType::_solve_progress(const Vec2& now_pos)
         Vec2 proj = a + ab * t;
         Vec2 err = now_pos - proj;
         float d2 = err * err;
-        if (d2 < best_dist2)
+        bool better = (d2 < best_dist2);
+        if (!better && fabsf(d2 - best_dist2) < 1e-6f)
+        {
+            int curr_bias = static_cast<int>(i) - static_cast<int>(_near_seg_idx);
+            int best_bias = static_cast<int>(best_seg) - static_cast<int>(_near_seg_idx);
+            if (curr_bias < 0) curr_bias = -curr_bias;
+            if (best_bias < 0) best_bias = -best_bias;
+            better = (curr_bias < best_bias);
+        }
+        if (better)
         {
             // 选取“投影误差最小”的段，并转换为全路径弧长进度
             best_dist2 = d2;
-            best_progress = prefix + seg_len * t;
+            best.s = prefix + seg_len * t;
+            best.pos = proj;
+            if (seg_len > 1e-6f)
+            {
+                best.tangent = ab * (1.0f / seg_len);
+            }
+            else
+            {
+                best.tangent = Vec2(1.0f, 0.0f);
+            }
+            best.normal = Vec2(-best.tangent.y, best.tangent.x);
+            best.yaw = atan2f(best.tangent.y, best.tangent.x);
             best_seg = i;
         }
         prefix += seg_len;
     }
 
-    // 避免进度大幅倒退（例如局部抖动/短时偏航），允许小范围容错回退
-    if (best_progress + 0.08f < _s_meas)
+    // 避免实测进度大幅倒退（例如局部抖动/短时偏航），允许小范围容错回退
+    if (best.s + 0.05f < _s_meas)
     {
-        best_progress = _s_meas - 0.08f;
+        best.s = _s_meas - 0.05f;
     }
-    if (best_progress < 0.0f) best_progress = 0.0f;
+    if (best.s < 0.0f) best.s = 0.0f;
 
     _near_seg_idx = best_seg;
-    return best_progress;
+
+    // 估计局部曲率：用相邻两段的夹角除以平均弧长
+    if (_waypoint_count >= 3 && seg_max >= 2)
+    {
+        uint16_t left_seg = (best_seg > 0) ? (best_seg - 1) : best_seg;
+        uint16_t right_seg = (best_seg + 1 < seg_max) ? (best_seg + 1) : best_seg;
+        if (left_seg != right_seg)
+        {
+            Vec2 left = _waypoints[left_seg + 1].pos - _waypoints[left_seg].pos;
+            Vec2 right = _waypoints[right_seg + 1].pos - _waypoints[right_seg].pos;
+            float left_len = left.Length();
+            float right_len = right.Length();
+            if (left_len > 1e-6f && right_len > 1e-6f)
+            {
+                Vec2 left_dir = left * (1.0f / left_len);
+                Vec2 right_dir = right * (1.0f / right_len);
+                float cross = left_dir.x * right_dir.y - left_dir.y * right_dir.x;
+                float dot = left_dir * right_dir;
+                float turn = atan2f(cross, dot);
+                float span = 0.5f * (left_len + right_len);
+                if (span > 1e-6f)
+                {
+                    best.curvature = turn / span;
+                }
+            }
+        }
+    }
+
+    if (!std::isfinite(best.curvature))
+    {
+        best.curvature = 0.0f;
+    }
+
+    return best;
 }
 
 /**
@@ -331,44 +437,68 @@ void PathChaserType::_update_cmd(const Vec3& now_pose)
 
     // 获取当前二维位置
     Vec2 now_pos = now_pose.ToVec2();
-    _s_meas = _solve_progress(now_pos);
-
-    // 时间参考进度
+    PathFrame proj = _solve_progress(now_pos);
+    _s_meas = proj.s;
     _s_ref = _sample_s_by_time(_elapsed_sec);
 
-    // 基于 s_cmd 采样参考速度，融合推进更新 s_cmd
-    Vec2 vel_on_cmd = _sample_vel(_s_cmd);
-    float v_ref = vel_on_cmd.Length();
-    _s_dot_cmd = v_ref
-               + _k_sync_time * (_s_ref - _s_cmd)
-               + _k_sync_meas * (_s_meas - _s_cmd);
-    _s_dot_cmd = StdMath::fclamp(_s_dot_cmd, _min_s_dot, _max_s_dot);
+    // 以最近点为主，附加一个随速度变化的前瞻距离，形成更稳的几何跟踪目标
+    Vec2 ff_at_proj = _sample_vel(_s_meas);
+    float proj_ff_speed = ff_at_proj.Length();
+    float lookahead = StdMath::fclamp(_lookahead_min + _lookahead_gain * proj_ff_speed, _lookahead_min, _lookahead_max);
+    float target_s = StdMath::fclamp(_s_meas + lookahead, 0.0f, _path_total_len);
+
+    // 进度平滑器：用于稳定前瞻采样点，不再承担时间主导推进
+    _s_dot_cmd = StdMath::fclamp(_k_sync_meas * (target_s - _s_cmd), _min_s_dot, _max_s_dot);
     _s_cmd += _s_dot_cmd * dt;
     _s_cmd = StdMath::fclamp(_s_cmd, 0.0f, _path_total_len);
+    if (_s_cmd < _s_meas)
+    {
+        _s_cmd = _s_meas;
+    }
+    float track_s = StdMath::fclamp(_s_cmd, 0.0f, _path_total_len);
 
-    // 按 s_cmd 采样目标状态（位置、速度、姿态、角速度）
-    Vec2 targ_pos = _sample_pos(_s_cmd);
-    Vec2 vel_ff = _sample_vel(_s_cmd);
-    float yaw_ref = _sample_yaw(_s_cmd);
-    float omega_ff = _sample_omega(_s_cmd);
+    // 按平滑后的前瞻点采样前馈参考，控制本身围绕“预瞄曲线”展开
+    PathFrame track = _sample_frame(track_s);
+    Vec2 vel_ff = _sample_vel(track_s);
 
-    // 计算误差
-    Vec2 pos_err = targ_pos - now_pos;
-    float yaw_err = _wrap_pi(yaw_ref - now_pose.z);
+    // 只对法向误差做主反馈，避免把整个位移误差直接“拉向目标点”导致切弯
+    float lat_err = (now_pos - proj.pos) * proj.normal;
+    float lat_fb = StdMath::fclamp(-_kp_pos * lat_err, -_max_pos_fb, _max_pos_fb);
+    Vec2 v_world = Vec2(0.0f, 0.0f);
 
-    // 叠加前馈与反馈，反馈项单独限幅，避免误差导致长时间满速追赶
-    Vec2 pos_fb = _limit_vec2(pos_err * _kp_pos, _max_pos_fb);
-    Vec2 v_world = vel_ff + pos_fb;
+    // 曲率越大，允许的切向速度越低
+    float abs_curvature = fabsf(track.curvature);
+    float curve_speed_limit = _max_vel;
+    if (abs_curvature > 1e-5f)
+    {
+        curve_speed_limit = sqrtf(_curve_lat_accel / abs_curvature);
+    }
+    curve_speed_limit = StdMath::fclamp(curve_speed_limit, 0.08f, _max_vel);
+
+    float v_t_ff = vel_ff * track.tangent;
+    if (!std::isfinite(v_t_ff))
+    {
+        v_t_ff = 0.0f;
+    }
+    if (v_t_ff < 0.0f)
+    {
+        v_t_ff = 0.0f;
+    }
+    float v_t = StdMath::fclamp(v_t_ff, 0.0f, curve_speed_limit);
+    v_world = track.tangent * v_t + track.normal * lat_fb;
     v_world = _limit_vec2(v_world, _max_vel);
 
-    // 角速度前馈+反馈
+    // 姿态跟随路径文件中规划的 yaw/omega，适配全向底盘的任务朝向需求
+    float yaw_ref = _sample_yaw(track_s);
+    float yaw_err = _wrap_pi(yaw_ref - now_pose.z);
     float yaw_fb = StdMath::fclamp(_kp_yaw * yaw_err, -_max_yaw_fb, _max_yaw_fb);
-    // 根据yaw误差大小调整前馈强度：误差大时减少前馈，依赖反馈修正
-//    float yaw_err_abs = fabsf(yaw_err);
-//    float ff_scale = 1.0f - StdMath::fclamp(yaw_err_abs / _yaw_ff_degrade_range, 0.0f, 1.0f);
-//    float omega = omega_ff * ff_scale + yaw_fb;
-    float omega = omega_ff * 1.25f + yaw_fb;
-    omega = StdMath::fclamp(omega, _max_omega);
+    float omega_ff = _sample_omega(track_s);
+    if (!std::isfinite(omega_ff))
+    {
+        omega_ff = 0.0f;
+    }
+    float omega = omega_ff + yaw_fb;
+    omega = StdMath::fclamp(omega, -_max_omega, _max_omega);
 
     // 转换到车体系（使用本周期新计算的世界系速度，避免一拍延迟）
     Vec2 body_xy = v_world.Rotate(-now_pose.z);
@@ -385,9 +515,9 @@ void PathChaserType::_update_cmd(const Vec3& now_pose)
     float pos_err_len = (final_pos - now_pos).Length();
     float final_yaw_err = fabsf(_wrap_pi(final_yaw - now_pose.z));
 
-    // 完成条件：时间接近末端 + 位置姿态进入阈值
-    bool time_ready = _elapsed_sec >= (_path_total_time - _finish_time_margin);
-    if (time_ready && pos_err_len < _pos_tol && final_yaw_err < _yaw_tol)
+    // 完成条件：几何上已进入末端窗口 + 位置姿态都满足阈值
+    bool end_ready = (_path_total_len - _s_meas) <= _finish_progress_margin;
+    if (end_ready && pos_err_len < _pos_tol && final_yaw_err < _yaw_tol)
     {
         // 如果还没计时结束，继续加
         if (_finish_tick_cnt < _finish_hold_ticks) _finish_tick_cnt++;

@@ -39,54 +39,54 @@ void Climb_Up200()
   // 登200时，先放低前后腿
   APP::leg.F_Down_200();
   APP::leg.B_Down_200();
+  Seq::Wait(0.5f);
 
   // 如果需要取块，那么爪子也要有所行动。要先伸出来
   // if (need_to_fetch) APP::vac_claw.StretchOut();
-
   // 往前缓慢移动，直到抵靠到前端
-  APP::chas.Move(Vec2(0.3, 0), 2.0f);
-
-  Seq::Wait(1.0f);
+  APP::chas.Move(Vec2(0.5, 0), 3.0f);
+  Seq::Wait(0.25f);
+  APP::chas.Move(Vec2(0.25, 0), 3.0f);
+  Seq::Wait(0.25f);
 
   // 等待小黄0号检测到可以抬前腿
   Seq::WaitUntil([&]()
   {
     return APP::leg.detector[0].Read();
   });
+  // 再走0.3秒，慢慢走，确保前端抵住
+  APP::chas.Move(Vec2(0.2, 0), 2.0f);
+  Seq::Wait(0.3f);
 
+
+  // 停稳，抬腿
   APP::chas.Move(Vec2(0, 0), 2.0f);
-
-  Seq::Wait(0.5f);
-
-  // 抬升前腿
   APP::leg.F_Origin();
+  // 抬腿的同时向前走
+  Seq::Wait(0.25f);
+  /****   持续衰减的爆发移动速度加成  ****/
+  APP::chas.Move(Vec2(1.0, 0), 3.0f);
+  Seq::Wait(0.15f);
+  APP::chas.Move(Vec2(0.5, 0), 3.0f);
+  Seq::Wait(0.15f);
+  APP::chas.Move(Vec2(0.25, 0), 3.0f);
 
-  Seq::Wait(0.5f);
-  
-  // 往前移动
-  APP::chas.Move(Vec2(0.5, 0), 2.0f);
-  
-  Seq::Wait(0.5f);
 
+  // 防止小黄2号误检
+  Seq::Wait(0.1f);
   // 等待小黄2号检测到可以抬后腿
   Seq::WaitUntil([&]()
   {
     return APP::leg.detector[2].Read();
   });
+  Seq::Wait(0.1f);
 
-  APP::chas.Move(Vec2(0, 0), 2.0f);
-  
-  Seq::Wait(0.5f);
-
-  // 抬升后腿
+  // 抬升后腿并往前移动
   APP::leg.B_Origin();
-
-  // 往前移动
   APP::chas.Move(Vec2(0.5, 0), 2.0f);
 
-  Seq::Wait(0.5f);
-
-  APP::chas.Move(Vec2(0, 0), 2.0f);
+  Seq::Wait(1.25f);
+  APP::chas.Move(Vec2(0, 0), 1.0f);
 }
 
 /**
@@ -139,7 +139,7 @@ void Climb_Up400()
 void Decend_200()
 {
   // 先缓慢向前走
-  APP::chas.Move(Vec2(0.3, 0), 2.0f);
+  APP::chas.Move(Vec2(0.24, 0), 3.0f);
 
   // 等待小黄1号检测不到后，放下前腿
   Seq::WaitUntil([&]()
@@ -151,7 +151,7 @@ void Decend_200()
   Seq::Wait(0.245f);
 
   // 继续向前走。等待小黄3号检测不到后，放下后腿
-  APP::chas.Move(Vec2(0.3, 0), 2.0f);
+  APP::chas.Move(Vec2(0.24, 0), 3.0f);
   Seq::WaitUntil([&]()
   {
     return !APP::leg.detector[3].Read();
@@ -171,26 +171,31 @@ void Decend_200()
 void Decend_400()
 {
   // 先缓慢向前走
-  APP::chas.Move(Vec2(0.15, 0), 2.0f);
+  APP::chas.Move(Vec2(0.2, 0), 6.0f);
+  Seq::Wait(0.5f);
 
   // 等待小黄1号检测不到后，放下前腿
   Seq::WaitUntil([&]()
   {
     return !APP::leg.detector[1].Read();
   });
+
   APP::chas.Move(Vec2(0, 0), 2.0f);
   APP::leg.F_Down_400();
-  Seq::Wait(0.45f);
+  Seq::Wait(1.25f);
 
   // 继续向前走。等待小黄3号检测不到后，放下后腿
-  APP::chas.Move(Vec2(0.15, 0), 2.0f);
+  APP::chas.Move(Vec2(0.2, 0), 6.0f);
+  Seq::Wait(0.5f);
+  
   Seq::WaitUntil([&]()
   {
     return !APP::leg.detector[3].Read();
   });
+
   APP::chas.Move(Vec2(0, 0), 2.0f);
   APP::leg.B_Down_400();
-  Seq::Wait(0.45f);
+  Seq::Wait(1.25f);
 
   // 继续向前走一点，然后放下整个腿
   APP::chas.Move(Vec2(0.4, 0), 2.0f);
