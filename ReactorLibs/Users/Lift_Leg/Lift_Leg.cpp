@@ -36,12 +36,14 @@ void Lift_Leg::_SendLegPos(int16_t fpos, int16_t bpos)
 
 void Lift_Leg::Update()
 {
-
-    if (!enabled_)
-    {
-        return;
-    }
-
+    // 读取小黄
+    front_ir = detector[0].Read();
+    front_mid_ir = detector[1].Read();
+    back_mid_ir = detector[2].Read();
+    back_ir = detector[3].Read();
+    
+    if (!enabled_)  return;
+ 
     // 进行位置限制
     PosLim();
     
@@ -96,25 +98,25 @@ void Lift_Leg::B_Origin()
 // 前腿放低200
 void Lift_Leg::F_Down_200()
 {
-    front_pos = -200;
+    front_pos = -205;
 }
 
 // 前腿放低400
 void Lift_Leg::F_Down_400()
 {
-    front_pos = -400;
+    front_pos = -405;
 }
 
 // 后腿放低200
 void Lift_Leg::B_Down_200()
 {
-    back_pos = -200;
+    back_pos = -205;
 }
 
 // 后腿放低400
 void Lift_Leg::B_Down_400()
 {
-    back_pos = -400;
+    back_pos = -405;
 }
 
 void Wait_detected(InfraredDetector& xiaohuang_x)
@@ -125,29 +127,3 @@ void Wait_detected(InfraredDetector& xiaohuang_x)
     });
 }
 
-// 上200逻辑
-void Lift_Leg::Up_200()
-{
-    // 登200时，先放低前后腿
-    F_Down_200();
-    B_Down_200();
-    
-    // 往前缓慢移动
-    APP::chas.Move(Vec2(0.2, 0));
-
-    // 等待小黄0号检测到可以抬前腿
-    Wait_detected(detector[0]);
-    APP::chas.Move(Vec2(0, 0));
-
-    // 抬升前腿
-    F_Origin();
-
-    // 往前移动
-    APP::chas.Move(Vec2(0.5, 0));
-
-    // 等待小黄2号检测到可以抬后腿
-    Wait_detected(detector[2]);
-
-    // 抬升后腿
-    B_Origin();
-}

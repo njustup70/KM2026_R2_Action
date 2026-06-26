@@ -112,10 +112,6 @@ void ChassisType::Update()
         // _UploadSpeed();
         _SendSpd(targ_speed);
     }
-    else
-    {
-        _SendSpd(Vec3(0, 0, 0));
-    }
     
     targ_velo = targ_speed.Length();
 
@@ -243,7 +239,7 @@ void ChassisType::Move(Vec3 Spd)
         return; // 开放控制未使能，直接返回
 
     _safe_lock_tick = 100;
-    targ_speed = Spd;
+        
 }
 
 void ChassisType::Move(Vec2 Spd)
@@ -255,6 +251,29 @@ void ChassisType::Move(Vec2 Spd)
 
     targ_speed.x = Spd.x;
     targ_speed.y = Spd.y;
+}
+
+void ChassisType::Move(Vec2 Spd, float duration)
+{
+    if (!enabled)
+        return;
+
+    // 秒转为毫秒
+    _safe_lock_tick = duration * 1000;
+
+    targ_speed.x = Spd.x;
+    targ_speed.y = Spd.y;
+}
+
+void ChassisType::Move(Vec3 Spd, float duration)
+{
+    if (!enabled)
+        return;
+
+    // 秒转为毫秒
+    _safe_lock_tick = duration * 1000;
+
+    targ_speed = Spd;
 }
 
 void ChassisType::Rotate(float omega)

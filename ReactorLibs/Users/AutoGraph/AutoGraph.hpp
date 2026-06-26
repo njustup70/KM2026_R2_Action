@@ -19,7 +19,7 @@ namespace MOVE
         while (!APP::path_chaser.IsFinished())
         {
             Vec3 speed_vec = APP::path_chaser.GetCmdBody();
-            APP::chas.Move(speed_vec);
+            APP::chas.Move(speed_vec, 0.01f);
             Seq::Wait(0.005f); // 200hz更新频率
         }
         

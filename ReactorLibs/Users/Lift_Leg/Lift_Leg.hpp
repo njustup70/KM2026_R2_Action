@@ -27,7 +27,23 @@ public:
         back_pos += delta_pos;
     }
 
+    void SetFrontPos(int16_t target_pos)
+    {
+        front_pos = target_pos;
+    }
+
+    void SetBackPos(int16_t target_pos)
+    {
+        back_pos = target_pos;
+    }
+
+    // 上台阶用的小黄
     InfraredDetector detector[4];
+    bool front_ir;
+    bool front_mid_ir;
+    bool back_mid_ir;
+    bool back_ir;
+    
 
     void Enable();
     void Disable();

@@ -136,7 +136,9 @@ class ChassisType : public Application
         void Disable(); 
         /// @brief 直接设置底盘速度（一个通用的开环行为）
         void Move(Vec3 Spd);
+        void Move(Vec3 Spd, float duration);
         void Move(Vec2 Spd);
+        void Move(Vec2 Spd, float duration);
         void Rotate(float omega);
 
         void MoveAt(Vec2 Pos);
