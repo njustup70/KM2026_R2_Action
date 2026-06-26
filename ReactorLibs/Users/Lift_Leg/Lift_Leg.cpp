@@ -49,6 +49,23 @@ void Lift_Leg::Update()
     
     // 发送腿部位置指令
     _SendLegPos(front_pos, back_pos);
+
+    if(detector[0].Read())
+    {
+
+    }
+    if(detector[1].Read())
+    {
+
+    }
+    if(detector[2].Read())
+    {
+
+    }
+    if(detector[3].Read())
+    {
+
+    }
 }
 
 void Lift_Leg::Enable()
