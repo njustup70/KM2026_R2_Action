@@ -33,7 +33,7 @@ void GetBlock::Start()
     motor_2006_fric.driver.Enable();
 
     /****  抬升 DM (hcan_sub, ID 10) ，向上为负，总行程 0 - 400 rad 左右****/
-    motor_dm_lift.Init(Hardware::hcan_sub, 10, 19, POSANDVEL, DM_S2325);
+    motor_dm_lift.Init(Hardware::hcan_sub, 10, 20, POSANDVEL, DM_S2325);
     motor_dm_lift.SetFeedbackRange(3.14159f, 10.0f, 5.0f);
     motor_dm_lift.SetPosLimit(1500.0f, -1500.0f);
     motor_dm_lift.SetVelLimit(15.0f);
@@ -61,7 +61,7 @@ void GetBlock::Start()
     }
 
     /**** 初始位置 ****/
-    // motor_dm_lift.SetPosVel(_lift_pos_lower, _lift_vel);
+    motor_dm_lift.SetPosVel(_lift_pos_lower, _lift_vel);
     motor_2006_feed.SetPos(_feed_pos_retract);
 
     /**** 初始扫描 ****/
@@ -79,6 +79,7 @@ void GetBlock::Update()
     if (System.out_from_debugmode)
     {
         _StopBelt();
+        motor_2006_fric.driver.Disable();
         motor_dm_lift.Disable();
         motor_2006_feed.driver.Disable();
         _fsm = FSM::IDLE;
@@ -302,7 +303,7 @@ void GetBlock::_UpdateFSM()
     {
         // 块2已在下仓，但挡片托着块1——不能降抬升(块1会掉)
         // 保持上位，等待外部 Put() 先推出块1，再降抬升处理块2
-        motor_dm_lift.SetPosVel(_lift_pos_upper, _lift_vel);
+        motor_dm_lift.SetPosVel(-_lift_pos_upper, _lift_vel);
         // 无超时 — 外部调用 Put() 会捕获此状态并转入 PUT_FEED_PUSH
         break;
     }
