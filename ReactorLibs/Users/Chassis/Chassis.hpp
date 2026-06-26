@@ -65,7 +65,7 @@ class ChassisType : public Application
         
         /// @param 安全锁定计时器
         int _safe_lock_tick = 0;
-        
+
         /// @brief 发送到电机
         inline void _SendSpdToMotor(); 
 
@@ -143,6 +143,11 @@ class ChassisType : public Application
 
         void MoveAt(Vec2 Pos);
         void RotateAt(float yaw);
+
+        /// @brief 失能前两个轮子
+        void DisableFrontWheels();
+        /// @brief 使能前两个轮子
+        void EnableFrontWheels();
 
         void LockYaw(bool enable);
         bool IsYawLocked() const {return _is_yaw_locked;}

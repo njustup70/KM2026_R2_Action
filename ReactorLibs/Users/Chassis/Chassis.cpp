@@ -12,6 +12,13 @@
 
 ChassisType& APP::chas = ChassisType::GetInstance();
 
+namespace
+{
+    constexpr uint8_t kFrontWheelCtrlTaskId = 2;
+    constexpr uint8_t kFrontWheelDisableCmd = 0x01;
+    constexpr uint8_t kFrontWheelEnableCmd = 0x02;
+}
+
 /**
  * @brief 用于处理 C板 发回的自解里程计数据的回调
  * @details 其用于接收消息的端口为 0x221 can_id
@@ -63,20 +70,16 @@ void _SendSpd(Vec3 Spd)
     MOD::board_can.SendTask(MOD::C_sub_ctrl_board_id, 1, payload, sizeof(payload), false);
 }
 
-/**
- * @brief 向底盘发送速度指令
- */
-void _SendGes(Vec3 Ges) //有bug
+void ChassisType::DisableFrontWheels()
 {
-    // 6 字节 uint8，完全匹配接收端格式
-    uint8_t payload[6];
-    const float scale = 1000.0f;
+    uint8_t payload[1] = {kFrontWheelDisableCmd};
+    MOD::board_can.SendTask(MOD::C_sub_ctrl_board_id, kFrontWheelCtrlTaskId, payload, sizeof(payload), false);
+}
 
-    StdMath::PackFloatToInt16(&payload[0], Ges.x, scale);
-    StdMath::PackFloatToInt16(&payload[2], Ges.y, scale);
-    StdMath::PackFloatToInt16(&payload[4], Ges.z, scale);
-
-    MOD::board_can.SendTask(MOD::C_sub_ctrl_board_id, 2, payload, sizeof(payload), false);
+void ChassisType::EnableFrontWheels()
+{
+    uint8_t payload[1] = {kFrontWheelEnableCmd};
+    MOD::board_can.SendTask(MOD::C_sub_ctrl_board_id, kFrontWheelCtrlTaskId, payload, sizeof(payload), false);
 }
 
 void ChassisType::Update() 
@@ -418,4 +421,3 @@ void ChassisType::SetMoveParams(float max_accel, float max_velo, float max_omega
     _max_omega = max_omega;
     _max_beta = max_beta;
 }
-
