@@ -20,6 +20,11 @@ void Lift_Leg::Start()
     {
         detector[i].Init(pin[i]);
     }
+
+    Pin pin_back_wheel = {'F', 0};
+    relay_daji.Init(pin_back_wheel, Relay::HIGH_ON);
+    // 启动后，先关闭妲己
+    relay_daji.Off();
 }
 
 void Lift_Leg::_SendLegPos(int16_t fpos, int16_t bpos)
@@ -50,22 +55,14 @@ void Lift_Leg::Update()
     // 发送腿部位置指令
     _SendLegPos(front_pos, back_pos);
 
-    if(detector[0].Read())
-    {
-
-    }
-    if(detector[1].Read())
-    {
-
-    }
-    if(detector[2].Read())
-    {
-
-    }
-    if(detector[3].Read())
-    {
-
-    }
+    // if(is_debug)
+    // {
+    //     relay_daji.On();
+    // }
+    // else
+    // {
+    //     relay_daji.Off();
+    // }
 }
 
 void Lift_Leg::Enable()
