@@ -3,10 +3,14 @@
 #include "motor_dji.hpp"
 #include "motor_dm.hpp"
 #include "infrared_detector.hpp"
+#include "relay.hpp"
 
 // ============ 小黄 ============
-#define PIN_SENSOR_LOWER  {'?', 1}   // 下仓：块在抬升平台上
-#define PIN_SENSOR_UPPER  {'?', 2}   // 上仓：有块（被抬升挡片托住触发）
+#define PIN_SENSOR_LOWER  {'F', 10}   // 下仓：块在抬升平台上
+#define PIN_SENSOR_UPPER  {'A', 5}   // 上仓：有块（被抬升挡片托住触发）
+
+// ============ 负压泵的 GPIO ============
+#define PIN_PUMP  {'H', 2}   
 
 class GetBlock : public Application
 {
@@ -64,8 +68,13 @@ private:
     bool _fsm_busy      = false;
 
     bool is_debug = false;
+    bool is_belt_enable = false;
 
     uint32_t _action_tick = 0;  // 阶段开始时间戳 (s)
+
+    // ==================== A板控制的负压泵 ====================
+    Pin pin_pump;
+    Relay relay_pump;
 
     // ==================== 两个传感器 ====================
     // [0]=下仓  [1]=上仓
