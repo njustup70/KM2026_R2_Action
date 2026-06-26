@@ -9,7 +9,7 @@
 #include "farcon.hpp"
 #include "Jaw.hpp"
 // #include "ManualGraph.hpp"
-#include "AutoGraph.hpp"
+// #include "AutoGraph.hpp"
 #include "Lift_Leg.hpp"
 #include "Jaw.hpp"
 #include "ManualGraph.hpp"
@@ -17,6 +17,7 @@
 #include "CommCenter.hpp"
 #include "SickPC.hpp"
 #include "optical_comm.hpp"
+#include "SemiAutoGr.hpp"
 
 StateGraph graph("LoopGraph");
 
@@ -48,27 +49,24 @@ void MainFrameCpp()
   System.RegistApp(APP::comm_center);
 
   // 启动矛头控制应用s
-  // System.RegistApp(APP::jaw);
+  System.RegistApp(APP::jaw);
 
-    // 底盘启动
-    System.RegistApp(APP::chas);
-    APP::chas.Enable();
+  // 底盘启动
+  System.RegistApp(APP::chas);
+  APP::chas.Enable();
   // 启动伸缩腿控制
   // System.RegistApp(APP::leg);
 
   // 启动路径跟踪
   System.RegistApp(APP::path_chaser);
 
-  // 底盘启动s
-  System.RegistApp(APP::chas);
-  APP::chas.Enable();
-
   // System.RegistApp(APP::get_block);
 
   // System.RegistApp(APP::sick_pc);
 
   // Config_AutoStateGraph(); // Auto：0
-  Config_StateGraph(); // Manul：1
+  // Config_StateGraph(); // Manul：1
+  Config_SemiAutoStateGraph();
 }
 
 /***********    一些不通用的回调函数    ***********/

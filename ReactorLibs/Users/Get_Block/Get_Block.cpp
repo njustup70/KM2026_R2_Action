@@ -172,6 +172,15 @@ void GetBlock::Put()
 {
     if (_fsm_busy)
     {
+        // 在存块流程中等待Put → 直接开始推出块1
+        if (_fsm == FSM::STORE_HOLD_PUT)
+        {
+            _fsm = FSM::PUT_FEED_PUSH;
+            _action_tick = System.runtime_tick;
+            APP::monit.LogInfo("[GetBlock] Put during store hold: push block1");
+            return;
+        }
+
         _put_pending = true;
         APP::monit.LogInfo("[GetBlock] Put queued");
         return;
@@ -215,13 +224,14 @@ void GetBlock::_UpdateFSM()
 
             if (_storing_b2)
             {
-                // 块2已到位，托住上仓的块1 → 可以放抬升了
-                _fsm = FSM::STORE_LIFT_DOWN;
-                APP::monit.LogInfo("[GetBlock] Block2 at lower, lift descend");
+                // 块2已到抬升平台，但挡片还托着上仓的块1→不能降
+                // 保持上位，等Put()先推出块1
+                _fsm = FSM::STORE_HOLD_PUT;
+                APP::monit.LogInfo("[GetBlock] Block2 at lower, waiting for Put()");
             }
             else
             {
-                // 块1已到，抬升到上仓
+                // 块1已到，挡片托着块1上升→到上仓
                 _fsm = FSM::STORE_LIFT_UP;
                 APP::monit.LogInfo("[GetBlock] Block1 at lower, lift up");
             }
@@ -235,12 +245,12 @@ void GetBlock::_UpdateFSM()
         break;
     }
 
-    // ═══════════════════ 存块: 抬升 ↑ ═══════════════════
+    // ═══════════════════ 存块: 抬升 ↑ (挡片托着块到上仓) ═══════════════════
     case FSM::STORE_LIFT_UP:
     {
         motor_dm_lift.SetPosVel(_lift_pos_upper, _lift_vel);
 
-        if (_grid[1])  // 上仓检测到块（通过单向门）
+        if (_grid[1])  // 上仓检测到块（被挡片托住触发）
         {
             _upper = true;
             _lower = false;
@@ -249,13 +259,13 @@ void GetBlock::_UpdateFSM()
 
             if (_storing_b2)
             {
-                // 块2已到上仓
-                _fsm = FSM::STORE_LIFT_DOWN;
-                APP::monit.LogInfo("[GetBlock] Block2 at upper, lift down");
+                // 块2已到上仓 → 完成
+                _fsm = FSM::COMPLETE;
+                APP::monit.LogInfo("[GetBlock] Block2 stored at upper");
             }
             else
             {
-                // ★ 块1到上仓 → 保持抬升↑，等待块2 ★
+                // ★ 块1到上仓 → 抬升保持↑，挡片托着块1，等待块2入料 ★
                 _fsm = FSM::STORE_WAIT_SECOND;
                 APP::monit.LogInfo("[GetBlock] Block1 at upper, waiting for block2");
             }
@@ -268,25 +278,37 @@ void GetBlock::_UpdateFSM()
         break;
     }
 
-    // ═══════════════════ 存块: 等待块2 ═══════════════════
+    // ═══════════════════ 存块: 等待块2 (挡片托着块1) ═══════════════════
     case FSM::STORE_WAIT_SECOND:
     {
-        // 抬升机构保持在上位
+        // 抬升保持↑，挡片托着块1在上仓，等待块2入料
         motor_dm_lift.SetPosVel(_lift_pos_upper, _lift_vel);
         // 无超时 — 外部调用 Store() 会捕获此状态并转入 STORE_BELT_IN
         break;
     }
 
-    // ═══════════════════ 存块: 抬升 ↓ (单向门打开穿过块2) ═══════════════════
+    // ═══════════════════ 存块: 等待Put推出块1 (挡片不能降) ═══════════════════
+    case FSM::STORE_HOLD_PUT:
+    {
+        // 块2已在下仓，但挡片托着块1——不能降抬升(块1会掉)
+        // 保持上位，等待外部 Put() 先推出块1，再降抬升处理块2
+        motor_dm_lift.SetPosVel(_lift_pos_upper, _lift_vel);
+        // 无超时 — 外部调用 Put() 会捕获此状态并转入 PUT_FEED_PUSH
+        break;
+    }
+
+    // ═══════════════════ 存块: 抬升 ↓ (挡片穿过块2) ═══════════════════
     case FSM::STORE_LIFT_DOWN:
     {
+        // 下降时机：块1已被推出，块2在下仓
+        // 挡片从上往下穿过块2→被块2顶开→通过后在块2下方闭合
         motor_dm_lift.SetPosVel(_lift_pos_lower, _lift_vel);
 
         if (_LiftNear(_lift_pos_lower))
         {
             _action_tick = System.runtime_tick;
             _fsm = FSM::STORE_LIFT_BOTTOM;
-            APP::monit.LogInfo("[GetBlock] Lift at bottom, gate reset");
+            APP::monit.LogInfo("[GetBlock] Lift at bottom, flap closed below block2");
         }
         else if (_IsTimeout(T_LIFT))
         {
@@ -296,23 +318,25 @@ void GetBlock::_UpdateFSM()
         break;
     }
 
-    // ═══════════════════ 存块: 单向门复位 ═══════════════════
+    // ═══════════════════ 存块: 挡片在块2下方闭合 ═══════════════════
     case FSM::STORE_LIFT_BOTTOM:
     {
-        // 单向门已机械复位，托住了下仓的块2
+        // 抬升到最底，挡片已穿过块2并在其下方重新闭合
+        // 现在挡片托住了块2（相当于块2在"下仓"）
         if (_storing_b2)
         {
-            // 块1在上仓，块2被门托住
+            // 块1已推出，挡片托住块2 → 抬升↑带块2到上仓
             _lower = true;
-            APP::monit.LogInfo("[GetBlock] Both stored: upper=1 lower=2");
+            _fsm = FSM::STORE_LIFT_UP;
+            APP::monit.LogInfo("[GetBlock] Block2 on flap, lift up");
         }
         else
         {
-            // 块1存好，门复位，等待块2
+            // 块1存好，挡片复位，等待块2
             _lower = false;
-            APP::monit.LogInfo("[GetBlock] Block1 stored, gate ready for block2");
+            _fsm = FSM::COMPLETE;
+            APP::monit.LogInfo("[GetBlock] Block1 stored, flap ready for block2");
         }
-        _fsm = FSM::COMPLETE;
         break;
     }
 
@@ -344,7 +368,13 @@ void GetBlock::_UpdateFSM()
 
         if (_FeedNear(_feed_pos_retract))
         {
-            if (_lower)
+            if (_storing_b2)
+            {
+                // 块1已推出，挡片不再托块 → 可以下降穿过块2了
+                _fsm = FSM::STORE_LIFT_DOWN;
+                APP::monit.LogInfo("[GetBlock] Push done, lift descend through block2");
+            }
+            else if (_lower)
             {
                 _fsm = FSM::PUT_LIFT_UP;
                 APP::monit.LogInfo("[GetBlock] Lower has block, lift to upper");
@@ -357,7 +387,9 @@ void GetBlock::_UpdateFSM()
         }
         else if (_IsTimeout(T_FEED))
         {
-            if (_lower)
+            if (_storing_b2)
+                _fsm = FSM::STORE_LIFT_DOWN;
+            else if (_lower)
                 _fsm = FSM::PUT_LIFT_UP;
             else
                 _fsm = FSM::COMPLETE;

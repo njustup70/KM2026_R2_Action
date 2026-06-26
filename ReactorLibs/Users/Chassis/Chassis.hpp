@@ -41,7 +41,7 @@ class ChassisType : public Application
     private:
         /*<     底盘速度与加速度限制    >*/
         /// @param 最大加速度，单位m/s^2
-        float _max_accel = 2.0f;       
+        float _max_accel = 4.0f;       
         /// @param 最大线速度，单位m/s
         float _max_velo = 1.5f;
         /// @param 最大角速度，单位rad/s

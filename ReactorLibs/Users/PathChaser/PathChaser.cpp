@@ -363,11 +363,11 @@ void PathChaserType::_update_cmd(const Vec3& now_pose)
 
     // 角速度前馈+反馈
     float yaw_fb = StdMath::fclamp(_kp_yaw * yaw_err, -_max_yaw_fb, _max_yaw_fb);
-    // // 根据yaw误差大小调整前馈强度：误差大时减少前馈，依赖反馈修正
-    // float yaw_err_abs = fabsf(yaw_err);
-    // float ff_scale = 1.0f - StdMath::fclamp(yaw_err_abs / _yaw_ff_degrade_range, 0.0f, 1.0f);
-    // float omega = omega_ff * ff_scale + yaw_fb;
-    float omega = omega_ff + yaw_fb;
+    // 根据yaw误差大小调整前馈强度：误差大时减少前馈，依赖反馈修正
+//    float yaw_err_abs = fabsf(yaw_err);
+//    float ff_scale = 1.0f - StdMath::fclamp(yaw_err_abs / _yaw_ff_degrade_range, 0.0f, 1.0f);
+//    float omega = omega_ff * ff_scale + yaw_fb;
+    float omega = omega_ff * 1.5f + yaw_fb;
     omega = StdMath::fclamp(omega, _max_omega);
 
     // 转换到车体系（使用本周期新计算的世界系速度，避免一拍延迟）
