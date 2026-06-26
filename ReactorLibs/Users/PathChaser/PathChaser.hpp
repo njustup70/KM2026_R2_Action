@@ -99,9 +99,9 @@ class PathChaserType : public Application
     float _min_s_dot = -0.15f;         // 目标进度速度下限，单位m/s
     float _pos_tol = 0.01f;            // 终点位置阈值，单位m
     float _yaw_tol = 0.02f;            // 终点姿态阈值，单位rad
-    float _lookahead_min = 0.08f;      // 最小前瞻距离，单位m
-    float _lookahead_max = 0.30f;      // 最大前瞻距离，单位m
-    float _lookahead_gain = 0.18f;     // 前瞻距离随速度变化的增益
+    float _lookahead_min = 0.04f;      // 最小前瞻距离，单位m
+    float _lookahead_max = 0.12f;      // 最大前瞻距离，单位m
+    float _lookahead_gain = 0.12f;     // 前瞻距离随速度变化的增益
     float _curve_lat_accel = 1.60f;    // 曲率限速对应的允许横向加速度，单位m/s^2
     float _finish_progress_margin = 0.05f; // 判定完成前需进入的末端进度窗口，单位m
     float _finish_brake_distance = 0.18f;  // 末端刹车距离，单位m

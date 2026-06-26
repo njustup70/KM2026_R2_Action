@@ -14,6 +14,7 @@
 // #include "r2_area1_1.hpp"
 #include "start_to_table.hpp"
 #include "table_to_dock.hpp"
+#include "stt.hpp"
 #include "a12_2.hpp"
 
 void Response_Button();
@@ -117,7 +118,7 @@ void Walk_Fetch(StateCore *core)
   APP::jaw.OpenClaw();
   Seq::Wait(0.5);
 
-  MOVE::MoveToTargPos(StartToTablePath);
+  MOVE::MoveToTargPos(STT);
   
   APP::jaw.CloseClaw();
   // 先往上抬 1.5cm
@@ -261,5 +262,23 @@ void Response_Button()
     {
       // 如果摇杆没有动作，则发送零速度指令
       APP::chas.Move(Vec3(0, 0, 0), 0.2f);
+    }
+
+    static float last_trigger_time = 0;
+    if(MOD::farcon.button_second_half[7] == 1 && DWT_GetTimeline_Sec() - last_trigger_time > 1.0f)
+    {
+      static bool is_daji_enable = false;
+      if(is_daji_enable)
+      {
+        // 打开后边小轮(妲己)
+        APP::leg.relay_daji.Off();
+      }
+      else
+      {
+        APP::leg.relay_daji.On();
+      }
+
+      is_daji_enable = !is_daji_enable;
+      last_trigger_time = DWT_GetTimeline_Sec();
     }
 }

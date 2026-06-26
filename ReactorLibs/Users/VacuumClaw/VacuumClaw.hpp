@@ -23,7 +23,7 @@ class VacuumClaw : public Application
     int stretch_lim_min = 0;
     int stretch_lim_max = 999999;
     float pitch_lim_min = 0.0f;
-    float pitch_lim_max = PI / 4;
+    float pitch_lim_max = 1.6; // 单位rad
     int snap_lim_min = 0;
     int snap_lim_max = 999999;
 

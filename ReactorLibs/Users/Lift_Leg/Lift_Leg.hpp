@@ -2,6 +2,7 @@
 
 #include "System.hpp"
 #include "infrared_detector.hpp"
+#include "relay.hpp"
 
 class Lift_Leg : public Application
 {
@@ -44,6 +45,8 @@ public:
     bool back_mid_ir;
     bool back_ir;
     
+    // 后边的妲己
+    Relay relay_daji;
 
     void Enable();
     void Disable();
@@ -63,6 +66,7 @@ private:
     void _SendLegPos(int16_t fpos, int16_t bpos);
 
     bool enabled_ = false;
+    bool is_debug = false; // 用于调试
 };
 
 namespace APP

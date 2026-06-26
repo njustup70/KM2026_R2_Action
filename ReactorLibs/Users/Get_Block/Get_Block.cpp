@@ -60,6 +60,11 @@ void GetBlock::Start()
         _sensor[i].Init(_pin_sensor[i]);
     }
 
+    /****  负压泵 ****/
+    pin_pump = PIN_PUMP;
+    relay_pump.Init(pin_pump, Relay::HIGH_ON);
+    
+
     /**** 初始位置 ****/
     motor_dm_lift.SetPosVel(_lift_pos_lower, _lift_vel);
     motor_2006_feed.SetPos(_feed_pos_retract);
@@ -91,8 +96,22 @@ void GetBlock::Update()
 
     if(is_debug)
     {
-        motor_dm_lift.SetPosVel(-_lift_pos_upper, _lift_vel);
-        motor_2006_feed.SetPos(-_feed_pos_extend);
+        // motor_dm_lift.SetPosVel(-_lift_pos_upper, _lift_vel);
+        // motor_2006_feed.SetPos(-_feed_pos_extend);
+        relay_pump.On();
+    }
+    else
+    {
+        relay_pump.Off();     
+    }
+
+    if(is_belt_enable)
+    {
+        _StartBelt();
+    }
+    else
+    {
+        _StopBelt();
     }
 
     // _UpdateFSM();
