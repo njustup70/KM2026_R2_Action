@@ -90,8 +90,8 @@ class PathChaserType : public Application
     float _kp_yaw = 2.2f;              // 姿态误差增益
     float _k_sync_time = 0.0f;         // 预留：旧时间同步增益（几何跟踪中不作为主驱动）
     float _k_sync_meas = 4.0f;         // 弧长进度平滑/跟随增益
-    float _max_vel = 1.20f;            // 合速度上限，单位m/s
-    float _max_omega = 1.80f;          // 角速度上限，单位rad/s
+    float _max_vel = 999.9f;            // 合速度上限，单位m/s
+    float _max_omega = 999.9f;          // 角速度上限，单位rad/s
     float _max_pos_fb = 0.28f;         // 法向反馈速度上限，单位m/s
     float _max_yaw_fb = 0.80f;         // 姿态反馈角速度上限，单位rad/s
     float _yaw_ff_degrade_range = 0.3f; // 预留：yaw前馈衰减范围
@@ -104,6 +104,7 @@ class PathChaserType : public Application
     float _lookahead_gain = 0.18f;     // 前瞻距离随速度变化的增益
     float _curve_lat_accel = 1.60f;    // 曲率限速对应的允许横向加速度，单位m/s^2
     float _finish_progress_margin = 0.05f; // 判定完成前需进入的末端进度窗口，单位m
+    float _finish_brake_distance = 0.18f;  // 末端刹车距离，单位m
     uint16_t _finish_hold_ticks = 15;  // 完成保持周期，200Hz下约75ms
 
     uint16_t _near_seg_idx = 0;        // 上一次最近段索引
