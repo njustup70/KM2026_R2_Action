@@ -514,11 +514,22 @@ void PathChaserType::_update_cmd(const Vec3& now_pose)
     // 这样即使冲过终点，也会产生反向切向速度把车拉回去，而不是继续吃最后一个前馈速度。
     if (end_ready)
     {
+        float remain_s = StdMath::fclamp(_path_total_len - _s_meas, 0.0f, _finish_brake_distance);
+        float brake_scale = ( _finish_brake_distance > 1e-6f )
+            ? (remain_s / _finish_brake_distance)
+            : 0.0f;
+        brake_scale = StdMath::fclamp(brake_scale, 0.0f, 1.0f);
+        brake_scale *= brake_scale;
+
         Vec2 end_err = final_pos - now_pos;
         float end_t_err = end_err * track.tangent;
         float end_n_err = end_err * track.normal;
 
-        float end_v_t = vel_ff * track.tangent + _kp_pos * end_t_err;
+        float end_ff_t = vel_ff * track.tangent;
+        if (end_ff_t < 0.0f) end_ff_t = 0.0f;
+        end_ff_t *= brake_scale;
+
+        float end_v_t = end_ff_t + _kp_pos * end_t_err;
         float end_v_n = _kp_pos * end_n_err;
 
         v_world = track.tangent * StdMath::fclamp(end_v_t, -curve_speed_limit, curve_speed_limit)
@@ -526,7 +537,8 @@ void PathChaserType::_update_cmd(const Vec3& now_pose)
         v_world = _limit_vec2(v_world, _max_vel);
 
         float end_yaw_fb = StdMath::fclamp(_kp_yaw * _wrap_pi(final_yaw - now_pose.z), -_max_yaw_fb, _max_yaw_fb);
-        omega = _sample_omega(track_s) + end_yaw_fb;
+        float end_omega_ff = _sample_omega(track_s) * brake_scale;
+        omega = end_omega_ff + end_yaw_fb;
         omega = StdMath::fclamp(omega, -_max_omega, _max_omega);
     }
 
