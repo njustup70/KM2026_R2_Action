@@ -32,7 +32,7 @@ void CommCenter::Update()
         send_cnt = 0;
         // 发送SICK数据给工控机
         _sick_ch0_data = MOD::sick.GetSingleChannel(0); // 留作调试时看
-        // MOD::host_pc.SendSickData(MOD::sick.GetData().raw_frame);
+        MOD::host_pc.SendSickData(MOD::sick.GetData().raw_frame);
     }
     // 发送SICK纠正指令
     if(_is_send_sick_correction)
