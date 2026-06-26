@@ -488,6 +488,14 @@ void PathChaserType::_update_cmd(const Vec3& now_pose)
     v_world = track.tangent * v_t + track.normal * lat_fb;
     v_world = _limit_vec2(v_world, _max_vel);
 
+    // 终点完成判定，先获取终点状态
+    Vec2 final_pos = _waypoints[_waypoint_count - 1].pos;
+    float final_yaw = _waypoints[_waypoint_count - 1].yaw_rad;
+
+    // 计算位置误差 和 角度误差
+    float pos_err_len = (final_pos - now_pos).Length();
+    float final_yaw_err = fabsf(_wrap_pi(final_yaw - now_pose.z));
+
     // 姿态跟随路径文件中规划的 yaw/omega，适配全向底盘的任务朝向需求
     float yaw_ref = _sample_yaw(track_s);
     float yaw_err = _wrap_pi(yaw_ref - now_pose.z);
@@ -497,8 +505,30 @@ void PathChaserType::_update_cmd(const Vec3& now_pose)
     {
         omega_ff = 0.0f;
     }
-    float omega = omega_ff + yaw_fb;
-    omega = StdMath::fclamp(omega, -_max_omega, _max_omega);
+    float omega = StdMath::fclamp(omega_ff + yaw_fb, -_max_omega, _max_omega);
+
+    // 完成条件：几何上已进入末端窗口 + 位置姿态都满足阈值
+    bool end_ready = (_path_total_len - _s_meas) <= _finish_progress_margin;
+
+    // 进入末端窗口后，不再只做“沿路径前馈”，改为直接收敛到终点。
+    // 这样即使冲过终点，也会产生反向切向速度把车拉回去，而不是继续吃最后一个前馈速度。
+    if (end_ready)
+    {
+        Vec2 end_err = final_pos - now_pos;
+        float end_t_err = end_err * track.tangent;
+        float end_n_err = end_err * track.normal;
+
+        float end_v_t = vel_ff * track.tangent + _kp_pos * end_t_err;
+        float end_v_n = _kp_pos * end_n_err;
+
+        v_world = track.tangent * StdMath::fclamp(end_v_t, -curve_speed_limit, curve_speed_limit)
+                + track.normal * StdMath::fclamp(end_v_n, -_max_pos_fb, _max_pos_fb);
+        v_world = _limit_vec2(v_world, _max_vel);
+
+        float end_yaw_fb = StdMath::fclamp(_kp_yaw * _wrap_pi(final_yaw - now_pose.z), -_max_yaw_fb, _max_yaw_fb);
+        omega = _sample_omega(track_s) + end_yaw_fb;
+        omega = StdMath::fclamp(omega, -_max_omega, _max_omega);
+    }
 
     // 转换到车体系（使用本周期新计算的世界系速度，避免一拍延迟）
     Vec2 body_xy = v_world.Rotate(-now_pose.z);
@@ -507,16 +537,6 @@ void PathChaserType::_update_cmd(const Vec3& now_pose)
     _cmd.world = Vec3(v_world.x, v_world.y, omega);
     _cmd.body = Vec3(body_xy.x, body_xy.y, _cmd.world.z);
 
-    // 终点完成判定，先获取终点状态
-    Vec2 final_pos = _waypoints[_waypoint_count - 1].pos;
-    float final_yaw = _waypoints[_waypoint_count - 1].yaw_rad;
-
-    // 计算位置误差 和 角度误差
-    float pos_err_len = (final_pos - now_pos).Length();
-    float final_yaw_err = fabsf(_wrap_pi(final_yaw - now_pose.z));
-
-    // 完成条件：几何上已进入末端窗口 + 位置姿态都满足阈值
-    bool end_ready = (_path_total_len - _s_meas) <= _finish_progress_margin;
     if (end_ready && pos_err_len < _pos_tol && final_yaw_err < _yaw_tol)
     {
         // 如果还没计时结束，继续加
