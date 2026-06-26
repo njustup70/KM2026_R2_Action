@@ -3,9 +3,9 @@
 GetBlock& APP::get_block = GetBlock::GetInstance();
 
 // ==================== 超时间隔 ====================
-static constexpr float T_BELT = 3.0f;
-static constexpr float T_LIFT = 3.0f;
-static constexpr float T_FEED = 2.0f;
+static constexpr float T_BELT = 10.0f;
+static constexpr float T_LIFT = 10.0f;
+static constexpr float T_FEED = 10.0f;
 static constexpr float BELT_RPM    = 15.0f;
 static constexpr float DM_BELT_VEL = 15.0f;
 
@@ -16,6 +16,7 @@ void GetBlock::Start()
     motor_s2325.Init(Hardware::hcan_sub, 9, 19, VEL, DM_S2325);
     motor_s2325.SetFeedbackRange(3.14159f, 10.0f, 5.0f);
     motor_s2325.SetVelLimit(38);
+    motor_s2325.SetAutoEnable(true, 1000); // user_want_enable 可禁止重使能
     motor_s2325.Enable();
 
     /**** 上摩擦带 2006 (hcan_main, ID 4) ****/
@@ -32,18 +33,18 @@ void GetBlock::Start()
     motor_2006_fric.driver.Enable();
 
     /****  抬升 DM (hcan_sub, ID 10) ，向上为负，总行程 0 - 400 rad 左右****/
-    motor_dm_lift.Init(Hardware::hcan_sub, 10, 19, POSANDVEL, DM_S2325);
+    motor_dm_lift.Init(Hardware::hcan_sub, 10, 20, POSANDVEL, DM_S2325);
     motor_dm_lift.SetFeedbackRange(3.14159f, 10.0f, 5.0f);
-    motor_dm_lift.SetPosLimit(0.5f, -0.1f);
-    motor_dm_lift.SetVelLimit(5.0f);
+    motor_dm_lift.SetPosLimit(1500.0f, -1500.0f);
+    motor_dm_lift.SetVelLimit(15.0f);
     motor_dm_lift.Enable();
 
-    /****  送块 2006 (hcan_main, ID 5)  ****/
+    /****  送块 2006 (hcan_main, ID 5) ，送出去是负值，总行程 1780000 ****/
     motor_2006_feed.Init(Hardware::hcan_main, 5, DJI_C610);
     motor_2006_feed.ConfigADRC()
         .AsPosC()
         .ADRC_Womega(42.0f, 9.6f)
-        .ADRC_Physic(3.0e-5f, 0.18f)
+        .ADRC_Physic(1.0e-4f, 0.18f)
         .ADRC_Limit(8.0f)
         .SpdLimit(8000.0f)
         .ADRC_MaxPlannedVel(5000.0f)
@@ -55,7 +56,9 @@ void GetBlock::Start()
     _pin_sensor[0] = PIN_SENSOR_LOWER;
     _pin_sensor[1] = PIN_SENSOR_UPPER;
     for (int i = 0; i < 2; i++)
+    {
         _sensor[i].Init(_pin_sensor[i]);
+    }
 
     /**** 初始位置 ****/
     motor_dm_lift.SetPosVel(_lift_pos_lower, _lift_vel);
@@ -65,7 +68,6 @@ void GetBlock::Start()
     _ReadSensors();
     _upper = _grid[1];
     _lower = _grid[0];
-    APP::monit.LogInfo("[GetBlock] Init OK, upper=%d lower=%d", _upper, _lower);
 
     _fsm = FSM::IDLE;
     _fsm_busy = false;
@@ -77,6 +79,7 @@ void GetBlock::Update()
     if (System.out_from_debugmode)
     {
         _StopBelt();
+        motor_2006_fric.driver.Disable();
         motor_dm_lift.Disable();
         motor_2006_feed.driver.Disable();
         _fsm = FSM::IDLE;
@@ -85,7 +88,14 @@ void GetBlock::Update()
     }
 
     _ReadSensors();
-    _UpdateFSM();
+
+    if(is_debug)
+    {
+        motor_dm_lift.SetPosVel(-_lift_pos_upper, _lift_vel);
+        motor_2006_feed.SetPos(-_feed_pos_extend);
+    }
+
+    // _UpdateFSM();
 }
 
 // ==================== 传感器 ====================
@@ -248,7 +258,8 @@ void GetBlock::_UpdateFSM()
     // ═══════════════════ 存块: 抬升 ↑ (挡片托着块到上仓) ═══════════════════
     case FSM::STORE_LIFT_UP:
     {
-        motor_dm_lift.SetPosVel(_lift_pos_upper, _lift_vel);
+        // 抬升达妙向上 rad 为负
+        motor_dm_lift.SetPosVel(-_lift_pos_upper, _lift_vel);
 
         if (_grid[1])  // 上仓检测到块（被挡片托住触发）
         {
@@ -265,7 +276,7 @@ void GetBlock::_UpdateFSM()
             }
             else
             {
-                // ★ 块1到上仓 → 抬升保持↑，挡片托着块1，等待块2入料 ★
+                // 块1到上仓 → 保持抬升↑，等待块2 
                 _fsm = FSM::STORE_WAIT_SECOND;
                 APP::monit.LogInfo("[GetBlock] Block1 at upper, waiting for block2");
             }
@@ -281,8 +292,8 @@ void GetBlock::_UpdateFSM()
     // ═══════════════════ 存块: 等待块2 (挡片托着块1) ═══════════════════
     case FSM::STORE_WAIT_SECOND:
     {
-        // 抬升保持↑，挡片托着块1在上仓，等待块2入料
-        motor_dm_lift.SetPosVel(_lift_pos_upper, _lift_vel);
+        // 抬升机构保持在上位
+        motor_dm_lift.SetPosVel(-_lift_pos_upper, _lift_vel);
         // 无超时 — 外部调用 Store() 会捕获此状态并转入 STORE_BELT_IN
         break;
     }
@@ -292,7 +303,7 @@ void GetBlock::_UpdateFSM()
     {
         // 块2已在下仓，但挡片托着块1——不能降抬升(块1会掉)
         // 保持上位，等待外部 Put() 先推出块1，再降抬升处理块2
-        motor_dm_lift.SetPosVel(_lift_pos_upper, _lift_vel);
+        motor_dm_lift.SetPosVel(-_lift_pos_upper, _lift_vel);
         // 无超时 — 外部调用 Put() 会捕获此状态并转入 PUT_FEED_PUSH
         break;
     }
@@ -304,16 +315,11 @@ void GetBlock::_UpdateFSM()
         // 挡片从上往下穿过块2→被块2顶开→通过后在块2下方闭合
         motor_dm_lift.SetPosVel(_lift_pos_lower, _lift_vel);
 
-        if (_LiftNear(_lift_pos_lower))
+        if (_IsTimeout(T_LIFT))
         {
             _action_tick = System.runtime_tick;
             _fsm = FSM::STORE_LIFT_BOTTOM;
             APP::monit.LogInfo("[GetBlock] Lift at bottom, flap closed below block2");
-        }
-        else if (_IsTimeout(T_LIFT))
-        {
-            APP::monit.LogError("[GetBlock] Lift down timeout");
-            _fsm = FSM::ABORT;
         }
         break;
     }
@@ -343,9 +349,9 @@ void GetBlock::_UpdateFSM()
     // ═══════════════════ 放块: 送块推出 ═══════════════════
     case FSM::PUT_FEED_PUSH:
     {
-        motor_2006_feed.SetPos(_feed_pos_extend);
+        motor_2006_feed.SetPos(-_feed_pos_extend);
 
-        if (_FeedNear(_feed_pos_extend))  // 送块到达头即认为成功
+        if (_FeedNear(-_feed_pos_extend))  // 送块到达头即认为成功
         {
             _upper = false;
             _action_tick = System.runtime_tick;
@@ -400,15 +406,15 @@ void GetBlock::_UpdateFSM()
     // ═══════════════════ 放块: 补料抬升 ═══════════════════
     case FSM::PUT_LIFT_UP:
     {
-        motor_dm_lift.SetPosVel(_lift_pos_upper, _lift_vel);
+        motor_dm_lift.SetPosVel(-_lift_pos_upper, _lift_vel);
 
         if (_grid[1])  // 上仓检测到块
         {
             _upper = true;
             _lower = false;
             _action_tick = System.runtime_tick;
-            _fsm = FSM::PUT_LIFT_DOWN;
-            APP::monit.LogInfo("[GetBlock] Block lifted to upper");
+            _fsm = FSM::COMPLETE;
+            APP::monit.LogInfo("[GetBlock] Block lifted to upper, done");
         }
         else if (_IsTimeout(T_LIFT))
         {
@@ -423,14 +429,19 @@ void GetBlock::_UpdateFSM()
     {
         motor_dm_lift.SetPosVel(_lift_pos_lower, _lift_vel);
 
-        if (_LiftNear(_lift_pos_lower))
+        if (_IsTimeout(T_LIFT))
         {
-            _fsm = FSM::COMPLETE;
-            APP::monit.LogInfo("[GetBlock] Lift returned");
-        }
-        else if (_IsTimeout(T_LIFT))
-        {
-            _fsm = FSM::COMPLETE;
+            _action_tick = System.runtime_tick;
+            if (_lower)
+            {
+                _fsm = FSM::PUT_LIFT_UP;
+                APP::monit.LogInfo("[GetBlock] Lift at bottom, lift next block");
+            }
+            else
+            {
+                _fsm = FSM::COMPLETE;
+                APP::monit.LogInfo("[GetBlock] Lift returned");
+            }
         }
         break;
     }

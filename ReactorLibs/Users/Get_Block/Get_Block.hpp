@@ -63,6 +63,8 @@ private:
     bool _put_pending   = false;
     bool _fsm_busy      = false;
 
+    bool is_debug = false;
+
     uint32_t _action_tick = 0;  // 阶段开始时间戳 (s)
 
     // ==================== 两个传感器 ====================
@@ -72,13 +74,14 @@ private:
     bool _grid[2] = {false};  // 传感器缓存，_ReadSensors() 刷新
 
     // ==================== 抬升DM位置常量（需标定） ====================
+    // 向上为负 rad
     float _lift_pos_lower = 0.0f;   // 低位（下仓接料位）
-    float _lift_pos_upper = 0.3f;   // 高位（挡片托块到上仓位）TODO:标定
-    float _lift_vel       = 2.0f;   // 抬升速度 rad/s
+    float _lift_pos_upper = 0.0f;   // 高位（块通过单向门）TODO:标定
+    float _lift_vel       = 15.0f;   // 抬升速度 rad/s
 
     // ==================== 送块2006位置常量（需标定） ====================
     float _feed_pos_retract = 0.0f;     // 收回
-    float _feed_pos_extend  = 2000.0f;  // 伸出（上仓块被推出）TODO:标定
+    float _feed_pos_extend  = 1780000.0f;  // 伸出（上仓块被推出）
 
     // ==================== 私有方法 ====================
     void _UpdateFSM();

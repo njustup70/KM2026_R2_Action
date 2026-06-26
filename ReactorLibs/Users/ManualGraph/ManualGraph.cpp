@@ -33,9 +33,9 @@ void Waiting_for_Start(StateCore *core)
 {
   APP::monit.LogInfo("I'm here...");
 
-  Seq::WaitUntil([](){
-    return APP::jaw.IsOrigined();
-  });
+  // Seq::WaitUntil([](){
+  //   return APP::jaw.IsOrigined();
+  // });
 
   Seq::Wait(2.0f);
 
