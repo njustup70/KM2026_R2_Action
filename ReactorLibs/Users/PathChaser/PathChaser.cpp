@@ -367,7 +367,7 @@ void PathChaserType::_update_cmd(const Vec3& now_pose)
 //    float yaw_err_abs = fabsf(yaw_err);
 //    float ff_scale = 1.0f - StdMath::fclamp(yaw_err_abs / _yaw_ff_degrade_range, 0.0f, 1.0f);
 //    float omega = omega_ff * ff_scale + yaw_fb;
-    float omega = omega_ff * 1.5f + yaw_fb;
+    float omega = omega_ff * 1.25f + yaw_fb;
     omega = StdMath::fclamp(omega, _max_omega);
 
     // 转换到车体系（使用本周期新计算的世界系速度，避免一拍延迟）

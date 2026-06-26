@@ -65,7 +65,7 @@ class ChassisType : public Application
         
         /// @param 安全锁定计时器
         int _safe_lock_tick = 0;
-        
+
         /// @brief 发送到电机
         inline void _SendSpdToMotor(); 
 
@@ -136,11 +136,18 @@ class ChassisType : public Application
         void Disable(); 
         /// @brief 直接设置底盘速度（一个通用的开环行为）
         void Move(Vec3 Spd);
+        void Move(Vec3 Spd, float duration);
         void Move(Vec2 Spd);
+        void Move(Vec2 Spd, float duration);
         void Rotate(float omega);
 
         void MoveAt(Vec2 Pos);
         void RotateAt(float yaw);
+
+        /// @brief 失能前两个轮子
+        void DisableFrontWheels();
+        /// @brief 使能前两个轮子
+        void EnableFrontWheels();
 
         void LockYaw(bool enable);
         bool IsYawLocked() const {return _is_yaw_locked;}

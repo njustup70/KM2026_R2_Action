@@ -7,12 +7,14 @@
 #include "HostPC.hpp"
 #include "PathChaser.hpp"
 #include "VacuumClaw.hpp"
-
+#include "Area2_Act.hpp"
+#include "AutoGraph.hpp"
 
 /// @brief 所有的路径文件
 // #include "r2_area1_1.hpp"
 #include "start_to_table.hpp"
 #include "table_to_dock.hpp"
+#include "a12_2.hpp"
 
 void Response_Button();
 
@@ -21,20 +23,24 @@ StateGraph SemiAutoGr("SemiAuto");
 static void Waiting_for_Start(StateCore *core);
 static void Walk_Fetch(StateCore *core);
 static void Walk_To_Dock(StateCore *core);
+static void Walk_into_Area2(StateCore *core);
 
 void Config_SemiAutoStateGraph()
 {
   StateBlock& s_wait = SemiAutoGr.AddState("wait");
   StateBlock& s_area1_1 = SemiAutoGr.AddState("area1_1");
   StateBlock& s_area1_2 = SemiAutoGr.AddState("area1_2");
+  StateBlock& s_walk_from_a1_to_a2 = SemiAutoGr.AddState("walk_a1_to_a2");
 
   s_wait.StateAction = Waiting_for_Start;
   s_area1_1.StateAction = Walk_Fetch;
   s_area1_2.StateAction = Walk_To_Dock;
+  s_walk_from_a1_to_a2.StateAction = Walk_into_Area2;
 
   s_wait.LinkTo(&s_wait.Complete, s_area1_1);
   s_area1_1.LinkTo(&s_area1_1.Complete, s_area1_2);
-  s_area1_2.LinkTo(&s_area1_2.Complete, s_wait);
+  s_area1_2.LinkTo(&s_area1_2.Complete, s_walk_from_a1_to_a2);
+  s_walk_from_a1_to_a2.LinkTo(&s_walk_from_a1_to_a2.Complete, s_wait);
 
   // 向状态机核心注册
   APP::state_core.RegistGraph(SemiAutoGr);
@@ -48,7 +54,20 @@ void Config_SemiAutoStateGraph()
  */
 void Waiting_for_Start(StateCore *core)
 {
+  while(MOD::farcon.button_second_half[0] != 1)
+  {
+    Response_Button();
+    Seq::Wait(0.01f);
+  }
+
   APP::monit.LogInfo("Waiting for start...");
+
+  // 等待遥控器指令，然后才进入下一步
+  while(MOD::farcon.button_second_half[0] != 1)
+  {
+    Response_Button();
+    Seq::Wait(0.01f);
+  }
 
   // 取矛头先初始化
   Seq::WaitUntil([](){
@@ -143,6 +162,78 @@ void Walk_To_Dock(StateCore *core)
   // {
   //   return MOD::farcon.button_first_half[0] == 1;
   // });
+
+  while(MOD::farcon.button_second_half[0] != 1)
+  {
+    Response_Button();
+    Seq::Wait(0.01f);
+  }
+
+  APP::monit.LogInfo("Go to Climb.");
+
+  core->GetCurState().Complete = true;
+}
+
+/**
+ * @brief 实际情况中，需要算法组指定 分支走向。
+ * 这里是调试，所以简化了情况。假设直接走中间
+ * 
+ * @param core 
+ */
+void Walk_into_Area2(StateCore *core)
+{
+  MOVE::MoveToTargPos(Area1_to2_Line2);
+
+  // 此时走到了梅林跟前
+
+  // 等待遥控器指令，然后才进入下一步
+  while(MOD::farcon.button_second_half[0] != 1)
+  {
+    Response_Button();
+    Seq::Wait(0.01f);
+  }
+
+  APP::monit.LogInfo("Try to Climb.");
+  // 来自文件：Area2_Act.hpp。里边主要是一些二区的行为
+  Climb_Up200();
+
+  // 等待遥控器指令，然后才进入下一步
+  while(MOD::farcon.button_second_half[0] != 1)
+  {
+    Response_Button();
+    Seq::Wait(0.01f);
+  }
+
+  Climb_Up200();
+
+  // 等待遥控器指令，然后才进入下一步
+  while(MOD::farcon.button_second_half[0] != 1)
+  {
+    Response_Button();
+    Seq::Wait(0.01f);
+  }
+
+  Climb_Up200();
+
+  // 等待遥控器指令，然后才进入下一步
+  while(MOD::farcon.button_second_half[0] != 1)
+  {
+    Response_Button();
+    Seq::Wait(0.01f);
+  }
+
+  Decend_200();
+
+  // 等待遥控器指令，然后才进入下一步
+  while(MOD::farcon.button_second_half[0] != 1)
+  {
+    Response_Button();
+    Seq::Wait(0.01f);
+  }
+
+  Decend_200();
+
+  // 等待遥控器指令，然后才进入下一步
   while(MOD::farcon.button_second_half[0] != 1)
   {
     Response_Button();
@@ -163,7 +254,12 @@ void Response_Button()
 
     if (vel.Length() > 0.03f)
     {
-    // 向底盘发送移动指令
-        APP::chas.Move(vel);
+      // 向底盘发送移动指令
+      APP::chas.Move(vel, 0.2f);
+    }
+    else
+    {
+      // 如果摇杆没有动作，则发送零速度指令
+      APP::chas.Move(Vec3(0, 0, 0), 0.2f);
     }
 }

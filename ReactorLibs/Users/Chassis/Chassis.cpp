@@ -12,6 +12,13 @@
 
 ChassisType& APP::chas = ChassisType::GetInstance();
 
+namespace
+{
+    constexpr uint8_t kFrontWheelCtrlTaskId = 2;
+    constexpr uint8_t kFrontWheelDisableCmd = 0x01;
+    constexpr uint8_t kFrontWheelEnableCmd = 0x02;
+}
+
 /**
  * @brief 用于处理 C板 发回的自解里程计数据的回调
  * @details 其用于接收消息的端口为 0x221 can_id
@@ -63,20 +70,16 @@ void _SendSpd(Vec3 Spd)
     MOD::board_can.SendTask(MOD::C_sub_ctrl_board_id, 1, payload, sizeof(payload), false);
 }
 
-/**
- * @brief 向底盘发送速度指令
- */
-void _SendGes(Vec3 Ges) //有bug
+void ChassisType::DisableFrontWheels()
 {
-    // 6 字节 uint8，完全匹配接收端格式
-    uint8_t payload[6];
-    const float scale = 1000.0f;
+    uint8_t payload[1] = {kFrontWheelDisableCmd};
+    MOD::board_can.SendTask(MOD::C_sub_ctrl_board_id, kFrontWheelCtrlTaskId, payload, sizeof(payload), false);
+}
 
-    StdMath::PackFloatToInt16(&payload[0], Ges.x, scale);
-    StdMath::PackFloatToInt16(&payload[2], Ges.y, scale);
-    StdMath::PackFloatToInt16(&payload[4], Ges.z, scale);
-
-    MOD::board_can.SendTask(MOD::C_sub_ctrl_board_id, 2, payload, sizeof(payload), false);
+void ChassisType::EnableFrontWheels()
+{
+    uint8_t payload[1] = {kFrontWheelEnableCmd};
+    MOD::board_can.SendTask(MOD::C_sub_ctrl_board_id, kFrontWheelCtrlTaskId, payload, sizeof(payload), false);
 }
 
 void ChassisType::Update() 
@@ -111,10 +114,6 @@ void ChassisType::Update()
         // 将速度指令发送到 C板
         // _UploadSpeed();
         _SendSpd(targ_speed);
-    }
-    else
-    {
-        _SendSpd(Vec3(0, 0, 0));
     }
     
     targ_velo = targ_speed.Length();
@@ -243,7 +242,7 @@ void ChassisType::Move(Vec3 Spd)
         return; // 开放控制未使能，直接返回
 
     _safe_lock_tick = 100;
-    targ_speed = Spd;
+        
 }
 
 void ChassisType::Move(Vec2 Spd)
@@ -255,6 +254,29 @@ void ChassisType::Move(Vec2 Spd)
 
     targ_speed.x = Spd.x;
     targ_speed.y = Spd.y;
+}
+
+void ChassisType::Move(Vec2 Spd, float duration)
+{
+    if (!enabled)
+        return;
+
+    // 秒转为毫秒
+    _safe_lock_tick = duration * 1000;
+
+    targ_speed.x = Spd.x;
+    targ_speed.y = Spd.y;
+}
+
+void ChassisType::Move(Vec3 Spd, float duration)
+{
+    if (!enabled)
+        return;
+
+    // 秒转为毫秒
+    _safe_lock_tick = duration * 1000;
+
+    targ_speed = Spd;
 }
 
 void ChassisType::Rotate(float omega)
@@ -399,4 +421,3 @@ void ChassisType::SetMoveParams(float max_accel, float max_velo, float max_omega
     _max_omega = max_omega;
     _max_beta = max_beta;
 }
-

@@ -19,6 +19,8 @@
 #include "optical_comm.hpp"
 #include "SemiAutoGr.hpp"
 
+#include "SemiAutoGr.hpp"
+
 StateGraph graph("LoopGraph");
 
 // void SlamRxCallback(uint8_t func_code, const uint8_t *payload, uint8_t payload_len, void *user_ctx);
@@ -37,36 +39,36 @@ void MainFrameCpp()
   MOD::host_pc.Init(Hardware::huart_host);
   // 初始化遥控器
   MOD::farcon.init(Hardware::huart_farcon);
-
-  // // 注册工控机接收SLAM的回调
-  // MOD::host_pc.Regist(HostPC::FuncCode::slam_pos, SlamRxCallback, nullptr);
+  
   // 初始化光通信模块
   // MOD::optical_comm.Init(Hardware::huart_optical);
+
   System.SetPositionSource(APP::comm_center.slam_pos);
   // System.SetPositionSource(APP::chas.chas_odom.pos); // yaw太不准了，用不了
 
   // 启动通信中心
   System.RegistApp(APP::comm_center);
 
-  // 启动矛头控制应用s
+  // 启动矛头控制应用
   System.RegistApp(APP::jaw);
+
+  // 启动伸缩腿控制
+  System.RegistApp(APP::leg);
+  APP::leg.Enable();
+
+  // 启动路径跟踪
+  System.RegistApp(APP::path_chaser);
 
   // 底盘启动
   System.RegistApp(APP::chas);
   APP::chas.Enable();
-  // 启动伸缩腿控制
-  // System.RegistApp(APP::leg);
-
-  // 启动路径跟踪
-  System.RegistApp(APP::path_chaser);
 
   // System.RegistApp(APP::get_block);
 
   // System.RegistApp(APP::sick_pc);
 
   // Config_AutoStateGraph(); // Auto：0
-  // Config_StateGraph(); // Manul：1
-  Config_SemiAutoStateGraph();
+  Config_SemiAutoStateGraph(); // Manul：1
 }
 
 /***********    一些不通用的回调函数    ***********/
