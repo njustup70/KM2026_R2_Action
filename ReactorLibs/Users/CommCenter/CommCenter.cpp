@@ -95,14 +95,46 @@ void CommCenter::OpticalRxCallback(uint8_t func_code, const uint8_t* payload, ui
 {
     using namespace APP;
     
-    // R1 发来的顺序：逆序。12->1
-    uint8_t len = payload_len > 12 ? 12 : payload_len;
-
-    for (uint8_t i = 0; i < len; i++)
+    switch (func_code) 
     {
-        comm_center.kfs_values[i] = payload[len - 1 - i];
+        case 0xC2: // KFS数据
+        {
+            // R1 发来的顺序：逆序。12->1
+            uint8_t len = payload_len > 12 ? 12 : payload_len;      // 限制payload长度，最多12字节
+
+            for (uint8_t i = 0; i < len; i++)
+            {
+                comm_center.kfs_values[i] = payload[len - 1 - i];
+            }
+
+            // 发送给上位机
+            MOD::host_pc.SendKFSData(comm_center.kfs_values, len);
+            break;
+        }
+        case 0xC3:  // 完成对接信号
+        {
+            // 验证payload是否符合预期（这里充当校验位作用）。注意R1发来的顺序是逆序的
+            uint8_t expected_payload[6] = {1, 1, 4, 5, 1, 4};
+            bool is_valid = true;
+            for (uint8_t i = 0; i < 6; i++)
+            {
+                if (payload[5 - i] != expected_payload[i]) 
+                {
+                    is_valid = false;
+                    break;
+                }
+            }
+
+            if (is_valid)
+            {
+                // 确认对接完成
+                APP::monit.LogRespond("[Optic] Docking complete.");
+
+                // 对接标志位——置位
+                APP::comm_center._dock_ok = true;
+            }
+        }
     }
 
-    // 发送给上位机
-    MOD::host_pc.SendKFSData(comm_center.kfs_values, len);
+    
 }

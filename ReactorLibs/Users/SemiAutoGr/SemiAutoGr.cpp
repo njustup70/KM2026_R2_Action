@@ -9,6 +9,7 @@
 #include "VacuumClaw.hpp"
 #include "Area2_Act.hpp"
 #include "AutoGraph.hpp"
+#include "CommCenter.hpp"
 
 /// @brief 所有的路径文件
 // #include "r2_area1_1.hpp"
@@ -167,7 +168,16 @@ void Walk_To_Dock(StateCore *core)
   {
     Response_Button();
     Seq::Wait(0.01f);
+
+    if (APP::comm_center.IsDocked())
+    {
+      break;
+    }
   }
+
+  // 打开夹爪，给R1时间拿回兵器
+  APP::jaw.OpenClaw();    // 依旧OpenClaw
+  Seq::Wait(2.0f);
 
   APP::monit.LogInfo("Go to Climb.");
 
