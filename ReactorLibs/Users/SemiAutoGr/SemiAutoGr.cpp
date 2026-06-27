@@ -268,6 +268,8 @@ void Walk_into_Area2(StateCore *core)
 void Walk_into_Area3(StateCore *core)
 {
   // 跑到Arena九宫格跟前
+  APP::leg.SetFrontPos(-40);
+  APP::leg.SetBackPos(-40);
   MOVE::MoveToTargPos(Area2_to3_Line2);
 
   // 抬腿但是（还不知道该抬多高）

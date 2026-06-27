@@ -20,7 +20,7 @@ void CommCenter::Start()
     MOD::optical_comm.Init(Hardware::huart_optical);
     // // 注册光通信数据回调（如果需要）
     MOD::optical_comm.Regist(0xC2, OpticalRxCallback); // kfs数据回调
-    // MOD::optical_comm.Regist();
+    MOD::optical_comm.Regist(0xC3, DockRxCallback);
 }
 
 void CommCenter::Update()
@@ -31,7 +31,8 @@ void CommCenter::Update()
     {
         send_cnt = 0;
         // 发送SICK数据给工控机
-        _sick_ch0_data = MOD::sick.GetSingleChannel(0); // 留作调试时看
+        sick_data_m[0] = MOD::sick.GetSingleChannel(0); // 留作调试时看，以及取矛头时校准
+        sick_data_m[1] = MOD::sick.GetSingleChannel(1);
         MOD::host_pc.SendSickData(MOD::sick.GetData().raw_frame);
     }
     // 发送SICK纠正指令
@@ -111,30 +112,57 @@ void CommCenter::OpticalRxCallback(uint8_t func_code, const uint8_t* payload, ui
             MOD::host_pc.SendKFSData(comm_center.kfs_values, len);
             break;
         }
-        case 0xC3:  // 完成对接信号
-        {
-            // 验证payload是否符合预期（这里充当校验位作用）。注意R1发来的顺序是逆序的
-            uint8_t expected_payload[6] = {1, 1, 4, 5, 1, 4};
-            bool is_valid = true;
-            for (uint8_t i = 0; i < 6; i++)
-            {
-                if (payload[5 - i] != expected_payload[i]) 
-                {
-                    is_valid = false;
-                    break;
-                }
-            }
+        // case 0xC3:  // 完成对接信号
+        // {
+        //     // 验证payload是否符合预期（这里充当校验位作用）。
+        //     uint8_t expected_payload[6] = {1, 1, 4, 5, 1, 4};
+        //     bool is_valid = true;
+        //     for (uint8_t i = 0; i < 6; i++)
+        //     {
+        //         if (payload[i] != expected_payload[i]) 
+        //         {
+        //             is_valid = false;
+        //             break;
+        //         }
+        //     }
 
-            if (is_valid)
-            {
-                // 确认对接完成
-                APP::monit.LogRespond("[Optic] Docking complete.");
+        //     if (is_valid)
+        //     {
+        //         // 确认对接完成
+        //         APP::monit.LogRespond("[Optic] Docking complete.");
 
-                // 对接标志位——置位
-                APP::comm_center._dock_ok = true;
-            }
-        }
+        //         // 对接标志位——置位
+        //         APP::comm_center._dock_ok = true;
+        //     }
+        // }
     }
 
     
+}
+
+void CommCenter::DockRxCallback(uint8_t func_code, const uint8_t* payload, uint8_t payload_len, void* user_ctx)
+{
+    if(func_code == 0xC3)
+    {
+        // 验证payload是否符合预期（这里充当校验位作用）。
+        uint8_t expected_payload[6] = {1, 1, 4, 5, 1, 4};
+        bool is_valid = true;
+        for (uint8_t i = 0; i < 6; i++)
+        {
+            if (payload[i] != expected_payload[i]) 
+            {
+                is_valid = false;
+                break;
+            }
+        }
+
+        if (is_valid)
+        {
+            // 确认对接完成
+            APP::monit.LogRespond("[Optic] Docking complete.");
+
+            // 对接标志位——置位
+            APP::comm_center._dock_ok = true;
+        }
+    }
 }
