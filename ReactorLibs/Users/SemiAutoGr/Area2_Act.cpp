@@ -45,9 +45,9 @@ void Climb_Up200()
   // if (need_to_fetch) APP::vac_claw.StretchOut();
   // 往前缓慢移动，直到抵靠到前端
   APP::chas.Move(Vec2(0.5, 0), 3.0f);
-  Seq::Wait(0.25f);
+  Seq::Wait(0.35f);
   APP::chas.Move(Vec2(0.25, 0), 3.0f);
-  Seq::Wait(0.25f);
+  Seq::Wait(0.15f);
 
   // 等待小黄0号检测到可以抬前腿
   Seq::WaitUntil([&]()
@@ -64,12 +64,13 @@ void Climb_Up200()
   APP::leg.F_Origin();
   // 抬腿的同时向前走
   Seq::Wait(0.25f);
+
   /****   持续衰减的爆发移动速度加成  ****/
   APP::chas.Move(Vec2(1.0, 0), 3.0f);
-  Seq::Wait(0.15f);
+  Seq::Wait(0.2f);
   APP::chas.Move(Vec2(0.5, 0), 3.0f);
-  Seq::Wait(0.15f);
-  APP::chas.Move(Vec2(0.25, 0), 3.0f);
+  Seq::Wait(0.1f);
+  APP::chas.Move(Vec2(0.2, 0), 3.0f);
 
 
   // 防止小黄2号误检
@@ -148,7 +149,7 @@ void Decend_200()
   });
   APP::chas.Move(Vec2(0, 0), 2.0f);
   APP::leg.F_Down_200();
-  Seq::Wait(0.245f);
+  Seq::Wait(0.45f);
 
   // 继续向前走。等待小黄3号检测不到后，放下后腿
   APP::chas.Move(Vec2(0.24, 0), 3.0f);
@@ -158,7 +159,7 @@ void Decend_200()
   });
   APP::chas.Move(Vec2(0, 0), 2.0f);
   APP::leg.B_Down_200();
-  Seq::Wait(0.245f);
+  Seq::Wait(0.45f);
 
   // 继续向前走一点，然后放下整个腿
   APP::chas.Move(Vec2(0.4, 0), 2.0f);
