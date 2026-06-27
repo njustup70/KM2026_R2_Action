@@ -10,12 +10,14 @@
 #include "Area2_Act.hpp"
 #include "AutoGraph.hpp"
 #include "CommCenter.hpp"
+#include "Get_Block.hpp"
 
 /// @brief 所有的路径文件
 // #include "r2_area1_1.hpp"
 #include "table_to_dock.hpp"
 #include "stt.hpp"
 #include "a12_2.hpp"
+#include "a23_2.hpp"
 
 void Response_Button();
 
@@ -25,6 +27,7 @@ static void Waiting_for_Start(StateCore *core);
 static void Walk_Fetch(StateCore *core);
 static void Walk_To_Dock(StateCore *core);
 static void Walk_into_Area2(StateCore *core);
+static void Walk_into_Area3(StateCore *core);
 
 void Config_SemiAutoStateGraph()
 {
@@ -32,16 +35,19 @@ void Config_SemiAutoStateGraph()
   StateBlock& s_area1_1 = SemiAutoGr.AddState("area1_1");
   StateBlock& s_area1_2 = SemiAutoGr.AddState("area1_2");
   StateBlock& s_walk_from_a1_to_a2 = SemiAutoGr.AddState("walk_a1_to_a2");
+  StateBlock& s_walk_from_a2_to_a3 = SemiAutoGr.AddState("walk_a2_to_a3");
 
   s_wait.StateAction = Waiting_for_Start;
   s_area1_1.StateAction = Walk_Fetch;
   s_area1_2.StateAction = Walk_To_Dock;
   s_walk_from_a1_to_a2.StateAction = Walk_into_Area2;
+  s_walk_from_a2_to_a3.StateAction = Walk_into_Area3;
 
   s_wait.LinkTo(&s_wait.Complete, s_area1_1);
   s_area1_1.LinkTo(&s_area1_1.Complete, s_area1_2);
   s_area1_2.LinkTo(&s_area1_2.Complete, s_walk_from_a1_to_a2);
-  s_walk_from_a1_to_a2.LinkTo(&s_walk_from_a1_to_a2.Complete, s_wait);
+  s_walk_from_a1_to_a2.LinkTo(&s_walk_from_a1_to_a2.Complete, s_walk_from_a2_to_a3);
+  s_walk_from_a2_to_a3.LinkTo(&s_walk_from_a2_to_a3.Complete, s_wait);
 
   // 向状态机核心注册
   APP::state_core.RegistGraph(SemiAutoGr);
@@ -147,7 +153,6 @@ void Walk_Fetch(StateCore *core)
  * 
  * @param core 
  */
-
 void Walk_To_Dock(StateCore *core)
 {
 
@@ -250,8 +255,31 @@ void Walk_into_Area2(StateCore *core)
     Seq::Wait(0.01f);
   }
 
+  APP::monit.LogInfo("Now, Go to Area3--ARENA");
+
   core->GetCurState().Complete = true;
 }
+
+
+void Walk_into_Area3(StateCore *core)
+{
+  // 跑到Arena九宫格跟前
+  MOVE::MoveToTargPos(Area2_to3_Line2);
+
+  // 抬腿但是（还不知道该抬多高）
+  APP::leg.B_Down_400();
+  APP::leg.F_Down_400();
+
+  // 等待遥控器指令，然后才进入下一步
+  while(MOD::farcon.button_second_half[0] != 1)
+  {
+    Response_Button();
+    Seq::Wait(0.01f);
+  }
+
+  APP::get_block.Put();
+}
+
 
 void Response_Button()
 {

@@ -19,7 +19,6 @@
 #include "optical_comm.hpp"
 #include "SemiAutoGr.hpp"
 
-#include "SemiAutoGr.hpp"
 
 StateGraph graph("LoopGraph");
 
