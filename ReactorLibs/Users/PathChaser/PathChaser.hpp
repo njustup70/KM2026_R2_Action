@@ -108,13 +108,13 @@ class PathChaserType : public Application
     const PathWaypoint* _waypoints = nullptr;
     uint16_t _waypoint_count = 0;
     
-    float _kp_pos = 4.8f;              // 位置误差反馈增益
-    float _kp_yaw = 2.4f;              // 姿态误差反馈增益
-    float _ff_gain = 1.1f;             // 前馈增强系数，可在实车上小幅调到1.05~1.20
+    float _kp_pos = 1.1f;              // 位置误差反馈增益
+    float _kp_yaw = 0.8f;              // 姿态误差反馈增益
+    float _ff_gain = 1.05f;             // 前馈增强系数，可在实车上小幅调到1.05~1.20
     float _max_vel = 999.0f;             // 合速度上限，单位m/s
     float _max_omega = 999.0f;           // 角速度上限，单位rad/s
-    float _max_pos_fb = 0.36f;         // 位置反馈速度上限，单位m/s
-    float _max_yaw_fb = 0.50f;          // 姿态反馈角速度上限，单位rad/s
+    float _max_pos_fb = 1.5f;         // 位置反馈速度上限，单位m/s
+    float _max_yaw_fb = 0.5f;          // 姿态反馈角速度上限，单位rad/s
     float _ff_slow_start_err = 0.4f;  // 位置误差超过该值后开始压低前馈
     float _ff_slow_stop_err = 1.0f;   // 位置误差达到该值后前馈降到最小比例
     float _min_ff_scale = 0.20f;       // 误差较大时保留的最小前馈比例
@@ -142,16 +142,16 @@ class PathChaserType : public Application
     float _point_remain_dist = 0.0f;
     float _point_yaw_err_abs = 0.0f;
 
-    float _point_kp_pos = 4.8f;          // 普通跑点位置P增益
-    float _point_kp_yaw = 2.4f;          // 普通跑点yaw P增益
-    float _point_max_vel = 0.80f;        // 普通跑点最大平移速度，单位m/s
-    float _point_min_vel = 0.06f;        // 进入减速段后的最低有效速度，防止尾段太软
-    float _point_max_omega = 1.20f;      // 普通跑点最大角速度，单位rad/s
-    float _point_min_omega = 0.08f;      // 普通跑点最低有效角速度，防止尾段太软
-    float _point_max_acc = 1.60f;        // 平移速度变化率上限，单位m/s^2
-    float _point_max_alpha = 4.00f;      // 角速度变化率上限，单位rad/s^2
-    float _point_slow_dist = 0.45f;      // 小于该距离后按smoothstep收速度
-    float _point_slow_yaw = 0.45f;       // 小于该角度后按smoothstep收角速度
+    float _point_kp_pos = 1.6f;          // 普通跑点位置P增益
+    float _point_kp_yaw = 1.2f;          // 普通跑点yaw P增益
+    float _point_max_vel = 2.25f;        // 普通跑点最大平移速度，单位m/s
+    float _point_min_vel = 0.05f;        // 进入减速段后的最低有效速度，防止尾段太软
+    float _point_max_omega = 4.25f;      // 普通跑点最大角速度，单位rad/s
+    float _point_min_omega = 0.05f;      // 普通跑点最低有效角速度，防止尾段太软
+    float _point_max_acc = 3.50f;        // 平移速度变化率上限，单位m/s^2
+    float _point_max_alpha = 3.50f;      // 角速度变化率上限，单位rad/s^2
+    float _point_slow_dist = 0.5f;      // 小于该距离后按smoothstep收速度
+    float _point_slow_yaw = 0.5f;       // 小于该角度后按smoothstep收角速度
 
     CtrlCmd _cmd;
 

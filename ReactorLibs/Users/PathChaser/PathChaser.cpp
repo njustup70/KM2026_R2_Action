@@ -317,7 +317,9 @@ void PathChaserType::_update_point_cmd(const Vec3& now_pose)
         float v_by_p = _point_kp_pos * _point_remain_dist;
         float slow_scale = _smooth_step(_point_remain_dist / _point_slow_dist);
         float v_limit = _point_max_vel * slow_scale;
-        if (v_limit < _point_min_vel) v_limit = _point_min_vel;
+        float brake_limit = sqrtf(2.0f * _point_max_acc * _point_remain_dist);
+        if (v_limit > brake_limit) v_limit = brake_limit;
+        if (v_limit < _point_min_vel && brake_limit > _point_min_vel) v_limit = _point_min_vel;
 
         float speed = v_by_p;
         if (speed > v_limit) speed = v_limit;
@@ -338,7 +340,9 @@ void PathChaserType::_update_point_cmd(const Vec3& now_pose)
         float omega_by_p = _point_kp_yaw * yaw_err;
         float slow_scale = _smooth_step(_point_yaw_err_abs / _point_slow_yaw);
         float omega_limit = _point_max_omega * slow_scale;
-        if (omega_limit < _point_min_omega) omega_limit = _point_min_omega;
+        float brake_limit = sqrtf(2.0f * _point_max_alpha * _point_yaw_err_abs);
+        if (omega_limit > brake_limit) omega_limit = brake_limit;
+        if (omega_limit < _point_min_omega && brake_limit > _point_min_omega) omega_limit = _point_min_omega;
         target_omega = StdMath::fclamp(omega_by_p, -omega_limit, omega_limit);
     }
 
