@@ -117,6 +117,13 @@ void Jaw::Update()
     // 如果尚未初始化，寻找初始化原点
     if (!_origined)
     {
+        // 前置条件：如果有任一电机不在线，JAW模块拒绝运作
+        if (!motor_2006.driver.online || !motor_3508_hori.driver.online || !motor_3508_vert.driver.online)
+        {
+            return;
+            APP::monit.LogError("It's Dangerous to use [Jaw], without motor online!");
+            _enabled = false;
+        }
         _Update_GetOrigin();
         return;
     }
@@ -154,7 +161,10 @@ void Jaw::_Update_GetOrigin()
     if (_hori_origined && _vert_origined && _pitch_origined)
     {
         _origined = true;
-        // _in_track_mode = true;
+        
+        // pitch 正式回到近原点处
+        _pitch_pos = _pitch_origin_code - 500;
+
         _hori_tracklim_max = _hori_origin_code - _HoriMMToCode(4);
         _hori_tracklim_min = _hori_origin_code - (JawConst::_hori_max_travel_code - _HoriMMToCode(4));
         _vert_tracklim_max = _vert_origin_code - _VertMMToCode(4);
@@ -442,8 +452,8 @@ void Jaw::_GetPitchOrigin()
             _pitch_origined = true;
             // 记录中点偏移
             _pitch_origin_code = motor_2006.driver.measure.total_angle;
-            // 往回一点点，不要堵转就行
-            _pitch_pos = _pitch_origin_code - 500;
+            // 往回一点点，防止卡住影响其他轴
+            _pitch_pos = _pitch_origin_code - 10000;
             motor_2006.SetPos(_pitch_pos);
         }
     }
