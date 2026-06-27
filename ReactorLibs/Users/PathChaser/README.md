@@ -17,7 +17,8 @@ static const Path<4> demo_path = {{
 
 void StateAct_1()
 {
-    APP::path_chaser.ChasePath(demo_path);
+    APP::path_chaser.ChasePath(demo_path);         // 默认：时间参考主导
+    // APP::path_chaser.ChasePath(demo_path, false); // 可选：路径进度/前瞻主导
 }
 
 void StateAct_2()
@@ -44,28 +45,33 @@ struct PathWaypoint
 
 ## 跟踪逻辑
 
-当前版本是按时间 `t` 的纯跟踪算法：
+默认版本是时间参考主导算法：
 
-1. `ChasePath()` 记录启动时刻，并检查路径时间戳是否合法。
+1. `ChasePath(path)` 记录路径并重置状态，默认 `use_t_ref = true`。
 2. 每个 `Update()` 用 `System.runtime_tick - _start_runtime_sec` 得到路径相对时间。
-3. 在相邻路点之间按 `t_sec` 插值参考 `pos / yaw / vel_vec / omega_rad`。
+3. 按 `t_sec` 插值参考 `pos / yaw / vel_vec / omega_rad`。
 4. 平移控制使用“速度前馈 + 位置反馈”。
 5. 姿态控制使用“角速度前馈 + yaw反馈”。
-6. 误差较大时自动压低前馈，防止机器人偏离后继续猛追远处参考点。
-7. 时间到达路径末端，并且终点位置/yaw 连续满足阈值后，判定完成。
+6. 误差较大时自动压低前馈，末端时间窗内逐渐衰减前馈。
+7. 末端按终点剩余距离做刹车限速，时间到达路径末端且终点位置/yaw 连续满足阈值后，判定完成。
+
+如果调用 `ChasePath(path, false)`，会使用路径进度/前瞻主导算法：按当前位置投影到路径折线得到 `s_nearest`，再追 `s_nearest + lookahead` 附近的参考点。
 
 核心公式：
 
 ```cpp
+ref = path(t);
 pos_err = ref.pos - now_pos;
 yaw_err = wrap_pi(ref.yaw - now_yaw);
 
 pos_fb = limit_vec2(_kp_pos * pos_err, _max_pos_fb);
 yaw_fb = clamp(_kp_yaw * yaw_err, _max_yaw_fb);
 
-ff_scale = _ff_gain * error_slowdown_scale;
+end_ff_scale = min(time_to_end_scale, dist_to_end_scale);
+ff_scale = _ff_gain * error_slowdown_scale * end_ff_scale;
 
 v_world = limit_vec2(ref.vel_vec * ff_scale + pos_fb, _max_vel);
+v_world = limit_vec2(v_world, sqrt(2 * _time_end_max_acc * final_pos_err)); // 末端启用
 omega = clamp(ref.omega_rad * ff_scale + yaw_fb, _max_omega);
 ```
 
@@ -73,25 +79,29 @@ omega = clamp(ref.omega_rad * ff_scale + yaw_fb, _max_omega);
 
 ## 参数说明
 
-### `_kp_pos = 1.8f`
+### `_prog_kp_along = 0.65f`
 
-位置误差反馈增益。
+默认路径进度主导算法的沿路径方向反馈增益。它负责追前瞻点，让车继续沿路径向前走。
 
 - 增大：偏离参考点后回收更快
 - 过大：可能抖动、过冲
 - 过小：跟点软，误差消除慢
 
-### `_kp_yaw = 3.2f`
+### `_prog_kp_cross = 1.30f`
 
-姿态误差反馈增益。
+默认路径进度主导算法的横向贴线反馈增益。它负责把车拉回最近路径线，末端直线段的 x/y 贴合主要靠它。
+
+### `_prog_kp_yaw = 0.8f`
+
+默认路径进度主导算法的姿态误差反馈增益。
 
 - 增大：朝向跟随更快
 - 过大：车头容易摆
 - 过小：转角和终点姿态会滞后
 
-### `_ff_gain = 1.0f`
+### `_prog_ff_gain = 1.05f`
 
-前馈增强系数。
+默认路径进度主导算法的前馈增强系数。
 
 实车上如果低层速度环偏软、摩擦大、执行有延迟，可以小幅调到 `1.05f ~ 1.20f`。
 不建议默认给太大，因为最终会被限幅截断，且弯道和终点会更激进。
@@ -104,15 +114,33 @@ omega = clamp(ref.omega_rad * ff_scale + yaw_fb, _max_omega);
 
 最终角速度上限，单位 `rad/s`。
 
-### `_max_pos_fb = 0.45f`
+### `_prog_max_along_fb = 0.45f`
 
-位置反馈速度上限，单位 `m/s`。
+沿路径方向反馈速度上限，单位 `m/s`。
 
-它限制的是反馈项，不限制路径前馈。偏离后回收太猛时先减小它；回收太慢时再增大它或 `_kp_pos`。
+前瞻点拉得太猛时先减小它；前进方向回收太慢时再增大它或 `_prog_kp_along`。
 
-### `_max_yaw_fb = 1.0f`
+### `_prog_max_cross_fb = 0.35f`
+
+横向贴线反馈速度上限，单位 `m/s`。
+
+末端横向过冲时优先增大 `_prog_kp_cross` 或 `_prog_max_cross_fb`；横向来回晃时减小它们。
+
+### `_prog_max_yaw_fb = 0.5f`
 
 yaw 反馈角速度上限，单位 `rad/s`。
+
+### `_kp_pos / _kp_yaw / _ff_gain / _max_pos_fb / _max_yaw_fb`
+
+这些给默认时间参考算法使用。
+
+### `_time_end_ff_fade_time / _time_end_slow_dist`
+
+时间参考算法的末端收敛参数。前者决定离路径结束前多久开始衰减前馈，后者决定离终点多近开始按剩余距离刹车。
+
+### `_time_end_max_acc / _time_end_min_vel`
+
+时间参考算法的末端刹车限速参数。过冲明显时减小 `_time_end_max_acc` 或增大 `_time_end_slow_dist`；末端太慢时反过来调。
 
 ### `_ff_slow_start_err = 0.08f`
 
@@ -144,22 +172,23 @@ yaw 反馈角速度上限，单位 `rad/s`。
 
 1. 先让 `_ff_gain = 1.0f`，确认路径能稳定跑完。
 2. 调 `_max_vel / _max_omega`，先把速度安全边界定住。
-3. 调 `_kp_pos / _max_pos_fb`，让位置误差能收敛且不过冲。
-4. 调 `_kp_yaw / _max_yaw_fb`，让车头跟随稳定。
-5. 如果整段路径总是慢一点，再小幅提高 `_ff_gain`。
-6. 如果偏离后追得太凶，减小 `_min_ff_scale` 或减小 `_max_pos_fb`。
+3. 调 `_kp_pos / _max_pos_fb`，让中段轨迹误差能收敛且不过猛。
+4. 调 `_time_end_ff_fade_time / _time_end_slow_dist`，决定末端多早开始收。
+5. 调 `_time_end_max_acc`，处理终点过冲和末端耗时。
+6. 调 `_kp_yaw / _max_yaw_fb`，让车头跟随稳定。
 
 ## 常见现象
 
 - 车总是慢半拍：小幅增大 `_ff_gain`，例如 `1.05f`。
 - 车一偏就猛追：减小 `_max_pos_fb` 或 `_min_ff_scale`。
-- 车到终点冲过：减小 `_ff_gain`、`_max_vel`，或放大路径末端减速段。
+- 车到终点冲过：增大 `_time_end_slow_dist / _time_end_ff_fade_time`，或减小 `_time_end_max_acc`。
+- 末端太慢：增大 `_time_end_max_acc`，或减小 `_time_end_slow_dist`。
 - 转头太猛：减小 `_kp_yaw`、`_max_yaw_fb` 或 `_max_omega`。
 - 到终点不结束：放宽 `_pos_tol / _yaw_tol`，或确认路径最后一个点的 yaw 正确。
 
 ## 对外接口
 
-- `ChasePath(const Path<N>& path)`：设置路径并重置状态
+- `ChasePath(const Path<N>& path, bool use_t_ref = true)`：设置路径并重置状态。默认时间参考主导，传 `false` 使用路径进度/前瞻算法。
 - `Reset()`：手动重置内部状态
 - `IsFinished()`：是否完成路径
 - `GetCmdWorld()`：世界系命令 `(vx, vy, omega)`

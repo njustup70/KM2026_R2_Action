@@ -128,7 +128,7 @@ void Walk_Fetch(StateCore *core)
 
   // 先往上抬 1.5cm
   APP::jaw.ChangePos(0, 20);
-  Seq::Wait(0.25);
+  Seq::Wait(0.35);
   // 然后抬起 Pitch爪子
   APP::jaw.PitchUp();
 
@@ -143,9 +143,8 @@ void Walk_Fetch(StateCore *core)
 void Walk_To_Dock(StateCore *core)
 {
   // 先向前走一点
-  APP::chas.Move(Vec3(1.0f, 0, 0), 0.5f);
-  Seq::Wait(0.3f);
-  APP::chas.Move(Vec3(0.0f, 0, 0), 0.5f);
+  APP::chas.Move(Vec3(2.0f, 0, 0), 0.5f);
+  Seq::Wait(0.15f);
 
   // 走到对接点
   MOVE::MoveToTargGes(Vec3(1.3f, 5.0f, 1.57));
@@ -269,7 +268,7 @@ static void TurnRelative(float delta_rad)
 
 void Walk_into_Area2_Host(StateCore *core)
 {
-  MOVE::MoveToTargPos(Area1_to2_Line2);
+  MOVE::MoveToTargPos(A12_2);
 
   // 此时走到了梅林跟前
 
