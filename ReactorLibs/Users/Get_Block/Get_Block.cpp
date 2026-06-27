@@ -98,14 +98,15 @@ void GetBlock::Update()
     {
         // motor_dm_lift.SetPosVel(-_lift_pos_upper, _lift_vel);
         // motor_2006_feed.SetPos(-_feed_pos_extend);
-        relay_pump.On();
+        // relay_pump.On();
+
     }
     else
     {
         relay_pump.Off();     
     }
 
-    if(is_belt_enable)
+    if(_belt_enable)
     {
         _StartBelt();
     }
@@ -114,7 +115,18 @@ void GetBlock::Update()
         _StopBelt();
     }
 
-    // _UpdateFSM();
+    if(_store_debug)
+    {
+        _store_debug = false;
+        Store();
+    }
+    if(_put_debug)
+    {
+        _put_debug = false;
+        Put();
+    }
+
+    _UpdateFSM();
 }
 
 // ==================== 传感器 ====================

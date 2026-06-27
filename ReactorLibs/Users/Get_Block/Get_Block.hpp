@@ -68,7 +68,8 @@ private:
     bool _fsm_busy      = false;
 
     bool is_debug = false;
-    bool is_belt_enable = false;
+    bool _store_debug = false;
+    bool _put_debug = false;
 
     uint32_t _action_tick = 0;  // 阶段开始时间戳 (s)
 
