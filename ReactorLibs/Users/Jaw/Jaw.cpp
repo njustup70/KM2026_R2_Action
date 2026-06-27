@@ -20,8 +20,8 @@ static HostPC& host_pc = HostPC::GetInstance();
 namespace JawConst 
 {
     /// @brief 各方向上的最大行程
-    static const int _hori_max_travel_code = 299000;
-    static const int _vert_max_travel_code = 326000;
+    static const int _hori_max_travel_code = 327000;
+    static const int _vert_max_travel_code = 276000;
     static const int _pitch_max_travel_code = 300000;
 }
 
@@ -158,7 +158,7 @@ void Jaw::_Update_GetOrigin()
         _hori_tracklim_max = _hori_origin_code - _HoriMMToCode(4);
         _hori_tracklim_min = _hori_origin_code - (JawConst::_hori_max_travel_code - _HoriMMToCode(4));
         _vert_tracklim_max = _vert_origin_code - _VertMMToCode(4);
-        _vert_tracklim_min = _vert_origin_code - 100000;
+        _vert_tracklim_min = _vert_origin_code - (JawConst::_vert_max_travel_code - _VertMMToCode(4));
     }
 }
 
@@ -407,7 +407,7 @@ void Jaw::_GetVertOrigin()
             // 记录中点偏移
             _vert_origin_code = motor_3508_vert.driver.measure.total_angle;
             // 往回走到三分之一
-            _y_pos = _vert_origin_code - JawConst::_vert_max_travel_code * 2 / 3 + 32500; //后面加的是夹到矛头最好的位置偏移
+            _y_pos = _vert_origin_code - JawConst::_vert_max_travel_code * 2 / 3 + 10000; //后面加的是夹到矛头最好的位置偏移
             motor_3508_vert.SetPos(_y_pos);
         }
     }
