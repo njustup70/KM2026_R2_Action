@@ -179,6 +179,9 @@ void Decend_200()
   APP::leg.F_Down_200();
   Seq::Wait(0.45f);
 
+  // 伸出妲己
+  APP::leg.relay_daji.On();
+
   // 继续向前走。等待小黄3号检测不到后，放下后腿
   APP::chas.Move(Vec2(0.24, 0), 3.0f);
   Seq::WaitUntil([&]()
@@ -195,6 +198,9 @@ void Decend_200()
   APP::chas.Move(Vec2(0.0, 0), 2.0f);
   APP::leg.F_Origin();
   APP::leg.B_Origin();
+
+  // 收回妲己
+  APP::leg.relay_daji.Off();
 
   // 记录结束位置
   APP::monit.LogInfo("Decend200:EndPos:(%.2f,%.2f)",
@@ -221,6 +227,9 @@ void Decend_400()
   APP::leg.F_Down_400();
   Seq::Wait(1.25f);
 
+  // 伸出妲己
+  APP::leg.relay_daji.On();
+
   // 继续向前走。等待小黄3号检测不到后，放下后腿
   APP::chas.Move(Vec2(0.2, 0), 6.0f);
   Seq::Wait(0.5f);
@@ -240,6 +249,9 @@ void Decend_400()
   APP::chas.Move(Vec2(0.0, 0), 2.0f);
   APP::leg.F_Origin();
   APP::leg.B_Origin();
+
+  // 收回妲己
+  APP::leg.relay_daji.Off();
 
   // 记录结束位置
   APP::monit.LogInfo("Decend400:EndPos:(%.2f,%.2f)",
