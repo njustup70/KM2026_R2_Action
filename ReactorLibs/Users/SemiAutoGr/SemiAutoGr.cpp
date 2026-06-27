@@ -16,6 +16,7 @@
 // #include "r2_area1_1.hpp"
 #include "table_to_dock.hpp"
 #include "stt.hpp"
+#include "stt_r.hpp"
 #include "a12_2.hpp"
 #include "a23_2.hpp"
 
@@ -96,7 +97,7 @@ void Waiting_for_Start(StateCore *core)
   // 等待出发信号
   APP::monit.LogInfo("Ready to Go...");
 
-  APP::jaw.CloseClaw(); 
+  // APP::jaw.CloseClaw(); 
   
   // 等待遥控器的出发指令
   // Seq::WaitUntil([](){
@@ -120,13 +121,16 @@ void Waiting_for_Start(StateCore *core)
 void Walk_Fetch(StateCore *core)
 {
   APP::jaw.PitchDown();
-  Seq::Wait(0.5);
   APP::jaw.OpenClaw();
-  Seq::Wait(0.5);
 
-  MOVE::MoveToTargPos(STT);
+  MOVE::MoveToTargPos(STT_R);
   
   APP::jaw.CloseClaw();
+
+  // 记录抓取位置，以及西克数据
+  APP::monit.LogInfo("Catch At:(%.2f,%.2f), sick:%.3f", APP::comm_center.slam_pos.x,
+    APP::comm_center.slam_pos.y, APP::comm_center._sick_ch0_data);
+
   // 先往上抬 1.5cm
   APP::jaw.ChangePos(0, 15);
   Seq::Wait(0.5);
@@ -323,7 +327,7 @@ void Response_Button()
       {
         APP::leg.relay_daji.On();
       }
-
+ 
       is_daji_enable = !is_daji_enable;
       last_trigger_time = DWT_GetTimeline_Sec();
     }

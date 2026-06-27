@@ -15,11 +15,9 @@ private:
 
     bool _dock_ok = false;  // 是否完成对接
 
-    float _sick_ch0_data; // sick测距值（ch0）
-
-
 public:
     Vec3 slam_pos;
+    float _sick_ch0_data; // sick测距值（ch0）
     uint8_t kfs_values[12];
     bool IsDocked() const { return _dock_ok; }
     void SlamCorrection(); // 触发Sick纠正
