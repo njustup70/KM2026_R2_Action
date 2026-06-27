@@ -19,8 +19,54 @@ void PathChaserType::Reset()
     _finish_tick_cnt = 0;
     _finished = false;
     _start_runtime_sec = System.runtime_tick;
+    _point_last_update_sec = System.runtime_tick;
+    _point_last_vel_world = Vec2(0, 0);
+    _point_last_omega = 0.0f;
     _cmd.world = Vec3(0, 0, 0);
     _cmd.body = Vec3(0, 0, 0);
+}
+
+void PathChaserType::ChaseGes(Vec3 targ_ges)
+{
+    _mode = ChaseMode::Point;
+    _point_target_pos = targ_ges.ToVec2();
+    _point_target_yaw = _wrap_pi(targ_ges.z);
+    _point_pos_enabled = true;
+    _point_yaw_enabled = true;
+    Reset();
+}
+
+void PathChaserType::ChasePos(Vec2 targ_pos)
+{
+    _mode = ChaseMode::Point;
+    _point_target_pos = targ_pos;
+    _point_pos_enabled = true;
+    _point_yaw_enabled = false;
+    Reset();
+}
+
+void PathChaserType::ChaseYaw(float ang_rad)
+{
+    _mode = ChaseMode::Point;
+    _point_target_yaw = _wrap_pi(ang_rad);
+    _point_pos_enabled = false;
+    _point_yaw_enabled = true;
+    Reset();
+}
+
+void PathChaserType::SetYawTarget(float ang_rad)
+{
+    float target_yaw = _wrap_pi(ang_rad);
+    bool target_changed = !_point_yaw_enabled || fabsf(_wrap_pi(target_yaw - _point_target_yaw)) > 1e-5f;
+
+    _mode = ChaseMode::Point;
+    _point_target_yaw = target_yaw;
+    _point_yaw_enabled = true;
+    if (target_changed)
+    {
+        _finished = false;
+        _finish_tick_cnt = 0;
+    }
 }
 
 float PathChaserType::_wrap_pi(float rad)
@@ -41,6 +87,20 @@ Vec2 PathChaserType::_limit_vec2(Vec2 vec, float max_len)
     float len = vec.Length();
     if (len <= max_len || len < 1e-6f) return vec;
     return vec * (max_len / len);
+}
+
+Vec2 PathChaserType::_limit_delta_vec2(Vec2 from, Vec2 to, float max_delta)
+{
+    Vec2 delta = to - from;
+    float delta_len = delta.Length();
+    if (delta_len <= max_delta || delta_len < 1e-6f) return to;
+    return from + delta * (max_delta / delta_len);
+}
+
+float PathChaserType::_smooth_step(float x)
+{
+    x = StdMath::fclamp(x, 0.0f, 1.0f);
+    return x * x * (3.0f - 2.0f * x);
 }
 
 /**
@@ -156,6 +216,24 @@ PathChaserType::PathRef PathChaserType::_sample_ref_by_time(float t_sec) const
  */
 void PathChaserType::_update_cmd(const Vec3& now_pose)
 {
+    if (_mode == ChaseMode::Path)
+    {
+        _update_path_cmd(now_pose);
+        return;
+    }
+
+    if (_mode == ChaseMode::Point)
+    {
+        _update_point_cmd(now_pose);
+        return;
+    }
+
+    _cmd.world = Vec3(0, 0, 0);
+    _cmd.body = Vec3(0, 0, 0);
+}
+
+void PathChaserType::_update_path_cmd(const Vec3& now_pose)
+{
     if (_waypoints == nullptr || _waypoint_count == 0 || _finished || !_path_valid)
     {
         _cmd.world = Vec3(0, 0, 0);
@@ -209,6 +287,88 @@ void PathChaserType::_update_cmd(const Vec3& now_pose)
     if (_finish_tick_cnt >= _finish_hold_ticks)
     {
         _finished = true;
+        _cmd.world = Vec3(0, 0, 0);
+        _cmd.body = Vec3(0, 0, 0);
+    }
+}
+
+void PathChaserType::_update_point_cmd(const Vec3& now_pose)
+{
+    if (_finished)
+    {
+        _cmd.world = Vec3(0, 0, 0);
+        _cmd.body = Vec3(0, 0, 0);
+        return;
+    }
+
+    float now_sec = System.runtime_tick;
+    float dt = now_sec - _point_last_update_sec;
+    if (dt <= 0.0f || dt > 0.05f) dt = 0.005f;
+    _point_last_update_sec = now_sec;
+
+    Vec2 now_pos = now_pose.ToVec2();
+    Vec2 pos_err = _point_target_pos - now_pos;
+    _point_remain_dist = pos_err.Length();
+
+    Vec2 target_vel_world(0, 0);
+    if (_point_pos_enabled && _point_remain_dist > _pos_tol)
+    {
+        Vec2 dir = pos_err / _point_remain_dist;
+        float v_by_p = _point_kp_pos * _point_remain_dist;
+        float slow_scale = _smooth_step(_point_remain_dist / _point_slow_dist);
+        float v_limit = _point_max_vel * slow_scale;
+        if (v_limit < _point_min_vel) v_limit = _point_min_vel;
+
+        float speed = v_by_p;
+        if (speed > v_limit) speed = v_limit;
+        target_vel_world = dir * speed;
+    }
+
+    Vec2 v_world = _limit_delta_vec2(_point_last_vel_world,
+                                     target_vel_world,
+                                     _point_max_acc * dt);
+    _point_last_vel_world = v_world;
+
+    float yaw_err = _wrap_pi(_point_target_yaw - now_pose.z);
+    _point_yaw_err_abs = fabsf(yaw_err);
+
+    float target_omega = 0.0f;
+    if (_point_yaw_enabled && _point_yaw_err_abs > _yaw_tol)
+    {
+        float omega_by_p = _point_kp_yaw * yaw_err;
+        float slow_scale = _smooth_step(_point_yaw_err_abs / _point_slow_yaw);
+        float omega_limit = _point_max_omega * slow_scale;
+        if (omega_limit < _point_min_omega) omega_limit = _point_min_omega;
+        target_omega = StdMath::fclamp(omega_by_p, -omega_limit, omega_limit);
+    }
+
+    float omega_delta = target_omega - _point_last_omega;
+    float max_omega_delta = _point_max_alpha * dt;
+    omega_delta = StdMath::fclamp(omega_delta, -max_omega_delta, max_omega_delta);
+    float omega = _point_last_omega + omega_delta;
+    _point_last_omega = omega;
+
+    Vec2 body_xy = v_world.Rotate(-now_pose.z);
+    _cmd.world = Vec3(v_world.x, v_world.y, omega);
+    _cmd.body = Vec3(body_xy.x, body_xy.y, omega);
+
+    bool pos_done = !_point_pos_enabled || _point_remain_dist < _pos_tol;
+    bool yaw_done = !_point_yaw_enabled || _point_yaw_err_abs < _yaw_tol;
+
+    if (pos_done && yaw_done)
+    {
+        if (_finish_tick_cnt < _finish_hold_ticks) _finish_tick_cnt++;
+    }
+    else
+    {
+        _finish_tick_cnt = 0;
+    }
+
+    if (_finish_tick_cnt >= _finish_hold_ticks)
+    {
+        _finished = true;
+        _point_last_vel_world = Vec2(0, 0);
+        _point_last_omega = 0.0f;
         _cmd.world = Vec3(0, 0, 0);
         _cmd.body = Vec3(0, 0, 0);
     }

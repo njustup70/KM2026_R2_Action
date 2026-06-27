@@ -52,8 +52,24 @@ class PathChaserType : public Application
         _path_total_len = _path_length();
         _path_total_time = _path_time();
         _path_valid = _validate_path();
+        _mode = ChaseMode::Path;
         Reset();
     }
+    
+    /// @brief 普通跑点：同时控制位置和yaw
+    void ChaseGes(Vec3 targ_ges);
+
+    /// @brief 普通跑点：只控制位置，不主动控制yaw
+    void ChasePos(Vec2 targ_pos);
+
+    /// @brief 普通跑点：只控制yaw，不主动控制位置
+    void ChaseYaw(float ang_rad);
+
+    /// @brief 给当前普通跑点挂上yaw目标，适合跑到一半再开始转头
+    void SetYawTarget(float ang_rad);
+
+    /// @brief 获取普通跑点当前位置误差，单位m
+    float GetRemainDist() const { return _point_remain_dist; }
 
     /// @brief 手动重置跟踪状态
     void Reset();
@@ -81,21 +97,28 @@ class PathChaserType : public Application
         float t = 0.0f;       // 相对路径起点时间
     };
 
+    enum class ChaseMode
+    {
+        Idle,
+        Path,
+        Point,
+    };
+
     // 当前跟踪的路径 的 路点数组指针 还有数量
     const PathWaypoint* _waypoints = nullptr;
     uint16_t _waypoint_count = 0;
     
-    float _kp_pos = 1.8f;              // 位置误差反馈增益
-    float _kp_yaw = 1.8f;              // 姿态误差反馈增益
+    float _kp_pos = 4.8f;              // 位置误差反馈增益
+    float _kp_yaw = 2.4f;              // 姿态误差反馈增益
     float _ff_gain = 1.1f;             // 前馈增强系数，可在实车上小幅调到1.05~1.20
     float _max_vel = 999.0f;             // 合速度上限，单位m/s
     float _max_omega = 999.0f;           // 角速度上限，单位rad/s
-    float _max_pos_fb = 0.25f;         // 位置反馈速度上限，单位m/s
+    float _max_pos_fb = 0.36f;         // 位置反馈速度上限，单位m/s
     float _max_yaw_fb = 0.50f;          // 姿态反馈角速度上限，单位rad/s
-    float _ff_slow_start_err = 0.08f;  // 位置误差超过该值后开始压低前馈
-    float _ff_slow_stop_err = 0.35f;   // 位置误差达到该值后前馈降到最小比例
+    float _ff_slow_start_err = 0.4f;  // 位置误差超过该值后开始压低前馈
+    float _ff_slow_stop_err = 1.0f;   // 位置误差达到该值后前馈降到最小比例
     float _min_ff_scale = 0.20f;       // 误差较大时保留的最小前馈比例
-    float _pos_tol = 0.005f;            // 终点位置阈值，单位m
+    float _pos_tol = 0.01f;            // 终点位置阈值，单位m
     float _yaw_tol = 0.02f;            // 终点姿态阈值，单位rad
     uint16_t _finish_hold_ticks = 10;  // 完成保持周期，200Hz下约50ms
 
@@ -107,6 +130,29 @@ class PathChaserType : public Application
     uint16_t _finish_tick_cnt = 0;
     bool _finished = false;
 
+    ChaseMode _mode = ChaseMode::Idle;
+
+    Vec2 _point_target_pos;
+    float _point_target_yaw = 0.0f;
+    bool _point_pos_enabled = false;
+    bool _point_yaw_enabled = false;
+    float _point_last_update_sec = 0.0f;
+    Vec2 _point_last_vel_world;
+    float _point_last_omega = 0.0f;
+    float _point_remain_dist = 0.0f;
+    float _point_yaw_err_abs = 0.0f;
+
+    float _point_kp_pos = 4.8f;          // 普通跑点位置P增益
+    float _point_kp_yaw = 2.4f;          // 普通跑点yaw P增益
+    float _point_max_vel = 0.80f;        // 普通跑点最大平移速度，单位m/s
+    float _point_min_vel = 0.06f;        // 进入减速段后的最低有效速度，防止尾段太软
+    float _point_max_omega = 1.20f;      // 普通跑点最大角速度，单位rad/s
+    float _point_min_omega = 0.08f;      // 普通跑点最低有效角速度，防止尾段太软
+    float _point_max_acc = 1.60f;        // 平移速度变化率上限，单位m/s^2
+    float _point_max_alpha = 4.00f;      // 角速度变化率上限，单位rad/s^2
+    float _point_slow_dist = 0.45f;      // 小于该距离后按smoothstep收速度
+    float _point_slow_yaw = 0.45f;       // 小于该角度后按smoothstep收角速度
+
     CtrlCmd _cmd;
 
     PathRef _sample_ref_by_time(float t_sec) const;
@@ -114,11 +160,16 @@ class PathChaserType : public Application
     float _path_time() const;
     bool _validate_path() const;
     void _update_cmd(const Vec3& now_pose);
+    void _update_path_cmd(const Vec3& now_pose);
+    void _update_point_cmd(const Vec3& now_pose);
     static float _wrap_pi(float rad);
     static Vec2 _limit_vec2(Vec2 vec, float max_len);
+    static Vec2 _limit_delta_vec2(Vec2 from, Vec2 to, float max_delta);
+    static float _smooth_step(float x);
 };
 
 namespace APP
 {
     extern PathChaserType& path_chaser;
 }
+
