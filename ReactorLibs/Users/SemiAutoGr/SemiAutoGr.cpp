@@ -62,12 +62,7 @@ void Config_SemiAutoStateGraph()
  */
 void Waiting_for_Start(StateCore *core)
 {
-  while(MOD::farcon.button_second_half[0] != 1)
-  {
-    Response_Button();
-    Seq::Wait(0.01f);
-  }
-
+  APP::jaw.CloseClaw();
   APP::monit.LogInfo("Waiting for start...");
 
   // 等待遥控器指令，然后才进入下一步
@@ -97,7 +92,7 @@ void Waiting_for_Start(StateCore *core)
   // 等待出发信号
   APP::monit.LogInfo("Ready to Go...");
 
-  // APP::jaw.CloseClaw(); 
+  // APP::jaw.CloseClaw();      
   
   // 等待遥控器的出发指令
   // Seq::WaitUntil([](){
@@ -128,26 +123,14 @@ void Walk_Fetch(StateCore *core)
   APP::jaw.CloseClaw();
 
   // 记录抓取位置，以及西克数据
-  APP::monit.LogInfo("Catch At:(%.2f,%.2f), sick:%.3f", APP::comm_center.slam_pos.x,
-    APP::comm_center.slam_pos.y, APP::comm_center._sick_ch0_data);
+  APP::monit.LogInfo("Catch At:(%.3f,%.3f), sick:%.3f", APP::comm_center.slam_pos.x,
+    APP::comm_center.slam_pos.y, APP::comm_center.sick_data_m[0]);
 
   // 先往上抬 1.5cm
-  APP::jaw.ChangePos(0, 15);
-  Seq::Wait(0.5);
+  APP::jaw.ChangePos(0, 20);
+  Seq::Wait(0.25);
   // 然后抬起 Pitch爪子
   APP::jaw.PitchUp();
-  Seq::Wait(0.5);
-
-  // 等待遥控器指令，然后才进入下一个状态
-  // Seq::WaitUntil([]()
-  // {
-  //   return MOD::farcon.button_first_half[0] == 1;
-  // });
-  while(MOD::farcon.button_second_half[0] != 1)
-  {
-    Response_Button();
-    Seq::Wait(0.01f);
-  }
 
   core->GetCurState().Complete = true;
 }
@@ -159,10 +142,15 @@ void Walk_Fetch(StateCore *core)
  */
 void Walk_To_Dock(StateCore *core)
 {
+  // 先向前走一点
+  APP::chas.Move(Vec3(1.0f, 0, 0), 0.5f);
+  Seq::Wait(0.3f);
+  APP::chas.Move(Vec3(0.0f, 0, 0), 0.5f);
 
-  MOVE::MoveToTargPos(TableToDockPath);
-  Seq::Wait(1.0f);
+  // 走到对接点
+  MOVE::MoveToTargGes(Vec3(1.3f, 5.0f, 1.57));
 
+  // 进入对接模式
   APP::jaw.SetTrackMode(true);
 
   // Seq::WaitUntil()
@@ -187,6 +175,7 @@ void Walk_To_Dock(StateCore *core)
   // 打开夹爪，给R1时间拿回兵器
   APP::jaw.OpenClaw();    // 依旧OpenClaw
   Seq::Wait(2.0f);
+  APP::jaw.CloseClaw();
 
   APP::monit.LogInfo("Go to Climb.");
 
@@ -201,7 +190,7 @@ void Walk_To_Dock(StateCore *core)
  */
 void Walk_into_Area2(StateCore *core)
 {
-  MOVE::MoveToTargPos(Area1_to2_Line2);
+  MOVE::MoveToTargPos(A12_2);
 
   // 此时走到了梅林跟前
 
@@ -217,29 +206,29 @@ void Walk_into_Area2(StateCore *core)
   Climb_Up200();
 
   // 等待遥控器指令，然后才进入下一步
-  // while(MOD::farcon.button_second_half[0] != 1)
-  // {
-  //   Response_Button();
-  //   Seq::Wait(0.01f);
-  // }
+  while(MOD::farcon.button_second_half[0] != 1)
+  {
+    Response_Button();
+    Seq::Wait(0.01f);
+  }
 
   Climb_Up200();
 
   // 等待遥控器指令，然后才进入下一步
-  // while(MOD::farcon.button_second_half[0] != 1)
-  // {
-  //   Response_Button();
-  //   Seq::Wait(0.01f);
-  // }
+  while(MOD::farcon.button_second_half[0] != 1)
+  {
+    Response_Button();
+    Seq::Wait(0.01f);
+  }
 
   Climb_Up200();
 
   // 等待遥控器指令，然后才进入下一步
-  // while(MOD::farcon.button_second_half[0] != 1)
-  // {
-  //   Response_Button();
-  //   Seq::Wait(0.01f);
-  // }
+  while(MOD::farcon.button_second_half[0] != 1)
+  {
+    Response_Button();
+    Seq::Wait(0.01f);
+  }
 
   Decend_200();
 

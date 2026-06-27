@@ -10,7 +10,7 @@ void OpticalComm::Init(BSP::UART::UartID uart_id)
     memset(_routes, 0, sizeof(_routes));
     memset(_unknown_once, 0, sizeof(_unknown_once));
 
-    _uart = BSP::UART::Apply(uart_id);
+    _uart = BSP::UART::Apply(uart_id, "Optic");
     if (_uart.IsValid())
     {
         _uart.RegisterRx(MAX_FRAME_SIZE, _RxCallback);
@@ -18,7 +18,7 @@ void OpticalComm::Init(BSP::UART::UartID uart_id)
 }
 
 bool OpticalComm::Regist(uint8_t func_code, RxHandler cb, void* user_ctx)
-{
+{ 
     if (cb == nullptr)
     {
         BspLog_LogError("[OpticalComm] Regist failed: cb is nullptr, func=0x%02X", func_code);
