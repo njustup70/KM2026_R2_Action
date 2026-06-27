@@ -6,8 +6,16 @@
 #include "HostPC.hpp"
 #include "PathChaser.hpp"
 #include "VacuumClaw.hpp"
+#include "CommCenter.hpp"
 
 #include "Area2_Act.hpp"
+
+const Vec2 MeiHuaForest_Pos[12] = {
+  Vec2(3.8, 1.8), Vec2(3.8, 3), Vec2(3.8, 4.2),
+  Vec2(5.0, 1.8), Vec2(5.0, 3), Vec2(5.0, 4.2),
+  Vec2(6.2, 1.8), Vec2(6.2, 3), Vec2(6.2, 4.2),
+  Vec2(7.4, 1.8), Vec2(7.4, 3), Vec2(7.4, 4.2),
+};
 
 bool IR_Read(InfraredDetector& ir)
 {
@@ -36,6 +44,10 @@ bool IR_Read(InfraredDetector& ir)
  */
 void Climb_Up200()
 {
+  // 记录起始位置
+  APP::monit.LogInfo("Climb200:StartPos:(%.2f,%.2f)",
+     APP::comm_center.slam_pos.x, APP::comm_center.slam_pos.y);
+
   // 登200时，先放低前后腿
   APP::leg.F_Down_200();
   APP::leg.B_Down_200();
@@ -88,6 +100,10 @@ void Climb_Up200()
 
   Seq::Wait(1.25f);
   APP::chas.Move(Vec2(0, 0), 1.0f);
+
+  // 记录结束位置
+  APP::monit.LogInfo("Climb200:EndPos:(%.2f,%.2f)",
+     APP::comm_center.slam_pos.x, APP::comm_center.slam_pos.y);
 }
 
 /**
@@ -96,6 +112,10 @@ void Climb_Up200()
  */
 void Climb_Up400()
 {
+  // 记录起始位置
+  APP::monit.LogInfo("Climb400:StartPos:(%.2f,%.2f)",
+     APP::comm_center.slam_pos.x, APP::comm_center.slam_pos.y);
+  
   // 登400时，先放低前后腿
   APP::leg.F_Down_400();
   APP::leg.B_Down_400();
@@ -135,10 +155,18 @@ void Climb_Up400()
   
   // 结束
   APP::chas.Move(Vec2(0.0f, 0.0f), 2.0f);
+
+  // 记录结束位置
+  APP::monit.LogInfo("Climb400:EndPos:(%.2f,%.2f)",
+     APP::comm_center.slam_pos.x, APP::comm_center.slam_pos.y);
 }
 
 void Decend_200()
 {
+  // 记录起始位置
+  APP::monit.LogInfo("Decend200:StartPos:(%.2f,%.2f)",
+     APP::comm_center.slam_pos.x, APP::comm_center.slam_pos.y);
+  
   // 先缓慢向前走
   APP::chas.Move(Vec2(0.24, 0), 3.0f);
 
@@ -167,10 +195,18 @@ void Decend_200()
   APP::chas.Move(Vec2(0.0, 0), 2.0f);
   APP::leg.F_Origin();
   APP::leg.B_Origin();
+
+  // 记录结束位置
+  APP::monit.LogInfo("Decend200:EndPos:(%.2f,%.2f)",
+     APP::comm_center.slam_pos.x, APP::comm_center.slam_pos.y);
 }
 
 void Decend_400()
 {
+  // 记录起始位置
+  APP::monit.LogInfo("Decend400:StartPos:(%.2f,%.2f)",
+     APP::comm_center.slam_pos.x, APP::comm_center.slam_pos.y);
+  
   // 先缓慢向前走
   APP::chas.Move(Vec2(0.2, 0), 6.0f);
   Seq::Wait(0.5f);
@@ -204,4 +240,8 @@ void Decend_400()
   APP::chas.Move(Vec2(0.0, 0), 2.0f);
   APP::leg.F_Origin();
   APP::leg.B_Origin();
+
+  // 记录结束位置
+  APP::monit.LogInfo("Decend400:EndPos:(%.2f,%.2f)",
+     APP::comm_center.slam_pos.x, APP::comm_center.slam_pos.y);
 }
