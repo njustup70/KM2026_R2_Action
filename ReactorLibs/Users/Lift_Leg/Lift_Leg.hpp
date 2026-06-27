@@ -14,9 +14,9 @@ public:
     int back_pos = 0;  // 后腿位置，单位为mm
 
     int _front_max_lim = 0; // 前腿最大位置，单位为mm
-    int _front_min_lim = -410;   // 前腿最小位置，单位
+    int _front_min_lim = -420;   // 前腿最小位置，单位
     int _back_max_lim = 0; // 后腿最大位置，单位为mm
-    int _back_min_lim = -410;   // 后腿最小位置，单位
+    int _back_min_lim = -420;   // 后腿最小位置，单位
 
     void ChangeFrontPos(int16_t delta_pos)
     {
@@ -50,7 +50,8 @@ public:
 
     void Enable();
     void Disable();
-
+    void F_AlmostOrigin(); // 前腿回到近零位
+    void B_AlmostOrigin(); // 后腿回到近零位
     void F_Origin(); // 前腿回到零位
     void B_Origin(); // 后腿回到零位
     void F_Down_200(); // 前腿放低200

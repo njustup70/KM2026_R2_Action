@@ -12,7 +12,6 @@
 
 /// @brief 所有的路径文件
 // #include "r2_area1_1.hpp"
-#include "start_to_table.hpp"
 #include "table_to_dock.hpp"
 #include "stt.hpp"
 #include "a12_2.hpp"
@@ -199,29 +198,29 @@ void Walk_into_Area2(StateCore *core)
   Climb_Up200();
 
   // 等待遥控器指令，然后才进入下一步
-  while(MOD::farcon.button_second_half[0] != 1)
-  {
-    Response_Button();
-    Seq::Wait(0.01f);
-  }
+  // while(MOD::farcon.button_second_half[0] != 1)
+  // {
+  //   Response_Button();
+  //   Seq::Wait(0.01f);
+  // }
 
   Climb_Up200();
 
   // 等待遥控器指令，然后才进入下一步
-  while(MOD::farcon.button_second_half[0] != 1)
-  {
-    Response_Button();
-    Seq::Wait(0.01f);
-  }
+  // while(MOD::farcon.button_second_half[0] != 1)
+  // {
+  //   Response_Button();
+  //   Seq::Wait(0.01f);
+  // }
 
   Climb_Up200();
 
   // 等待遥控器指令，然后才进入下一步
-  while(MOD::farcon.button_second_half[0] != 1)
-  {
-    Response_Button();
-    Seq::Wait(0.01f);
-  }
+  // while(MOD::farcon.button_second_half[0] != 1)
+  // {
+  //   Response_Button();
+  //   Seq::Wait(0.01f);
+  // }
 
   Decend_200();
 

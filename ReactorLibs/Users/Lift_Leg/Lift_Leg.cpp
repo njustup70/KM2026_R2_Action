@@ -109,28 +109,39 @@ void Lift_Leg::B_Origin()
     back_pos = 0;
 }
 
+void Lift_Leg::F_AlmostOrigin()
+{
+    front_pos = -5;
+}
+
+// 后腿回到零位
+void Lift_Leg::B_AlmostOrigin()
+{
+    back_pos = -5;
+}
+
 // 前腿放低200
 void Lift_Leg::F_Down_200()
 {
-    front_pos = -205;
+    front_pos = -207;
 }
 
 // 前腿放低400
 void Lift_Leg::F_Down_400()
 {
-    front_pos = -405;
+    front_pos = -407;
 }
 
 // 后腿放低200
 void Lift_Leg::B_Down_200()
 {
-    back_pos = -205;
+    back_pos = -207;
 }
 
 // 后腿放低400
 void Lift_Leg::B_Down_400()
 {
-    back_pos = -405;
+    back_pos = -407;
 }
 
 void Wait_detected(InfraredDetector& xiaohuang_x)

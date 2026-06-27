@@ -10,8 +10,8 @@
 
 /// @brief 所有的路径文件
 // #include "r2_area1_1.hpp"
-#include "start_to_table.hpp"
 #include "table_to_dock.hpp"
+#include "stt.hpp"
 
 static void Response_Button(StateCore *core);
 
@@ -183,7 +183,7 @@ bool CloseClaw()
 }
 bool MoveToTable() 
 {
-  bool success = MOVE::MoveToTargPos(StartToTablePath);
+  bool success = MOVE::MoveToTargPos(STT);
   return success;
 }
 
