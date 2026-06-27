@@ -246,7 +246,16 @@ void Walk_into_Area2(StateCore *core)
 
 void Response_Button()
 {
-  float max_velo = 1.5f;
+    static float max_velo = 1.5f;
+    if(MOD::farcon.toggle[2] == 0)
+    {
+      max_velo = 1.5f;
+    }
+    else if(MOD::farcon.toggle[2] == 1)
+    {
+      max_velo = 5.0f;
+    }
+ 
     Vec3 vel;
     // 计算速度
     vel.x = (-MOD::farcon.jys_value[3] / 100.0f) * max_velo; // 最大速度0.5m/s
