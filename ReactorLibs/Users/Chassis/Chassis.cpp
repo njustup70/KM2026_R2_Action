@@ -60,9 +60,6 @@ void _SendSpd(Vec3 Spd)
     uint8_t payload[6];
     const float scale = 1000.0f;
 
-    // 限幅
-    Spd.Limit(1.0f);
-
     StdMath::PackFloatToInt16(&payload[0], Spd.x, scale);
     StdMath::PackFloatToInt16(&payload[2], Spd.y, scale);
     StdMath::PackFloatToInt16(&payload[4], Spd.z, scale);

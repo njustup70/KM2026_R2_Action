@@ -217,7 +217,7 @@ bool Inst::Read() const
 {
     if (!this->valid)
     {
-        BspLog_LogWarning("Read Invalid Pin!");
+        // BspLog_LogWarning("Read Invalid Pin!");
         return false;
     }
 
