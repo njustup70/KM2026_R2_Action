@@ -43,9 +43,10 @@ class PathChaserType : public Application
         Vec3 body;     // 车体坐标系速度命令 (vx, vy, omega)
     };
 
-    /// @brief 开始追踪路径并重置内部状态
+    /// @brief 设置路径并尝试开始追踪
+    /// @return true=接受并进入 Path 模式，false=路径非法或起点偏差过大
     template <size_t N>
-    void ChasePath(const Path<N>& path, bool use_t_ref = true)
+    bool ChasePath(const Path<N>& path, bool use_t_ref = true)
     {
         _waypoints = path.waypoints;
         _waypoint_count = static_cast<uint16_t>(N);
@@ -53,8 +54,39 @@ class PathChaserType : public Application
         _path_total_time = _path_time();
         _path_valid = _validate_path();
         _use_t_ref = use_t_ref;
+
+        if (!_path_valid)
+        {
+            APP::monit.LogError(
+                "[PathChaser] Reject : invalid path",
+                _waypoint_count,
+                _path_total_len,
+                _path_total_time);
+            _mode = ChaseMode::Idle;
+            Reset();
+            return false;
+        }
+
+        Vec2 now_pos = System.position.ToVec2();
+        float start_dist = (path.waypoints[0].pos - now_pos).Length();
+        if (_path_start_guard_dist > 1e-6f && start_dist > _path_start_guard_dist)
+        {
+            APP::monit.LogWarning(
+                "[PathChaser] Reject : robot too far from start",
+                start_dist,
+                _path_start_guard_dist,
+                now_pos.x,
+                now_pos.y,
+                path.waypoints[0].pos.x,
+                path.waypoints[0].pos.y);
+            _mode = ChaseMode::Idle;
+            Reset();
+            return false;
+        }
+
         _mode = ChaseMode::Path;
         Reset();
+        return true;
     }
     
     /// @brief 普通跑点：同时控制位置和yaw
@@ -86,6 +118,12 @@ class PathChaserType : public Application
 
     /// @brief 获取当前命令（世界系+车体系）
     CtrlCmd GetCmd() const { return _cmd; }
+
+    /// @brief 设置路径启动时的起点距离门限，单位m；<=0 表示关闭该保护
+    void SetPathStartGuardDist(float dist) { _path_start_guard_dist = dist; }
+
+    /// @brief 获取路径启动时的起点距离门限，单位m
+    float GetPathStartGuardDist() const { return _path_start_guard_dist; }
 
     private:
 
@@ -126,6 +164,7 @@ class PathChaserType : public Application
     float _pos_tol = 0.015f;            // 终点位置阈值，单位m
     float _yaw_tol = 0.02f;            // 终点姿态阈值，单位rad
     uint16_t _finish_hold_ticks = 10;  // 完成保持周期，200Hz下约50ms
+    float _path_start_guard_dist = 0.35f; // 启动路径时允许的最远起点偏差，单位m
 
     float _path_total_len = 0.0f;      // 路径总长度（SetPath时预计算）
     float _path_total_time = 0.0f;     // 路径总时间

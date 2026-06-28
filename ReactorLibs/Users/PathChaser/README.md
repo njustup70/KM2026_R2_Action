@@ -17,7 +17,11 @@ static const Path<4> demo_path = {{
 
 void StateAct_1()
 {
-    APP::path_chaser.ChasePath(demo_path);         // 默认：时间参考主导
+    if (!APP::path_chaser.ChasePath(demo_path))     // 默认：时间参考主导
+    {
+        // 路径被拒绝：通常是起点偏差过大或路径本身非法
+        return;
+    }
     // APP::path_chaser.ChasePath(demo_path, false); // 可选：路径进度/前瞻主导
 }
 
@@ -47,7 +51,7 @@ struct PathWaypoint
 
 默认版本是时间参考主导算法：
 
-1. `ChasePath(path)` 记录路径并重置状态，默认 `use_t_ref = true`。
+1. `ChasePath(path)` 先做路径合法性检查和起点距离保护，再决定是否进入路径模式，默认 `use_t_ref = true`。
 2. 每个 `Update()` 用 `System.runtime_tick - _start_runtime_sec` 得到路径相对时间。
 3. 按 `t_sec` 插值参考 `pos / yaw / vel_vec / omega_rad`。
 4. 平移控制使用“速度前馈 + 位置反馈”。
@@ -188,7 +192,8 @@ yaw 反馈角速度上限，单位 `rad/s`。
 
 ## 对外接口
 
-- `ChasePath(const Path<N>& path, bool use_t_ref = true)`：设置路径并重置状态。默认时间参考主导，传 `false` 使用路径进度/前瞻算法。
+- `ChasePath(const Path<N>& path, bool use_t_ref = true)`：设置路径并尝试启动。默认时间参考主导，传 `false` 使用路径进度/前瞻算法。返回 `false` 表示路径非法或起点偏差过大。
+- `SetPathStartGuardDist(float dist)`：设置路径启动时的起点距离门限，单位 `m`。`<= 0` 时关闭该保护。
 - `Reset()`：手动重置内部状态
 - `IsFinished()`：是否完成路径
 - `GetCmdWorld()`：世界系命令 `(vx, vy, omega)`

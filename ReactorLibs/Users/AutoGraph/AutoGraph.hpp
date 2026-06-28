@@ -14,7 +14,11 @@ namespace MOVE
     template <size_t N>
     bool MoveToTargPos(const Path<N>& path)
     {
-        APP::path_chaser.ChasePath(path);
+        if (!APP::path_chaser.ChasePath(path))
+        {
+            APP::monit.LogError("[AutoGraph] MoveToTargPos rejected by PathChaser.");
+            return false;
+        }
         uint32_t log_tick = 0;
         
         while (!APP::path_chaser.IsFinished())

@@ -4,6 +4,8 @@
 
 它仍然保持原来的调用习惯：先调用一次 `ChaseGes / ChasePos / ChaseYaw` 设置目标，然后在循环里不断读取 `GetCmdBody()` 下发到底盘，直到 `IsFinished()` 为 true。
 
+`ChasePath()` 现在也会在启动前做安全检查：如果机器人离路径起点太远，函数会返回 `false`、打印日志并拒绝进入路径模式。
+
 ## 基本用法
 
 ```cpp

@@ -121,9 +121,9 @@ void Jaw::Update()
         // 前置条件：如果有任一电机不在线，JAW模块拒绝运作
         if (!motor_2006.driver.online || !motor_3508_hori.driver.online || !motor_3508_vert.driver.online)
         {
-            return;
             APP::monit.LogError("It's Dangerous to use [Jaw], without motor online!");
             _enabled = false;
+            return;
         }
         _Update_GetOrigin();
         return;

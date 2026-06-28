@@ -22,6 +22,10 @@ void Lift_Leg::Start()
     }
 
     Pin pin_back_wheel = {'F', 0};
+
+    // 接收 C 板回传的实际腿部位置：task 2
+    MOD::board_can.RegisterTask(2, LegActRxCb, this);
+
     relay_daji.Init(pin_back_wheel, Relay::HIGH_ON);
     // 启动后，先关闭妲己
     relay_daji.Off();
@@ -96,6 +100,28 @@ inline void Lift_Leg::PosLim()
     }
 }
 
+/**
+ * @brief C板发回的，关于腿部位置 的 回调
+ *
+ * @param task_id 2
+ * @param payload 0-1位：int16:前腿位置，2-3位：int16:后腿位置，均为mm
+ * @param payload_len 4
+ */
+void Lift_Leg::LegActRxCb(uint8_t task_id, const uint8_t* payload, uint8_t payload_len, void* user_ctx)
+{
+    auto* self = static_cast<Lift_Leg*>(user_ctx);
+    if (self == nullptr || payload == nullptr || payload_len < 4)
+    {
+        return;
+    }
+
+    const int16_t front_raw = static_cast<int16_t>((static_cast<uint16_t>(payload[0]) << 8) | payload[1]);
+    const int16_t back_raw  = static_cast<int16_t>((static_cast<uint16_t>(payload[2]) << 8) | payload[3]);
+
+    self->real_front_pos_mm = front_raw;
+    self->real_back_pos_mm = back_raw;
+}
+
 /********************************************  越野部分 ********************************************/
 // 前腿回到零位
 void Lift_Leg::F_Origin()
@@ -151,4 +177,3 @@ void Wait_detected(InfraredDetector& xiaohuang_x)
         return xiaohuang_x.Read();
     });
 }
-
