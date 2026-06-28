@@ -5,6 +5,8 @@ GetBlock& APP::get_block = GetBlock::GetInstance();
 // ==================== 超时间隔 ====================
 static constexpr float T_BELT = 10.0f;
 static constexpr float T_LIFT = 10.0f;
+static constexpr float T_LIFT_SETTLE = 2.0f;    // 传感器触发后等待抬升到位的短超时
+static constexpr float T_LIFT_BEFORE_BELT = 2.0f; // 取块1时抬升先走一段再转摩擦带
 static constexpr float T_FEED = 10.0f;
 static constexpr float BELT_RPM    = 15.0f;
 static constexpr float DM_BELT_VEL = 15.0f;
@@ -66,7 +68,7 @@ void GetBlock::Start()
     
 
     /**** 初始位置 ****/
-    motor_dm_lift.SetPosVel(_lift_pos_lower, _lift_vel);
+    motor_dm_lift.SetPosVel(-_lift_pos_lower, _lift_vel);
     motor_2006_feed.SetPos(_feed_pos_retract);
 
     /**** 初始扫描 ****/
@@ -96,7 +98,7 @@ void GetBlock::Update()
 
     if(is_debug)
     {
-        // motor_dm_lift.SetPosVel(-_lift_pos_upper, _lift_vel);
+        motor_dm_lift.SetPosVel(-_lift_targ_pos, _lift_vel);
         // motor_2006_feed.SetPos(-_feed_pos_extend);
         // relay_pump.On();
 
@@ -106,14 +108,14 @@ void GetBlock::Update()
         relay_pump.Off();     
     }
 
-    if(_belt_enable)
-    {
-        _StartBelt();
-    }
-    else
-    {
-        _StopBelt();
-    }
+    // if(_belt_enable)
+    // {
+    //     _StartBelt();
+    // }
+    // else
+    // {
+    //     _StopBelt();
+    // }
 
     if(_store_debug)
     {
@@ -180,10 +182,10 @@ void GetBlock::Store()
 
     if (!_upper && !_lower)
     {
-        // 空仓 → 块1
-        _fsm = FSM::STORE_BELT_IN;
+        // 空仓 → 块1（先抬升到高位，再转摩擦带）
+        _fsm = FSM::STORE_LIFT_BEFORE_BELT;
         _storing_b2 = false;
-        APP::monit.LogInfo("[GetBlock] Store #1: belt in");
+        APP::monit.LogInfo("[GetBlock] Store #1: lift up then belt in");
     }
     else if (_upper && !_lower)
     {
@@ -219,6 +221,16 @@ void GetBlock::Put()
             _fsm = FSM::PUT_FEED_PUSH;
             _action_tick = System.runtime_tick;
             APP::monit.LogInfo("[GetBlock] Put during store hold: push block1");
+            return;
+        }
+
+        // 在等待块2时Put → 推出块1，取消存块2流程
+        if (_fsm == FSM::STORE_WAIT_SECOND)
+        {
+            _fsm = FSM::PUT_FEED_PUSH;
+            _storing_b2 = false;
+            _action_tick = System.runtime_tick;
+            APP::monit.LogInfo("[GetBlock] Put during wait second: push block1, cancel block2");
             return;
         }
 
@@ -261,21 +273,23 @@ void GetBlock::_UpdateFSM()
         {
             _StopBelt();
             _lower = true;
-            _action_tick = System.runtime_tick;
 
             if (_storing_b2)
             {
                 // 块2已到抬升平台，但挡片还托着上仓的块1→不能降
                 // 保持上位，等Put()先推出块1
+                _action_tick = System.runtime_tick;
                 _fsm = FSM::STORE_HOLD_PUT;
                 APP::monit.LogInfo("[GetBlock] Block2 at lower, waiting for Put()");
             }
-            else
+            else if (_IsTimeout(T_LIFT))
             {
-                // 块1已到，挡片托着块1上升→到上仓
-                _fsm = FSM::STORE_LIFT_UP;
-                APP::monit.LogInfo("[GetBlock] Block1 at lower, lift up");
+                // 块1已到且抬升已到高位 → 降下来接块
+                _action_tick = System.runtime_tick;
+                _fsm = FSM::STORE_LIFT_DOWN_TO_PICK;
+                APP::monit.LogInfo("[GetBlock] Block1 at lower & lift at top, descending to pick");
             }
+            // else: 块已到下仓但抬升未到顶 → 等待（不重置 _action_tick）
         }
         else if (_IsTimeout(T_BELT))
         {
@@ -286,35 +300,80 @@ void GetBlock::_UpdateFSM()
         break;
     }
 
+    // ═══════════════════ 存块: 抬升到高位 + 等一会再入料 ═══════════════════
+    case FSM::STORE_LIFT_BEFORE_BELT:
+    {
+        motor_dm_lift.SetPosVel(-_lift_pos_upper, _lift_vel);
+
+        // 抬升先走一段，再启动摩擦带
+        if (_IsTimeout(T_LIFT_BEFORE_BELT))
+        {
+            _StartBelt();
+        }
+
+        // 下仓检测到块 && 抬升超时（到高位）→ 降下来接块
+        if (_grid[0] && _IsTimeout(T_LIFT))
+        {
+            _StopBelt();
+            _lower = true;
+            _action_tick = System.runtime_tick;
+            _fsm = FSM::STORE_LIFT_DOWN_TO_PICK;
+            APP::monit.LogInfo("[GetBlock] Block1 at lower & lift at top, descending to pick");
+        }
+        else if (_IsTimeout(T_BELT))
+        {
+            _StopBelt();
+            APP::monit.LogError("[GetBlock] Belt timeout in LIFT_BEFORE_BELT");
+            _fsm = FSM::ABORT;
+        }
+        break;
+    }
+
+    // ═══════════════════ 存块: 高位降下来接块 ═══════════════════
+    case FSM::STORE_LIFT_DOWN_TO_PICK:
+    {
+        motor_dm_lift.SetPosVel(-_lift_pos_lower, _lift_vel);
+
+        if (_IsTimeout(T_LIFT))
+        {
+            _action_tick = System.runtime_tick;
+            _fsm = FSM::STORE_LIFT_UP;
+            APP::monit.LogInfo("[GetBlock] Lift at bottom (timeout), block on flap, lift up");
+        }
+        break;
+    }
+
     // ═══════════════════ 存块: 抬升 ↑ (挡片托着块到上仓) ═══════════════════
     case FSM::STORE_LIFT_UP:
     {
-        // 抬升达妙向上 rad 为负
         motor_dm_lift.SetPosVel(-_lift_pos_upper, _lift_vel);
 
-        if (_grid[1])  // 上仓检测到块（被挡片托住触发）
+        // 传感器在上仓下沿，块刚进入就会被检测到 → 记录状态，继续上行到目标位置
+        if (_grid[1] && !_upper)
         {
             _upper = true;
             _lower = false;
-
             _action_tick = System.runtime_tick;
+            APP::monit.LogInfo("[GetBlock] Block entered upper chamber, continuing to target");
+        }
 
+        // 传感器触发后等待抬升到位（短超时）
+        if (_upper && _IsTimeout(T_LIFT_SETTLE))
+        {
             if (_storing_b2)
             {
-                // 块2已到上仓 → 完成
                 _fsm = FSM::COMPLETE;
-                APP::monit.LogInfo("[GetBlock] Block2 stored at upper");
+                APP::monit.LogInfo("[GetBlock] Block2 stored at upper (pos reached)");
             }
             else
             {
-                // 块1到上仓 → 保持抬升↑，等待块2 
                 _fsm = FSM::STORE_WAIT_SECOND;
                 APP::monit.LogInfo("[GetBlock] Block1 at upper, waiting for block2");
             }
         }
-        else if (_IsTimeout(T_LIFT))
+        else if (!_upper && _IsTimeout(T_LIFT))
         {
-            APP::monit.LogError("[GetBlock] Lift up timeout");
+            APP::monit.LogError("[GetBlock] Lift up timeout (sensor not triggered)");
             _fsm = FSM::ABORT;
         }
         break;
@@ -344,9 +403,11 @@ void GetBlock::_UpdateFSM()
     {
         // 下降时机：块1已被推出，块2在下仓
         // 挡片从上往下穿过块2→被块2顶开→通过后在块2下方闭合
-        motor_dm_lift.SetPosVel(_lift_pos_lower, _lift_vel);
+        // 块2随挡片下移后离开上仓传感器检测范围 → 传感器辅助判断
+        motor_dm_lift.SetPosVel(-_lift_pos_lower, _lift_vel);
 
-        if (_IsTimeout(T_LIFT))
+        // 上仓传感器不再检测到块（块已随挡片下移离开），或超时兜底
+        if (!_grid[1] || _IsTimeout(T_LIFT))
         {
             _action_tick = System.runtime_tick;
             _fsm = FSM::STORE_LIFT_BOTTOM;
@@ -358,14 +419,21 @@ void GetBlock::_UpdateFSM()
     // ═══════════════════ 存块: 挡片在块2下方闭合 ═══════════════════
     case FSM::STORE_LIFT_BOTTOM:
     {
-        // 抬升到最底，挡片已穿过块2并在其下方重新闭合
-        // 现在挡片托住了块2（相当于块2在"下仓"）
         if (_storing_b2)
         {
-            // 块1已推出，挡片托住块2 → 抬升↑带块2到上仓
-            _lower = true;
-            _fsm = FSM::STORE_LIFT_UP;
-            APP::monit.LogInfo("[GetBlock] Block2 on flap, lift up");
+            // 等待下仓传感器确认块2已在挡片上，或短超时兜底
+            if (_grid[0])
+            {
+                _lower = true;
+                _fsm = FSM::STORE_LIFT_UP;
+                APP::monit.LogInfo("[GetBlock] Block2 on flap (sensor confirmed), lift up");
+            }
+            else if (_IsTimeout(0.5f))
+            {
+                _lower = true;
+                _fsm = FSM::STORE_LIFT_UP;
+                APP::monit.LogWarning("[GetBlock] Block2 on flap (timeout fallback), lift up");
+            }
         }
         else
         {
@@ -439,15 +507,22 @@ void GetBlock::_UpdateFSM()
     {
         motor_dm_lift.SetPosVel(-_lift_pos_upper, _lift_vel);
 
-        if (_grid[1])  // 上仓检测到块
+        // 传感器在上仓下沿，块刚进入就会检测到 → 记录状态，继续上行到顶
+        if (_grid[1] && !_upper)
         {
             _upper = true;
             _lower = false;
             _action_tick = System.runtime_tick;
-            _fsm = FSM::COMPLETE;
-            APP::monit.LogInfo("[GetBlock] Block lifted to upper, done");
+            APP::monit.LogInfo("[GetBlock] Block entered upper, continuing to top for ejection");
         }
-        else if (_IsTimeout(T_LIFT))
+
+        // 传感器触发后等待抬升到位 → 直接推出
+        if (_upper && _IsTimeout(T_LIFT_SETTLE))
+        {
+            _fsm = FSM::PUT_FEED_PUSH;
+            APP::monit.LogInfo("[GetBlock] Lift at top, ejecting block");
+        }
+        else if (!_upper && _IsTimeout(T_LIFT))
         {
             APP::monit.LogError("[GetBlock] Put lift up timeout");
             _fsm = FSM::ABORT;
@@ -458,7 +533,7 @@ void GetBlock::_UpdateFSM()
     // ═══════════════════ 放块: 抬升回位 ═══════════════════
     case FSM::PUT_LIFT_DOWN:
     {
-        motor_dm_lift.SetPosVel(_lift_pos_lower, _lift_vel);
+        motor_dm_lift.SetPosVel(-_lift_pos_lower, _lift_vel);
 
         if (_IsTimeout(T_LIFT))
         {
@@ -482,6 +557,7 @@ void GetBlock::_UpdateFSM()
     {
         APP::monit.LogInfo("[GetBlock] Done: upper=%d lower=%d",
                           _upper, _lower);
+        _storing_b2 = false;  // 重置，允许重复使用
         _fsm = FSM::IDLE;
         _fsm_busy = false;
 
@@ -494,7 +570,7 @@ void GetBlock::_UpdateFSM()
     case FSM::ABORT:
     {
         _StopBelt();
-        motor_dm_lift.SetPosVel(_lift_pos_lower, _lift_vel);
+        motor_dm_lift.SetPosVel(-_lift_pos_lower, _lift_vel);
         motor_2006_feed.SetPos(_feed_pos_retract);
         _fsm = FSM::COMPLETE;
         break;
