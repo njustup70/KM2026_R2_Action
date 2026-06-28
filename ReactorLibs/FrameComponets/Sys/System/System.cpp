@@ -52,10 +52,10 @@ void SystemType::Run()
   // 管理 主灯带 状态（50Hz分频）
   // _Update_LedBand();
 
-  // 提供位置
+  // 提供位置（含偏置）
   if (pos_source != nullptr)
   {
-    position = *pos_source;
+    position = (*pos_source) + pos_bias;
   }
 
   // 更新全局时间
@@ -191,9 +191,10 @@ void SystemType::_Update_SelfCheck()
 /**
  * @brief
  */
-void SystemType::SetPositionSource(Vec3 &pos)
+void SystemType::SetPositionSource(Vec3 &pos, Vec3 bias)
 {
   pos_source = &pos;
+  pos_bias = bias;
 }
 
 template <typename T>
