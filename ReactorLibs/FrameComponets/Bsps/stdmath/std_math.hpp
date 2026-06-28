@@ -184,6 +184,8 @@ public:
   static Color Green;
   static Color Blue;
   static Color White;
+  static Color Up_Purpor;
+  static Color Up_Yellow;
 
   // 友元函数重载运算符
   friend Color operator+(const Color &lhs, const Color &rhs);

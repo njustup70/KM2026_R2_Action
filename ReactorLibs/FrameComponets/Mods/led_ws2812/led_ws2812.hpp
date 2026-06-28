@@ -105,6 +105,8 @@ public:
     void _FillFrame(uint8_t R, uint8_t G, uint8_t B);
     float _NormalizePeriod(float period) const;
     bool _IsSameColor(const Color& lhs, const Color& rhs) const;
+    float _Clamp01(float value) const;
+    float _SmoothStep(float edge_0, float edge_1, float value) const;
 
     public:
     /*---   一些预设的动画  ---*/
@@ -184,6 +186,24 @@ float LedWs2812<MaxLedNumsT>::_NormalizePeriod(float period) const
 }
 
 template <size_t MaxLedNumsT>
+float LedWs2812<MaxLedNumsT>::_Clamp01(float value) const
+{
+    if (value < 0.0f) return 0.0f;
+    if (value > 1.0f) return 1.0f;
+    return value;
+}
+
+template <size_t MaxLedNumsT>
+float LedWs2812<MaxLedNumsT>::_SmoothStep(float edge_0, float edge_1, float value) const
+{
+    if (edge_0 == edge_1) return value < edge_0 ? 0.0f : 1.0f;
+
+    float t = (value - edge_0) / (edge_1 - edge_0);
+    t = _Clamp01(t);
+    return t * t * (3.0f - 2.0f * t);
+}
+
+template <size_t MaxLedNumsT>
 bool LedWs2812<MaxLedNumsT>::_IsSameColor(const Color& lhs, const Color& rhs) const
 {
     return lhs.r == rhs.r && lhs.g == rhs.g && lhs.b == rhs.b;
@@ -259,26 +279,34 @@ void LedWs2812<MaxLedNumsT>::_ApplyRunningFrame()
 
     float delta_t = DWT_GetDeltaTime(&dwt_tick);
     RuntimeCnt += delta_t;
-    if (RuntimeCnt >= effect_period_) {
-        RuntimeCnt = fmod(RuntimeCnt, effect_period_);
-    }
+    if (RuntimeCnt >= effect_period_) RuntimeCnt = fmod(RuntimeCnt, effect_period_);
 
     Color color = effect_color_0_ * BiasFactor;
     float position = (RuntimeCnt / effect_period_) * LedNums;
-    int width_in_leds = effect_width_ * LedNums;
+    float width_in_leds = effect_width_ * LedNums;
+    float half_width = width_in_leds * 0.5f;
+    float feather = 0.75f;
+    float inner_half = half_width - feather;
+    if (inner_half < 0.0f) inner_half = 0.0f;
+    float outer_half = half_width + feather;
 
     for (int i = 0; i < LedNums; i++)
     {
         float distance = fabsf(i - position);
+        distance = fminf(distance, LedNums - distance);
 
-        if (distance <= (width_in_leds / 2) || distance >= (LedNums - width_in_leds / 2))
+        float intensity = 0.0f;
+        if (distance <= inner_half)
         {
-            _SetColorRaw(i, color.r, color.g, color.b);
+            intensity = 1.0f;
         }
-        else
+        else if (distance < outer_half)
         {
-            _SetColorRaw(i, 0, 0, 0);
+            intensity = 1.0f - _SmoothStep(inner_half, outer_half, distance);
         }
+
+        Color color_targ = color * intensity;
+        _SetColorRaw(i, color_targ.r, color_targ.g, color_targ.b);
     }
 }
 
