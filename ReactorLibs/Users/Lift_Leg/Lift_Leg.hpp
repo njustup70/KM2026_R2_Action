@@ -12,11 +12,18 @@ class Lift_Leg : public Application
 public:
     int front_pos = 0; // 前腿位置，单位为mm
     int back_pos = 0;  // 后腿位置，单位为mm
+    int16_t real_front_pos_mm = 0; // 前腿实际位置，单位为mm
+    int16_t real_back_pos_mm = 0;   // 后腿实际位置，单位为mm
 
     int _front_max_lim = 0; // 前腿最大位置，单位为mm
     int _front_min_lim = -420;   // 前腿最小位置，单位
     int _back_max_lim = 0; // 后腿最大位置，单位为mm
     int _back_min_lim = -420;   // 后腿最小位置，单位
+
+    /**
+     * @brief C板发回的，关于腿部位置 的 回调
+     */
+    static void LegActRxCb(uint8_t task_id, const uint8_t* payload, uint8_t payload_len, void* user_ctx);
 
     void ChangeFrontPos(int16_t delta_pos)
     {
