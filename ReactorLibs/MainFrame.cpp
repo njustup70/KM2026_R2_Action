@@ -39,12 +39,8 @@ void MainFrameCpp()
   MOD::host_pc.Init(Hardware::huart_host);
   // 初始化遥控器
   MOD::farcon.init(Hardware::huart_farcon);
-  
-  // 初始化光通信模块
-  // MOD::optical_comm.Init(Hardware::huart_optical);
 
   System.SetPositionSource(APP::comm_center.slam_pos);
-  // System.SetPositionSource(APP::chas.chas_odom.pos); // yaw太不准了，用不了
 
   System.RegistApp(APP::main_loop);
 
@@ -57,6 +53,7 @@ void MainFrameCpp()
     // 底盘启动
   System.RegistApp(APP::chas);
   APP::chas.Enable();
+  
   // 启动伸缩腿控制
   System.RegistApp(APP::leg);
   APP::leg.Enable();
