@@ -58,7 +58,7 @@ class PathChaserType : public Application
         if (!_path_valid)
         {
             APP::monit.LogError(
-                "[PathChaser] Reject path: invalid path (waypoints=%u, len=%.3f, time=%.3f)",
+                "[PathChaser] Reject : invalid path",
                 _waypoint_count,
                 _path_total_len,
                 _path_total_time);
@@ -72,7 +72,7 @@ class PathChaserType : public Application
         if (_path_start_guard_dist > 1e-6f && start_dist > _path_start_guard_dist)
         {
             APP::monit.LogWarning(
-                "[PathChaser] Reject path: robot too far from start (dist=%.3f m, limit=%.3f m, now=(%.3f, %.3f), start=(%.3f, %.3f))",
+                "[PathChaser] Reject : robot too far from start",
                 start_dist,
                 _path_start_guard_dist,
                 now_pos.x,
