@@ -10,6 +10,7 @@ class MainLoop : public Application
 
     public:
     LedWs2812<13> test_led;
+    int cnt = 0;
 };
 
 namespace APP

@@ -48,12 +48,12 @@ void MainFrameCpp()
   System.RegistApp(APP::comm_center);
 
   // 启动矛头控制应用
-  // System.RegistApp(APP::jaw);
+  System.RegistApp(APP::jaw);
 
-    // 底盘启动
+  // 底盘启动
   System.RegistApp(APP::chas);
   APP::chas.Enable();
-  
+
   // 启动伸缩腿控制
   System.RegistApp(APP::leg);
   APP::leg.Enable();

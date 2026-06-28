@@ -105,6 +105,13 @@ public:
     void SetPos(float x_mm, float y_mm);
 
     /**
+     * @brief 只设置 x 方向位置，y 方向保持当前值不变。
+     *
+     * @param x_mm
+     */
+    void SetXPos(float x_mm);
+
+    /**
      * @brief 相对当前位置改变位置。会被其他自动位置控制覆盖。
      * 
      * @param delta_x_mm

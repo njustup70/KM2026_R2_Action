@@ -10,8 +10,8 @@
 
 /// @brief 所有的路径文件
 // #include "r2_area1_1.hpp"
-#include "table_to_dock.hpp"
-#include "stt.hpp"
+#include "ttd.hpp"
+#include "stt_r.hpp"
 
 static void Response_Button(StateCore *core);
 
@@ -183,7 +183,7 @@ bool CloseClaw()
 }
 bool MoveToTable() 
 {
-  bool success = MOVE::MoveToTargPos(STT);
+  bool success = MOVE::MoveToTargPos(STT_R);
   return success;
 }
 
@@ -214,7 +214,7 @@ void Walk_Fetch(StateCore *core)
 
 bool MoveToDock()
 {
-  bool success = MOVE::MoveToTargPos(TableToDockPath);
+  bool success = MOVE::MoveToTargPos(TTD);
   return success;
 }
 

@@ -23,6 +23,8 @@ void StateAct_1()
         return;
     }
     // APP::path_chaser.ChasePath(demo_path, false); // 可选：路径进度/前瞻主导
+    // APP::path_chaser.ChasePath(demo_path, Vec3(0.03f, 0.08f, 0.03f)); // 可选：本次路径终点容差(x/y/yaw)
+    // APP::path_chaser.ChasePath(demo_path, false, Vec3(0.03f, 0.08f, 0.03f)); // 可选：进度主导 + 本次容差
 }
 
 void StateAct_2()
@@ -57,7 +59,7 @@ struct PathWaypoint
 4. 平移控制使用“速度前馈 + 位置反馈”。
 5. 姿态控制使用“角速度前馈 + yaw反馈”。
 6. 误差较大时自动压低前馈，末端时间窗内逐渐衰减前馈。
-7. 末端按终点剩余距离做刹车限速，时间到达路径末端且终点位置/yaw 连续满足阈值后，判定完成。
+7. 末端按终点剩余距离做刹车限速，时间到达路径末端且终点 x/y/yaw 连续满足阈值后，判定完成。
 
 如果调用 `ChasePath(path, false)`，会使用路径进度/前瞻主导算法：按当前位置投影到路径折线得到 `s_nearest`，再追 `s_nearest + lookahead` 附近的参考点。
 
@@ -160,13 +162,20 @@ yaw 反馈角速度上限，单位 `rad/s`。
 
 如果被撞偏后希望更专注于回到参考点，可以减小它；如果希望路径节奏更强，可以增大它。
 
-### `_pos_tol = 0.03f`
+### `_path_default_tolerance = Vec3(0.05f, 0.05f, 0.02f)`
 
-终点位置阈值，单位 `m`。
+路径追踪的默认终点容差，含义为 `(x容差, y容差, yaw容差)`，单位为 `m / m / rad`。
 
-### `_yaw_tol = 0.03f`
+调用 `ChasePath(path)` 或 `ChasePath(path, false)` 时使用该默认值。
+调用 `ChasePath(path, Vec3(x_tol, y_tol, yaw_tol))` 或 `ChasePath(path, false, Vec3(x_tol, y_tol, yaw_tol))` 时，只覆盖本次路径追踪的完成阈值。
 
-终点姿态阈值，单位 `rad`。
+### `_pos_tol = 0.05f`
+
+普通跑点的位置阈值，单位 `m`。
+
+### `_yaw_tol = 0.02f`
+
+普通跑点的姿态阈值，单位 `rad`。
 
 ### `_finish_hold_ticks = 15`
 
@@ -188,11 +197,13 @@ yaw 反馈角速度上限，单位 `rad/s`。
 - 车到终点冲过：增大 `_time_end_slow_dist / _time_end_ff_fade_time`，或减小 `_time_end_max_acc`。
 - 末端太慢：增大 `_time_end_max_acc`，或减小 `_time_end_slow_dist`。
 - 转头太猛：减小 `_kp_yaw`、`_max_yaw_fb` 或 `_max_omega`。
-- 到终点不结束：放宽 `_pos_tol / _yaw_tol`，或确认路径最后一个点的 yaw 正确。
+- 路径到终点不结束：放宽 `_path_default_tolerance` 或给本次 `ChasePath` 传入更大的 `Vec3(x, y, yaw)`，并确认路径最后一个点的 yaw 正确。
+- 普通跑点到终点不结束：放宽 `_pos_tol / _yaw_tol`。
 
 ## 对外接口
 
-- `ChasePath(const Path<N>& path, bool use_t_ref = true)`：设置路径并尝试启动。默认时间参考主导，传 `false` 使用路径进度/前瞻算法。返回 `false` 表示路径非法或起点偏差过大。
+- `ChasePath(const Path<N>& path, bool use_t_ref = true, Vec3 tolerance = Vec3(-1, -1, -1))`：设置路径并尝试启动。默认时间参考主导，传 `false` 使用路径进度/前瞻算法。`tolerance` 表示本次路径的终点容差 `(x/y/yaw)`；不传时使用 `.hpp` 中的 `_path_default_tolerance`。返回 `false` 表示路径非法或起点偏差过大。
+- `ChasePath(const Path<N>& path, Vec3 tolerance)`：使用时间参考主导，并单独设置本次路径终点容差。
 - `SetPathStartGuardDist(float dist)`：设置路径启动时的起点距离门限，单位 `m`。`<= 0` 时关闭该保护。
 - `Reset()`：手动重置内部状态
 - `IsFinished()`：是否完成路径

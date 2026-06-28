@@ -46,7 +46,7 @@ class PathChaserType : public Application
     /// @brief 设置路径并尝试开始追踪
     /// @return true=接受并进入 Path 模式，false=路径非法或起点偏差过大
     template <size_t N>
-    bool ChasePath(const Path<N>& path, bool use_t_ref = true)
+    bool ChasePath(const Path<N>& path, bool use_t_ref = true, Vec3 tolerance = Vec3(-1.0f, -1.0f, -1.0f))
     {
         _waypoints = path.waypoints;
         _waypoint_count = static_cast<uint16_t>(N);
@@ -54,6 +54,7 @@ class PathChaserType : public Application
         _path_total_time = _path_time();
         _path_valid = _validate_path();
         _use_t_ref = use_t_ref;
+        _path_tolerance = _resolve_path_tolerance(tolerance);
 
         if (!_path_valid)
         {
@@ -87,6 +88,13 @@ class PathChaserType : public Application
         _mode = ChaseMode::Path;
         Reset();
         return true;
+    }
+
+    /// @brief 设置路径并尝试开始追踪，使用本次路径单独的终点容差(x/y/yaw)
+    template <size_t N>
+    bool ChasePath(const Path<N>& path, Vec3 tolerance)
+    {
+        return ChasePath(path, true, tolerance);
     }
     
     /// @brief 普通跑点：同时控制位置和yaw
@@ -147,22 +155,24 @@ class PathChaserType : public Application
     const PathWaypoint* _waypoints = nullptr;
     uint16_t _waypoint_count = 0;
     
-    float _kp_pos = 1.5f;              // 时间参考路径的位置误差反馈增益
-    float _kp_yaw = 2.0f;              // 时间参考路径的姿态误差反馈增益
-    float _ff_gain = 0.625f;            // 时间参考路径的前馈增强系数
+    float _kp_pos = 1.2f;              // 时间参考路径的位置误差反馈增益
+    float _kp_yaw = 2.4f;              // 时间参考路径的姿态误差反馈增益
+    float _ff_gain = 1.25f;            // 时间参考路径的前馈增强系数
     float _max_vel = 999.0f;             // 合速度上限，单位m/s
     float _max_omega = 999.0f;           // 角速度上限，单位rad/s
-    float _max_pos_fb = 2.0f;         // 时间参考路径的位置反馈速度上限，单位m/s
-    float _max_yaw_fb = 1.0f;         // 时间参考路径的姿态反馈角速度上限，单位rad/s
+    float _max_pos_fb = 0.5f;         // 时间参考路径的位置反馈速度上限，单位m/s
+    float _max_yaw_fb = 0.5f;         // 时间参考路径的姿态反馈角速度上限，单位rad/s
     float _ff_slow_start_err = 0.4f;  // 位置误差超过该值后开始压低前馈
     float _ff_slow_stop_err = 1.0f;   // 位置误差达到该值后前馈降到最小比例
     float _min_ff_scale = 0.20f;       // 误差较大时保留的最小前馈比例
     float _time_end_ff_fade_time = 0.0f; // 时间参考路径末端前馈衰减时间窗，单位s
-    float _time_end_slow_dist = 0.5f; // 时间参考路径末端刹车距离，单位m
-    float _time_end_max_acc = 0.75f;    // 时间参考路径末端刹车限速使用的最大减速度，单位m/s^2
-    float _time_end_min_vel = 0.03f;   // 时间参考路径末端未完成时保留的最低修正速度，单位m/s
-    float _pos_tol = 0.015f;            // 终点位置阈值，单位m
-    float _yaw_tol = 0.02f;            // 终点姿态阈值，单位rad
+    float _time_end_slow_dist = 0.75f; // 时间参考路径末端刹车距离，单位m
+    float _time_end_max_acc = 0.8f;    // 时间参考路径末端刹车限速使用的最大减速度，单位m/s^2
+    float _time_end_min_vel = 0.10f;   // 时间参考路径末端未完成时保留的最低修正速度，单位m/s
+    float _pos_tol = 0.05f;            // 普通跑点位置阈值，单位m
+    float _yaw_tol = 0.02f;            // 普通跑点姿态阈值，单位rad
+    Vec3 _path_default_tolerance = Vec3(0.03f, 0.03f, 0.02f); // 路径默认终点容差(x/y/yaw)，单位m/m/rad
+    Vec3 _path_tolerance = Vec3(0.05f, 0.05f, 0.02f); // 当前路径终点容差(x/y/yaw)，单位m/m/rad
     uint16_t _finish_hold_ticks = 10;  // 完成保持周期，200Hz下约50ms
     float _path_start_guard_dist = 0.35f; // 启动路径时允许的最远起点偏差，单位m
 
@@ -226,6 +236,8 @@ class PathChaserType : public Application
     void _update_time_ref_path_cmd(const Vec3& now_pose);
     void _update_progress_ref_path_cmd(const Vec3& now_pose);
     void _update_point_cmd(const Vec3& now_pose);
+    Vec3 _resolve_path_tolerance(Vec3 tolerance) const;
+    bool _is_path_end_pos_done(Vec2 pos_err) const;
     static float _wrap_pi(float rad);
     static Vec2 _limit_vec2(Vec2 vec, float max_len);
     static Vec2 _limit_delta_vec2(Vec2 from, Vec2 to, float max_delta);

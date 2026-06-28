@@ -334,6 +334,22 @@ void Jaw::SetPos(float x_mm, float y_mm)
     _y_pos = target_vert;
 }
 
+void Jaw::SetXPos(float x_mm)
+{
+    if (!_origined) return;
+
+    int hori_center = _hori_origin_code - JawConst::_hori_max_travel_code / 2;
+    int target_hori = hori_center + _HoriMMToCode(x_mm);
+
+    // 只约束 x 方向，y 方向保持当前值不变
+    int hori_min = _hori_origin_code - JawConst::_hori_max_travel_code;
+    int hori_max = _hori_origin_code;
+    if (target_hori > hori_max) target_hori = hori_max;
+    if (target_hori < hori_min) target_hori = hori_min;
+
+    _x_pos = target_hori;
+}
+
 void Jaw::ChangePos(float delta_x_mm, float delta_y_mm)
 {
     if (!_origined) return;
@@ -382,7 +398,7 @@ void Jaw::_GetHoriOrigin()
             // 记录中点偏移
             _hori_origin_code = motor_3508_hori.driver.measure.total_angle;
             // 往回走到中点
-            _x_pos = _hori_origin_code - JawConst::_hori_max_travel_code / 2;
+            _x_pos = _hori_origin_code - JawConst::_hori_max_travel_code / 2 - 20000;
             motor_3508_hori.SetPos(_x_pos);
         }
     }

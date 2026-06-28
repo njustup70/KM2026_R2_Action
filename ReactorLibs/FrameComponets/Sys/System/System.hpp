@@ -192,6 +192,7 @@ public:
     Vec3    position;
     Vec3*   pos_source;                     // 位置来源引用（外部提供）
     Vec3    pos_bias;                       // 位置偏置
+    void SetPositionBias(Vec3 bias);
     void SetPositionSource(Vec3& pos, Vec3 bias = Vec3(0, 0, 0));     // 设置位置来源
 
     float runtime_tick;                    // 全局时间戳，单位s

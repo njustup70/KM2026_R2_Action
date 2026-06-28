@@ -13,13 +13,4 @@ void MainLoop::Start()
 void MainLoop::Update()
 {
     test_led.Handle();
-
-    static float last_report_time = 0.0f;
-    const float now = DWT_GetTimeline_Sec();
-
-    if (now - last_report_time >= 1.0f)
-    {
-        last_report_time = now;
-        APP::monit.LogInfo("[HostPC] RX_freq: %.1f Hz", MOD::host_pc.GetRecentRxFreqHz());
-    }
 }

@@ -103,6 +103,20 @@ float PathChaserType::_smooth_step(float x)
     return x * x * (3.0f - 2.0f * x);
 }
 
+Vec3 PathChaserType::_resolve_path_tolerance(Vec3 tolerance) const
+{
+    if (tolerance.x < 0.0f) tolerance.x = _path_default_tolerance.x;
+    if (tolerance.y < 0.0f) tolerance.y = _path_default_tolerance.y;
+    if (tolerance.z < 0.0f) tolerance.z = _path_default_tolerance.z;
+    return tolerance;
+}
+
+bool PathChaserType::_is_path_end_pos_done(Vec2 pos_err) const
+{
+    return fabsf(pos_err.x) < _path_tolerance.x &&
+           fabsf(pos_err.y) < _path_tolerance.y;
+}
+
 /**
  * @brief 计算整条路径总长度
  * @return 路径长度（单位m）
@@ -393,7 +407,9 @@ void PathChaserType::_update_time_ref_path_cmd(const Vec3& now_pose)
     PathRef ref = _sample_ref_by_time(_elapsed_sec);
     Vec2 now_pos = now_pose.ToVec2();
     const PathWaypoint& final_wp = _waypoints[_waypoint_count - 1];
-    float final_pos_err = (final_wp.pos - now_pos).Length();
+    Vec2 final_pos_err = final_wp.pos - now_pos;
+    float final_pos_err_len = final_pos_err.Length();
+    bool final_pos_done = _is_path_end_pos_done(final_pos_err);
     Vec2 pos_err = ref.pos - now_pos;
     float pos_err_len = pos_err.Length();
 
@@ -418,9 +434,9 @@ void PathChaserType::_update_time_ref_path_cmd(const Vec3& now_pose)
         time_scale = StdMath::fclamp(time_scale, 0.0f, 1.0f);
         if (time_scale < end_ff_scale) end_ff_scale = time_scale;
     }
-    if (_time_end_slow_dist > 1e-6f && final_pos_err < _time_end_slow_dist)
+    if (_time_end_slow_dist > 1e-6f && final_pos_err_len < _time_end_slow_dist)
     {
-        float dist_scale = final_pos_err / _time_end_slow_dist;
+        float dist_scale = final_pos_err_len / _time_end_slow_dist;
         dist_scale = StdMath::fclamp(dist_scale, 0.0f, 1.0f);
         if (dist_scale < end_ff_scale) end_ff_scale = dist_scale;
     }
@@ -430,11 +446,11 @@ void PathChaserType::_update_time_ref_path_cmd(const Vec3& now_pose)
     float omega = StdMath::fclamp(ref.omega * ff_scale + yaw_fb, -_max_omega, _max_omega);
 
     bool end_brake_active = (_elapsed_sec >= _path_total_time - _time_end_ff_fade_time) ||
-                            (final_pos_err < _time_end_slow_dist);
+                            (final_pos_err_len < _time_end_slow_dist);
     if (end_brake_active && _time_end_slow_dist > 1e-6f)
     {
-        float brake_limit = sqrtf(2.0f * _time_end_max_acc * final_pos_err);
-        if (final_pos_err > _pos_tol && brake_limit < _time_end_min_vel)
+        float brake_limit = sqrtf(2.0f * _time_end_max_acc * final_pos_err_len);
+        if (!final_pos_done && brake_limit < _time_end_min_vel)
         {
             brake_limit = _time_end_min_vel;
         }
@@ -448,7 +464,7 @@ void PathChaserType::_update_time_ref_path_cmd(const Vec3& now_pose)
     float final_yaw_err = fabsf(_wrap_pi(final_wp.yaw_rad - now_pose.z));
     bool time_ready = _elapsed_sec >= _path_total_time;
 
-    if (time_ready && final_pos_err < _pos_tol && final_yaw_err < _yaw_tol)
+    if (time_ready && final_pos_done && final_yaw_err < _path_tolerance.z)
     {
         if (_finish_tick_cnt < _finish_hold_ticks) _finish_tick_cnt++;
     }
@@ -529,11 +545,12 @@ void PathChaserType::_update_progress_ref_path_cmd(const Vec3& now_pose)
     Vec2 v_world = _limit_vec2(vel_ff * ff_scale + pos_fb, _max_vel);
 
     const PathWaypoint& final_wp = _waypoints[_waypoint_count - 1];
-    float final_pos_err = (final_wp.pos - now_pos).Length();
+    Vec2 final_pos_err = final_wp.pos - now_pos;
+    bool final_pos_done = _is_path_end_pos_done(final_pos_err);
     if (_path_end_slow_dist > 1e-6f && remain_to_end_s < _path_end_slow_dist)
     {
         float brake_limit = sqrtf(2.0f * _path_end_max_acc * remain_to_end_s);
-        if (final_pos_err > _pos_tol && brake_limit < _path_end_min_vel)
+        if (!final_pos_done && brake_limit < _path_end_min_vel)
         {
             brake_limit = _path_end_min_vel;
         }
@@ -547,7 +564,7 @@ void PathChaserType::_update_progress_ref_path_cmd(const Vec3& now_pose)
     _cmd.body = Vec3(body_xy.x, body_xy.y, omega);
 
     float final_yaw_err = fabsf(_wrap_pi(final_wp.yaw_rad - now_pose.z));
-    if (final_pos_err < _pos_tol && final_yaw_err < _yaw_tol)
+    if (final_pos_done && final_yaw_err < _path_tolerance.z)
     {
         if (_finish_tick_cnt < _finish_hold_ticks) _finish_tick_cnt++;
     }

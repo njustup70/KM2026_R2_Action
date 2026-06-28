@@ -197,6 +197,17 @@ void SystemType::SetPositionSource(Vec3 &pos, Vec3 bias)
   pos_bias = bias;
 }
 
+/**
+ * @brief 设置系统位置的偏置量，可以用来做一些阴间操作
+ * 
+ * @param pos 
+ * @param bias 
+ */
+void SystemType::SetPositionBias(Vec3 bias)
+{
+  pos_bias = bias;
+}
+
 template <typename T>
 T *SystemType::FindApp(const char *name)
 {
