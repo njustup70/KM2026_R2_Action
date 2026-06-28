@@ -18,6 +18,7 @@
 #include "SickPC.hpp"
 #include "optical_comm.hpp"
 #include "SemiAutoGr.hpp"
+#include "MainLoop.hpp"
 
 
 StateGraph graph("LoopGraph");
@@ -44,6 +45,8 @@ void MainFrameCpp()
 
   System.SetPositionSource(APP::comm_center.slam_pos);
   // System.SetPositionSource(APP::chas.chas_odom.pos); // yaw太不准了，用不了
+
+  System.RegistApp(APP::main_loop);
 
   // 启动通信中心
   System.RegistApp(APP::comm_center);
