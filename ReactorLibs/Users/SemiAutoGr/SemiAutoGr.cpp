@@ -11,6 +11,7 @@
 #include "AutoGraph.hpp"
 #include "CommCenter.hpp"
 #include "Get_Block.hpp"
+#include "MainLoop.hpp"
 
 /// @brief 所有的路径文件
 // #include "r2_area1_1.hpp"
@@ -64,6 +65,8 @@ void Waiting_for_Start(StateCore *core)
 {
   APP::jaw.CloseClaw();
   APP::monit.LogInfo("Waiting for start...");
+  // APP::main_loop.test_led.GradientFlow(Color::Up_Purpor * 0.6f, Color::Up_Yellow * 0.6f, 1.0f);
+  APP::main_loop.test_led.Breath(Color::White, 4.0f);
 
   // 等待遥控器指令，然后才进入下一步
   while(MOD::farcon.button_second_half[0] != 1)
@@ -71,6 +74,9 @@ void Waiting_for_Start(StateCore *core)
     Response_Button();
     Seq::Wait(0.01f);
   }
+
+  // APP::main_loop.test_led.GradientFlow(Color::Up_Purpor * 0.3f, Color::Up_Yellow * 0.3f, 1.0f);
+  APP::main_loop.test_led.Running(Color::White, 0.3f, 2.0f);
 
   // 取矛头先初始化
   Seq::WaitUntil([](){
@@ -90,15 +96,9 @@ void Waiting_for_Start(StateCore *core)
   Seq::Wait(2.0f);
 
   // 等待出发信号
-  APP::monit.LogInfo("Ready to Go...");
-
-  // APP::jaw.CloseClaw();      
+  APP::monit.LogInfo("Ready to Go...");   
   
   // 等待遥控器的出发指令
-  // Seq::WaitUntil([](){
-  //   return MOD::farcon.button_second_half[0] == 1;
-  // });
-
   while(MOD::farcon.button_second_half[0] != 1)
   {
     Response_Button();
@@ -115,10 +115,16 @@ void Waiting_for_Start(StateCore *core)
  */
 void Walk_Fetch(StateCore *core)
 {
+  APP::main_loop.test_led.GradientFlow(Color::Up_Purpor * 0.65f, Color::Up_Yellow * 0.65f, 1.0f);
   APP::jaw.PitchDown();
   APP::jaw.OpenClaw();
 
-  MOVE::MoveToTargPos(STT_R);
+  if (!MOVE::MoveToTargPos(STT_R))
+  {
+    APP::monit.LogError("[SemiAuto] Walk_Fetch: path rejected.");
+    Seq::Wait(3600.0f);
+    return;
+  }
   
   APP::jaw.CloseClaw();
 
@@ -159,6 +165,7 @@ void Walk_To_Dock(StateCore *core)
   // {
   //   return MOD::farcon.button_first_half[0] == 1;
   // });
+  APP::main_loop.test_led.Breath(Color::Blue, 2.4f);
 
   while(MOD::farcon.button_second_half[0] != 1)
   {
@@ -189,7 +196,12 @@ void Walk_To_Dock(StateCore *core)
  */
 void Walk_into_Area2(StateCore *core)
 {
-  MOVE::MoveToTargPos(A12_2);
+  if (!MOVE::MoveToTargPos(A12_2))
+  {
+    APP::monit.LogError("[SemiAuto] Walk_into_Area2: path rejected.");
+    Seq::Wait(3600.0f);
+    return;
+  }
 
   // 此时走到了梅林跟前
 
@@ -240,6 +252,10 @@ void Walk_into_Area2(StateCore *core)
 
   Decend_400();
 
+  // 避免西克打出去了
+  Seq::Wait(2.00f);
+  APP::comm_center.SlamCorrection();
+
   // 等待遥控器指令，然后才进入下一步
   while(MOD::farcon.button_second_half[0] != 1)
   {
@@ -268,7 +284,12 @@ static void TurnRelative(float delta_rad)
 
 void Walk_into_Area2_Host(StateCore *core)
 {
-  MOVE::MoveToTargPos(A12_2);
+  if (!MOVE::MoveToTargPos(A12_2))
+  {
+    APP::monit.LogError("[SemiAuto] Walk_into_Area2_Host: path rejected.");
+    Seq::Wait(3600.0f);
+    return;
+  }
 
   // 此时走到了梅林跟前
 
@@ -362,7 +383,12 @@ void Walk_into_Area3(StateCore *core)
   // 跑到Arena九宫格跟前
   APP::leg.SetFrontPos(-40);
   APP::leg.SetBackPos(-40);
-  MOVE::MoveToTargPos(Area2_to3_Line2);
+  if (!MOVE::MoveToTargPos(Area2_to3_Line2))
+  {
+    APP::monit.LogError("[SemiAuto] Walk_into_Area3: path rejected.");
+    Seq::Wait(3600.0f);
+    return;
+  }
 
   // 抬腿但是（还不知道该抬多高）
   APP::leg.B_Down_400();
