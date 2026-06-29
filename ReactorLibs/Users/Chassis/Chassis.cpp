@@ -239,7 +239,8 @@ void ChassisType::Move(Vec3 Spd)
         return; // 开放控制未使能，直接返回
 
     _safe_lock_tick = 100;
-        
+
+    targ_speed = Spd;
 }
 
 void ChassisType::Move(Vec2 Spd)
@@ -308,47 +309,47 @@ void ChassisType::Rotate(float omega)
  * 需要用到的信息流：底盘的控制、当前的位置、底盘的速度
  * @warning 只管xy的姿态，不管yaw角
  */
-bool ChassisType::_Walking()
-{
-    // 计算移动向量
-    Vec2 move_vec = targ_ges.ToVec2() - System.position.ToVec2();
-    // 带入车体旋转
-    move_vec = move_vec.Rotate(-System.position.z);
+// bool ChassisType::_Walking()
+// {
+//     // 计算移动向量
+//     Vec2 move_vec = targ_ges.ToVec2() - System.position.ToVec2();
+//     // 带入车体旋转
+//     move_vec = move_vec.Rotate(-System.position.z);
 
-    // 检查是否到达目标位置, 如果是则返回完成
-    if (move_vec.Length() < 0.05f) // 5cm范围内视为到达
-    {
-        Move(Vec2(0, 0)); // 停止移动
-        _walking = false;
-        return true; // 动作完成
-    }
+//     // 检查是否到达目标位置, 如果是则返回完成
+//     if (move_vec.Length() < 0.05f) // 5cm范围内视为到达
+//     {
+//         Move(Vec2(0, 0)); // 停止移动
+//         _walking = false;
+//         return true; // 动作完成
+//     }
 
-    // 计算移动速度
-    float safe_velo = sqrt(2 * _max_accel * move_vec.Length());
-    float out_velo = 3.0f * move_vec.Length();
-    // 最终的速度应该为三者中的最小值
-    float final_velo = fminf(safe_velo, fminf(out_velo, _max_velo));
+//     // 计算移动速度
+//     float safe_velo = sqrt(2 * _max_accel * move_vec.Length());
+//     float out_velo = 3.0f * move_vec.Length();
+//     // 最终的速度应该为三者中的最小值
+//     float final_velo = fminf(safe_velo, fminf(out_velo, _max_velo));
 
-    // 更新底盘速度（向量式更新，保证更新量不大于MaxAccel）
-    Vec2 targ_speed_vec = move_vec.Norm() * final_velo; // 计算新的目标速度
-    Vec2 curr_speed_vec = targ_speed.ToVec2();          // 当前速度
+//     // 更新底盘速度（向量式更新，保证更新量不大于MaxAccel）
+//     Vec2 targ_speed_vec = move_vec.Norm() * final_velo; // 计算新的目标速度
+//     Vec2 curr_speed_vec = targ_speed.ToVec2();          // 当前速度
 
-    // 计算速度差
-    Vec2 delta_speed_vec = targ_speed_vec - curr_speed_vec;
-    float delta_speed_len = delta_speed_vec.Length();
+//     // 计算速度差
+//     Vec2 delta_speed_vec = targ_speed_vec - curr_speed_vec;
+//     float delta_speed_len = delta_speed_vec.Length();
 
-    // 限制加速度（向量长度自带绝对值）
-    if (delta_speed_len > (_max_accel / 200.0f)) // 每次调用都是1 / 200s
-    {
-        delta_speed_vec = delta_speed_vec.Norm() * (_max_accel / 200.0f);
-    }
-    Vec2 new_speed_vec = curr_speed_vec + delta_speed_vec;
+//     // 限制加速度（向量长度自带绝对值）
+//     if (delta_speed_len > (_max_accel / 200.0f)) // 每次调用都是1 / 200s
+//     {
+//         delta_speed_vec = delta_speed_vec.Norm() * (_max_accel / 200.0f);
+//     }
+//     Vec2 new_speed_vec = curr_speed_vec + delta_speed_vec;
 
-    // 调用移动接口进行移动
-    Move(new_speed_vec);
+//     // 调用移动接口进行移动
+//     Move(new_speed_vec);
 
-    return false;
-}
+//     return false;
+// }
 
 /**
  * @brief 不断尝试旋转到某个角度
@@ -356,43 +357,43 @@ bool ChassisType::_Walking()
  * 需要用到的信息流：底盘的控制、当前的位置、底盘的速度
  * @warning 只管yaw角，不管xy的姿态
  */
-bool ChassisType::_Rotating()
-{
-    // 计算旋转向量 （速度Rad / s)
-    float rotate_diff = (targ_ges.z - System.position.z);
+// bool ChassisType::_Rotating()
+// {
+//     // 计算旋转向量 （速度Rad / s)
+//     float rotate_diff = (targ_ges.z - System.position.z);
 
-    // 检查是否到达目标位置, 如果是则返回完成
-    if (fabs(rotate_diff) < 0.01f) // 0.01rad范围内视为到达
-    {
-        Rotate(0); // 停止
-        _rotating = false;
-        return true; // 动作完成
-    }
+//     // 检查是否到达目标位置, 如果是则返回完成
+//     if (fabs(rotate_diff) < 0.01f) // 0.01rad范围内视为到达
+//     {
+//         Rotate(0); // 停止
+//         _rotating = false;
+//         return true; // 动作完成
+//     }
 
-    // 计算旋转速度 （注意绝对值）
-    float safe_omega = sqrt(2 * _max_beta * fabs(rotate_diff));
-    float out_omega = 3.0f * fabs(rotate_diff);
+//     // 计算旋转速度 （注意绝对值）
+//     float safe_omega = sqrt(2 * _max_beta * fabs(rotate_diff));
+//     float out_omega = 3.0f * fabs(rotate_diff);
 
-    // 最终的速度应该为三者中的最小值
-    float targ_omega = fminf(safe_omega, fminf(out_omega, _max_omega));
+//     // 最终的速度应该为三者中的最小值
+//     float targ_omega = fminf(safe_omega, fminf(out_omega, _max_omega));
 
-    // 更新底盘速度（向量式更新，保证更新量不大于MaxAccel）
-    // 计算速度差
-    float delta_speed = targ_omega * (rotate_diff > 0 ? 1 : -1) - targ_speed.z;
+//     // 更新底盘速度（向量式更新，保证更新量不大于MaxAccel）
+//     // 计算速度差
+//     float delta_speed = targ_omega * (rotate_diff > 0 ? 1 : -1) - targ_speed.z;
 
-    // 限制加速度（注意绝对值）
-    if (fabs(delta_speed) > (_max_beta / 200.0f)) // 每次调用都是1 / 200s
-    {
-        delta_speed = (delta_speed > 0 ? 1 : -1) * (_max_beta / 200.0f);
-    }
+//     // 限制加速度（注意绝对值）
+//     if (fabs(delta_speed) > (_max_beta / 200.0f)) // 每次调用都是1 / 200s
+//     {
+//         delta_speed = (delta_speed > 0 ? 1 : -1) * (_max_beta / 200.0f);
+//     }
 
-    float new_omega = targ_speed.z + delta_speed;
+//     float new_omega = targ_speed.z + delta_speed;
 
-    // 调用旋转接口进行移动
-    Rotate(new_omega);
+//     // 调用旋转接口进行移动
+//     Rotate(new_omega);
 
-    return false;
-}
+//     return false;
+// }
 
 void ChassisType::HostCmdCallback(uint8_t func_code, const uint8_t* payload, uint8_t payload_len, void* user_ctx)
 {

@@ -214,7 +214,7 @@ void Walk_Fetch(StateCore *core)
 
 bool MoveToDock()
 {
-  bool success = MOVE::MoveToTargPos(TTD);
+  bool success = MOVE::MoveToTargPos(TTD_3);
   return success;
 }
 

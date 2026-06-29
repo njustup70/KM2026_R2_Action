@@ -98,6 +98,8 @@ void Waiting_for_Start(StateCore *core)
 
   // 等待出发信号
   APP::monit.LogInfo("Ready to Go...");   
+  APP::leg.F_AlmostOrigin();
+  APP::leg.B_AlmostOrigin();
   
   // 等待遥控器的出发指令
   while(MOD::farcon.button_second_half[0] != 1)
@@ -117,17 +119,20 @@ void Waiting_for_Start(StateCore *core)
  */
 void Walk_Fetch(StateCore *core)
 {
+  APP::leg.SetFrontPos(-10);
+  APP::leg.SetBackPos(-10);
+
   APP::main_loop.test_led.GradientFlow(Color::Up_Purpor * 0.65f, Color::Up_Yellow * 0.65f, 1.0f);
 
   // 目前暂时只写了第二（序号1）个和第三个（序号2）
-  FetchSpear_FromOrigin(1);
+  FetchSpear_FromOrigin(2);
 
   // 等待遥控器的出发指令
-  while(MOD::farcon.button_second_half[0] != 1)
-  {
-    Response_Button();
-    Seq::Wait(0.01f);
-  }
+  // while(MOD::farcon.button_second_half[0] != 1)
+  // {
+  //   Response_Button();
+  //   Seq::Wait(0.01f);
+  // }
 
   core->GetCurState().Complete = true;
 }
@@ -140,11 +145,11 @@ void Walk_Fetch(StateCore *core)
 void Walk_To_Dock(StateCore *core)
 {
   // 先向前走一点
-  APP::chas.Move(Vec3(2.0f, 0, 0), 0.5f);
-  Seq::Wait(0.3f);
+  // APP::chas.Move(Vec3(2.0f, 0, 0), 0.5f);
+  // Seq::Wait(0.25f);
 
   // 走到对接点
-  MOVE::MoveToTargPos(TTD);
+  MOVE::MoveToTargPos(TTD_3);
 
   // 进入对接模式
   APP::jaw.SetTrackMode(true);
@@ -187,14 +192,15 @@ void Walk_To_Dock(StateCore *core)
  */
 void Walk_into_Area2(StateCore *core)
 {
-  if (!MOVE::MoveToTargPos(A12_2))
-  {
-    APP::monit.LogError("[SemiAuto] Walk_into_Area2: path rejected.");
-    Seq::Wait(3600.0f);
-    return;
-  }
-
+  // if (!MOVE::MoveToTargPos(A12_2))
+  // {
+  //   APP::monit.LogError("[SemiAuto] Walk_into_Area2: path rejected.");
+  //   Seq::Wait(3600.0f);
+  //   return;
+  // }
+  MOVE::MoveToTargGes(Vec3(2.5f, 3.0f, 0.0f));
   // 此时走到了梅林跟前
+
 
   // 等待遥控器指令，然后才进入下一步
   while(MOD::farcon.button_second_half[0] != 1)
@@ -244,8 +250,11 @@ void Walk_into_Area2(StateCore *core)
   Decend_400();
 
   // 避免西克打出去了
-  Seq::Wait(2.00f);
+  Seq::Wait(3.00f);
   APP::comm_center.SlamCorrection();
+  Seq::Wait(3.00f);
+  APP::monit.LogInfo("Pos corrected: (%.3f, %.3f, %.3f)",
+  System.position.x, System.position.y, System.position.z);
 
   // 等待遥控器指令，然后才进入下一步
   while(MOD::farcon.button_second_half[0] != 1)
@@ -398,11 +407,35 @@ void Walk_into_Area3(StateCore *core)
   // 跑到Arena九宫格跟前
   APP::leg.SetFrontPos(-40);
   APP::leg.SetBackPos(-40);
-  if (!MOVE::MoveToTargPos(Area2_to3_Line2))
+
+  // 一步一步跑，先测跑点
+  MOVE::MoveToTargGes(Vec3(8.65f, 0.77f, 0.0f));
+
+  // 等待遥控器指令，然后才进入下一步
+  while(MOD::farcon.button_second_half[0] != 1)
   {
-    APP::monit.LogError("[SemiAuto] Walk_into_Area3: path rejected.");
-    Seq::Wait(3600.0f);
-    return;
+    Response_Button();
+    Seq::Wait(0.01f);
+  }
+
+  // 等待下一个指令
+  MOVE::MoveToTargGes(Vec3(11.45f, 0.77f, 0.0f));
+
+  // 等待遥控器指令，然后才进入下一步
+  while(MOD::farcon.button_second_half[0] != 1)
+  {
+    Response_Button();
+    Seq::Wait(0.01f);
+  }
+
+  // 等待下一个指令
+  MOVE::MoveToTargGes(Vec3(10.75f, 5.4f, 1.57f));
+
+  // 等待遥控器指令，然后才进入下一步
+  while(MOD::farcon.button_second_half[0] != 1)
+  {
+    Response_Button();
+    Seq::Wait(0.01f);
   }
 
   // 抬腿但是（还不知道该抬多高）
@@ -431,12 +464,20 @@ void Response_Button()
     {
       max_velo = 5.0f;
     }
- 
+
+    // 计算遥控器死区：0-15不算，将15-100映射到原来的0.0-1.0
+    constexpr float deadzone = 15.0f;
+    auto map_axis = [deadzone](int v) -> float {
+      float a = (v >= 0) ? float(v) : -float(v);
+      if (a <= deadzone) return 0.0f;
+      return (v > 0 ? 1.0f : -1.0f) * ((a - deadzone) / (100.0f - deadzone));
+    };
+
     Vec3 vel;
     // 计算速度
-    vel.x = (-MOD::farcon.jys_value[3] / 100.0f) * max_velo; // 最大速度0.5m/s
-    vel.y = (-MOD::farcon.jys_value[2] / 100.0f) * max_velo;  // 最大速度0.5m/s
-    vel.z = (-MOD::farcon.jys_value[0] / 100.0f) * max_velo;  // 最大角速度1.0rad/s
+    vel.x = -map_axis(MOD::farcon.jys_value[3]) * max_velo; // 最大速度0.5m/s
+    vel.y = -map_axis(MOD::farcon.jys_value[2]) * max_velo; // 最大速度0.5m/s
+    vel.z = -map_axis(MOD::farcon.jys_value[0]) * max_velo; // 最大角速度1.0rad/s
 
     if (vel.Length() > 0.03f)
     {
