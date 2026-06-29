@@ -19,6 +19,7 @@ namespace
     constexpr uint8_t kFrontWheelEnableCmd = 0x02;
 }
 
+int _send_times = 0;
 /**
  * @brief 用于处理 C板 发回的自解里程计数据的回调
  * @details 其用于接收消息的端口为 0x221 can_id
@@ -28,7 +29,9 @@ void ChassisType::ChasTaskCallback(uint8_t task_id, const uint8_t *payload, uint
     using namespace APP;
 
     // 发送计数器，板间通讯是200hz，算法组要求100hz
-    static int send_cnt = 0; 
+    static int send_cnt = 0;
+    
+    _send_times++;
 
     chas.chas_odom.pos.x = StdMath::UnpackInt16ToFloat(&payload[0], 1000.0f);
     chas.chas_odom.pos.y = StdMath::UnpackInt16ToFloat(&payload[2], 1000.0f);
@@ -43,6 +46,8 @@ void ChassisType::ChasTaskCallback(uint8_t task_id, const uint8_t *payload, uint
 
 void ChassisType::Start()
 {
+    _send_times = 0;
+
     MOD::board_can.RegisterTask(1, ChasTaskCallback, this);
     MOD::host_pc.Regist(HostPC::FuncCode::ctrl_spd, HostCmdCallback, this);
     

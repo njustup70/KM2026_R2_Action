@@ -161,7 +161,7 @@ class PathChaserType : public Application
     float _max_vel = 999.0f;             // 合速度上限，单位m/s
     float _max_omega = 999.0f;           // 角速度上限，单位rad/s
     float _max_pos_fb = 0.5f;         // 时间参考路径的位置反馈速度上限，单位m/s
-    float _max_yaw_fb = 1.0f;         // 时间参考路径的姿态反馈角速度上限，单位rad/s
+    float _max_yaw_fb = 0.5f;         // 时间参考路径的姿态反馈角速度上限，单位rad/s
     float _ff_slow_start_err = 0.4f;  // 位置误差超过该值后开始压低前馈
     float _ff_slow_stop_err = 1.0f;   // 位置误差达到该值后前馈降到最小比例
     float _min_ff_scale = 0.20f;       // 误差较大时保留的最小前馈比例

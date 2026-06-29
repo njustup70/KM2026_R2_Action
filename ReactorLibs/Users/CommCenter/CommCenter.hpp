@@ -24,6 +24,7 @@ public:
     uint8_t kfs_values[12];
     float sick_data_m[4]; // sick测距值（ch0 - ch3），单位m
     bool IsDocked() const { return _dock_ok; }
+    void ClearDockFlag() { _dock_ok = false; }
     void SlamCorrection(); // 触发Sick纠正
     static void SlamRxCallback(uint8_t func_code, const uint8_t *payload, uint8_t payload_len, void *user_ctx);
     static void OpticalRxCallback(uint8_t func_code, const uint8_t* payload, uint8_t payload_len, void* user_ctx);

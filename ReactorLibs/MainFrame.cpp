@@ -17,7 +17,11 @@
 #include "CommCenter.hpp"
 #include "SickPC.hpp"
 #include "optical_comm.hpp"
+
+
 #include "SemiAutoGr.hpp"
+#include "ChallengeGraph.hpp"
+
 #include "MainLoop.hpp"
 
 
@@ -66,7 +70,7 @@ void MainFrameCpp()
   // System.RegistApp(APP::sick_pc);
 
   // Config_AutoStateGraph(); // Auto：0
-  Config_SemiAutoStateGraph(); // Manul：1
+  Config_R2_Challenge_StateGraph(); // Manul：1
 }
 
 /***********    一些不通用的回调函数    ***********/

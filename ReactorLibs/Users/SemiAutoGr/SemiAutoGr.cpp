@@ -9,14 +9,13 @@
 #include "VacuumClaw.hpp"
 #include "Area2_Act.hpp"
 #include "Area1_Act.hpp"
-#include "AutoGraph.hpp"
 #include "CommCenter.hpp"
 #include "Get_Block.hpp"
 #include "MainLoop.hpp"
 
 /// @brief 所有的路径文件
 // #include "r2_area1_1.hpp"
-#include "ttd.hpp"
+#include "ttd_3.hpp"
 #include "stt_r.hpp"
 #include "stt_rl_2.hpp"
 #include "a12_2.hpp"
@@ -311,7 +310,7 @@ static void TurnRelative(float delta_rad)
     }
 }
 
-void Walk_into_Area2_Host(StateCore *core)
+static void Walk_into_Area2_Host(StateCore *core)
 {
   if (!MOVE::MoveToTargPos(A12_2))
   {
@@ -458,7 +457,7 @@ void Walk_into_Area3(StateCore *core)
 }
 
 
-void Response_Button()
+static void Response_Button()
 {
     static float max_velo = 1.5f;
     if(MOD::farcon.toggle[2] == 0)
