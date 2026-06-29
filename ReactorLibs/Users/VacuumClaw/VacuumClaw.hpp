@@ -23,7 +23,7 @@ class VacuumClaw : public Application
     int stretch_lim_min = 0;
     int stretch_lim_max = 999999;
     float pitch_lim_min = 0.0f;
-    float pitch_lim_max = 1.6; // 单位rad
+    float pitch_lim_max = 0.0f; // 单位rad
     int snap_lim_min = 0;
     int snap_lim_max = 999999;
 
@@ -33,6 +33,11 @@ class VacuumClaw : public Application
     float pitch_pos = 0.0f;     // 0 - 1。为0时完全水平，1时完全竖直
     bool enabled = false;
 
+    bool is_debug = false; // 用于快速debug
+    bool is_out_debug = false; // 调试伸爪子
+    bool is_back_debug = false;
+    bool set_damiao_zero = true; // 第一次 update 调零一次
+
     public:
     /**
      * @brief 伸出夹爪，保持开启状态
@@ -41,9 +46,17 @@ class VacuumClaw : public Application
     void StretchOut();
 
     /**
+     * @brief 收回夹爪
+     * @details 水平收回，同时Pitch变为竖直状态，用于夹取的snap电机关闭
+     */
+    void StretchBack();
+
+    /**
      * @brief 
      * 
      */
+    void Enable();
+    void Disable();
 
 };
 
