@@ -175,7 +175,7 @@ void FetchSpear_FromOrigin(uint8_t spear_id)
     float err_spd = err_dist * 5.0f;
 
     Vec2 sick_fix = Vec2(err_spd, 0).Rotate(-System.position.z);
-    float y_err = 5.51f - System.position.y;
+    float y_err = 5.51f - System.position.y; // 5.51 是取矛头需要到达的世界坐标系y
     Vec2 go_ahead = Vec2(0, y_err * 3.0f).Rotate(-System.position.z);
 
     APP::chas.Move(go_ahead.ToVec3() + sick_fix.ToVec3(), 0.01f);

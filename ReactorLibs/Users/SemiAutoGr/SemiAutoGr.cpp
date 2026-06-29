@@ -259,6 +259,30 @@ void Walk_into_Area2(StateCore *core)
   core->GetCurState().Complete = true;
 }
 
+/// @brief 伸爪取块
+/// @param 
+static void FetchBlock()
+{
+  Seq::Wait(1.0f);
+
+  // 伸出夹爪
+  APP::vac_claw.StretchOut();
+
+  Seq::Wait(0.5f);
+
+  APP::get_block.OpenPump();
+
+  Seq::Wait(1.5f);
+
+  APP::vac_claw.StretchBack();
+
+  Seq::Wait(0.5f);
+
+  // 这里应该加负压泵的阀，快速放块
+
+  APP::get_block.ClosePump();
+}
+
 /// @brief 转向指定角度（相对当前朝向）
 /// @param delta_rad 正值=逆时针，负值=顺时针
 static void TurnRelative(float delta_rad)
