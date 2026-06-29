@@ -281,6 +281,8 @@ static void FetchBlock()
   // 这里应该加负压泵的阀，快速放块
 
   APP::get_block.ClosePump();
+
+  APP::get_block.Store();
 }
 
 /// @brief 转向指定角度（相对当前朝向）
