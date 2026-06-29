@@ -21,7 +21,8 @@
 #include "a12_2.hpp"
 #include "a23_2.hpp"
 
-static void Response_Button();
+void Response_Button();
+void FetchBlock();
 
 // 自动状态机
 StateGraph SemiAutoGr("SemiAuto");
@@ -228,6 +229,8 @@ void Walk_into_Area2(StateCore *core)
     Seq::Wait(0.01f);
   }
 
+  FetchBlock();
+
   Climb_Up200();
 
   // 等待遥控器指令，然后才进入下一步
@@ -289,6 +292,8 @@ static void FetchBlock()
   // 这里应该加负压泵的阀，快速放块
 
   APP::get_block.ClosePump();
+
+  APP::get_block.Store();
 }
 
 /// @brief 转向指定角度（相对当前朝向）
