@@ -21,8 +21,8 @@
 #include "a12_2.hpp"
 #include "a23_2.hpp"
 
-void Response_Button();
-void FetchBlock();
+static void Response_Button();
+static void FetchBlock();
 
 // 自动状态机
 StateGraph SemiAutoGr("SemiAuto");
