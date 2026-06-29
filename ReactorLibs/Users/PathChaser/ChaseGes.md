@@ -107,15 +107,14 @@ yaw 也是同样思路：P 控制、近目标收角速度、角速度变化率�
 - `_point_kp_pos`：位置 P 增益
 - `_point_kp_yaw`：yaw P 增益
 - `_point_max_vel`：最大平移速度
-- `_point_min_vel`：减速段最低有效速度，太小会尾段发软
+- `_point_min_vel`：低层死区补偿预留参数。当前普通跑点末端不再用它做保底速度
 - `_point_max_omega`：最大角速度
-- `_point_min_omega`：最低有效角速度
+- `_point_min_omega`：低层死区补偿预留参数。当前普通跑点末端不再用它做保底角速度
 - `_point_max_acc`：平移速度变化率上限，越小起步越柔
 - `_point_max_alpha`：角速度变化率上限，越小转头越柔
-- `_point_slow_dist`：小于该距离后开始明显收平移速度
-- `_point_slow_yaw`：小于该角度后开始明显收角速度
+- `_point_decel_factor`：末端刹车保守系数，越小越早收速度
 
-建议先调 `_point_max_vel / _point_max_omega` 定安全速度，再调 `_point_max_acc / _point_max_alpha` 定起步手感，最后微调 `_point_kp_pos / _point_kp_yaw` 和减速距离。
+建议先调 `_point_max_vel / _point_max_omega` 定安全速度，再调 `_point_max_acc / _point_max_alpha` 定起步手感，最后微调 `_point_kp_pos / _point_kp_yaw` 和 `_point_decel_factor`。
 
 ## 注意
 

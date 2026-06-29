@@ -32,12 +32,12 @@
 
 static const float dist_sick_center = 0.34f;
 static const float spear_sick_value[6] =
-    {0.12f,
-     0.32f,
-     0.52f,
-     0.72f,
-     0.92f,
-     0.112f};
+    {0.115f,
+     0.315f,
+     0.515f,
+     0.715f,
+     0.915f,
+     1.115f};
 
 /**
  * @brief 从原点出发取矛头
@@ -51,7 +51,7 @@ void FetchSpear_FromOrigin(uint8_t spear_id)
   if (spear_id == 2)
   {
     // 尝试开始追逐路径
-    if (!APP::path_chaser.ChasePath(STT_R, Vec3(0.025f, 0.025f, 0.02f)))
+    if (!APP::path_chaser.ChasePath(STT_R, Vec3(0.015f, 0.05f, 0.02f)))
     {
       // 如果路径出问题，拒绝启动，报错，停机
       APP::monit.LogError("[AutoGraph] MoveToTargPos rejected by PathChaser.");
@@ -61,7 +61,7 @@ void FetchSpear_FromOrigin(uint8_t spear_id)
   else if (spear_id == 1)
   {
     // 尝试开始追逐路径
-    if (!APP::path_chaser.ChasePath(STT_R2, Vec3(0.025f, 0.025f, 0.02f)))
+    if (!APP::path_chaser.ChasePath(STT_R2, Vec3(0.025f, 0.05f, 0.02f)))
     {
       // 如果路径出问题，拒绝启动，报错，停机
       APP::monit.LogError("[AutoGraph] MoveToTargPos rejected by PathChaser.");
@@ -71,7 +71,7 @@ void FetchSpear_FromOrigin(uint8_t spear_id)
   else if (spear_id == 0)
   {
     // 尝试开始追逐路径
-    if (!APP::path_chaser.ChasePath(STT_R1, Vec3(0.025f, 0.025f, 0.02f)))
+    if (!APP::path_chaser.ChasePath(STT_R1, Vec3(0.025f, 0.05f, 0.02f)))
     {
       // 如果路径出问题，拒绝启动，报错，停机
       APP::monit.LogError("[AutoGraph] MoveToTargPos rejected by PathChaser.");
@@ -81,7 +81,7 @@ void FetchSpear_FromOrigin(uint8_t spear_id)
   else if (spear_id == 3)
   {
     // 尝试开始追逐路径
-    if (!APP::path_chaser.ChasePath(STT_R4, Vec3(0.025f, 0.025f, 0.02f)))
+    if (!APP::path_chaser.ChasePath(STT_R4, Vec3(0.025f, 0.05f, 0.02f)))
     {
       // 如果路径出问题，拒绝启动，报错，停机
       APP::monit.LogError("[AutoGraph] MoveToTargPos rejected by PathChaser.");
@@ -91,7 +91,7 @@ void FetchSpear_FromOrigin(uint8_t spear_id)
   else if (spear_id == 4)
   {
     // 尝试开始追逐路径
-    if (!APP::path_chaser.ChasePath(STT_R5, Vec3(0.025f, 0.025f, 0.02f)))
+    if (!APP::path_chaser.ChasePath(STT_R5, Vec3(0.025f, 0.05f, 0.02f)))
     {
       // 如果路径出问题，拒绝启动，报错，停机
       APP::monit.LogError("[AutoGraph] MoveToTargPos rejected by PathChaser.");
@@ -131,38 +131,38 @@ void FetchSpear_FromOrigin(uint8_t spear_id)
   }
 
   int sick_cnt = 0;
-  const float sick_kd = 0.1f;
+  const float sick_kd = 0.25f;
   const float sick_d_alpha = 0.7f;
   float last_err_dist = spear_sick_value[spear_id] - APP::comm_center.sick_data_m[1];
   float d_err_dist_filt = 0.0f;
 
   // 以西克自己为基准校准，直到西克值满足要求（0.5cm）
-  while (sick_cnt < 10)
-  {
-    if (fabs(spear_sick_value[spear_id] - APP::comm_center.sick_data_m[1]) < 0.004)
-    {
-      sick_cnt++;
-    }
-    else
-      sick_cnt = 0;
+  // while (sick_cnt < 10)
+  // {
+  //   if (fabs(spear_sick_value[spear_id] - APP::comm_center.sick_data_m[1]) < 0.004)
+  //   {
+  //     sick_cnt++;
+  //   }
+  //   else
+  //     sick_cnt = 0;
 
-    // 利用西克获取相对误差(m)
-    float err_dist = spear_sick_value[spear_id] - APP::comm_center.sick_data_m[1];
-    float d_err_dist = (err_dist - last_err_dist) / 0.005f;
-    d_err_dist_filt = d_err_dist_filt * sick_d_alpha + d_err_dist * (1.0f - sick_d_alpha);
-    float err_spd = err_dist * 4.8f - sick_kd * d_err_dist_filt;
-    last_err_dist = err_dist;
+  //   // 利用西克获取相对误差(m)
+  //   float err_dist = spear_sick_value[spear_id] - APP::comm_center.sick_data_m[1];
+  //   float d_err_dist = (err_dist - last_err_dist) / 0.005f;
+  //   d_err_dist_filt = d_err_dist_filt * sick_d_alpha + d_err_dist * (1.0f - sick_d_alpha);
+  //   float err_spd = err_dist * 5.0f - sick_kd * d_err_dist_filt;
+  //   last_err_dist = err_dist;
 
-    // if (fabs(err_spd) < 0.05f)
-    // {
-    //   err_spd < 0 ? err_spd = -0.05f : err_spd = 0.05f;
-    // }
+  //   // if (fabs(err_spd) < 0.05f)
+  //   // {
+  //   //   err_spd < 0 ? err_spd = -0.05f : err_spd = 0.05f;
+  //   // }
 
-    Vec2 sick_fix = Vec2(err_spd, 0).Rotate(-System.position.z);
+  //   Vec2 sick_fix = Vec2(err_spd, 0).Rotate(-System.position.z);
 
-    APP::chas.Move(sick_fix.ToVec3(), 0.01f);
-    Seq::Wait(0.005f); // 200hz更新频率
-  }
+  //   APP::chas.Move(sick_fix.ToVec3(), 0.01f);
+  //   Seq::Wait(0.005f); // 200hz更新频率
+  // }
 
   APP::monit.LogInfo("Finished Aim.");
 
@@ -172,11 +172,11 @@ void FetchSpear_FromOrigin(uint8_t spear_id)
   {
     // 利用西克获取相对误差(m)
     float err_dist = spear_sick_value[spear_id] - APP::comm_center.sick_data_m[1];
-    float err_spd = err_dist * 5.0f;
+    float err_spd = err_dist * 2.4f;
 
     Vec2 sick_fix = Vec2(err_spd, 0).Rotate(-System.position.z);
-    float y_err = 5.51f - System.position.y; // 5.51 是取矛头需要到达的世界坐标系y
-    Vec2 go_ahead = Vec2(0, y_err * 3.0f).Rotate(-System.position.z);
+    float y_err = 5.51f - System.position.y;
+    Vec2 go_ahead = Vec2(0, y_err * 2.4f + 0.10f).Rotate(-System.position.z);
 
     APP::chas.Move(go_ahead.ToVec3() + sick_fix.ToVec3(), 0.01f);
 

@@ -126,13 +126,13 @@ void Lift_Leg::LegActRxCb(uint8_t task_id, const uint8_t* payload, uint8_t paylo
 // 前腿回到零位
 void Lift_Leg::F_Origin()
 {
-    front_pos = 0;
+    front_pos = -2;
 }
 
 // 后腿回到零位
 void Lift_Leg::B_Origin()
 {
-    back_pos = 0;
+    back_pos = -2;
 }
 
 void Lift_Leg::F_AlmostOrigin()

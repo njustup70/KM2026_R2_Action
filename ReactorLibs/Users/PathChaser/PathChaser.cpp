@@ -604,14 +604,16 @@ void PathChaserType::_update_point_cmd(const Vec3& now_pose)
     {
         Vec2 dir = pos_err / _point_remain_dist;
         float v_by_p = _point_kp_pos * _point_remain_dist;
-        float slow_scale = _smooth_step(_point_remain_dist / _point_slow_dist);
-        float v_limit = _point_max_vel * slow_scale;
-        float brake_limit = sqrtf(2.0f * _point_max_acc * _point_remain_dist);
-        if (v_limit > brake_limit) v_limit = brake_limit;
-        if (v_limit < _point_min_vel && brake_limit > _point_min_vel) v_limit = _point_min_vel;
+        float brake_limit = sqrtf(2.0f * _point_max_acc * _point_remain_dist) * _point_decel_factor;
 
-        float speed = v_by_p;
-        if (speed > v_limit) speed = v_limit;
+        // 普通跑点的速度上限必须同时满足“位置P控制”、“速度包络”和“刹车距离”。
+        // 这里不再使用最低速度保底，否则末端会一直带着一小段速度往前拱。
+        float speed_limit = v_by_p;
+        if (speed_limit > _point_max_vel) speed_limit = _point_max_vel;
+        if (speed_limit > brake_limit) speed_limit = brake_limit;
+        if (speed_limit < 0.0f) speed_limit = 0.0f;
+
+        float speed = speed_limit;
         target_vel_world = dir * speed;
     }
 
@@ -627,12 +629,12 @@ void PathChaserType::_update_point_cmd(const Vec3& now_pose)
     if (_point_yaw_enabled && _point_yaw_err_abs > _yaw_tol)
     {
         float omega_by_p = _point_kp_yaw * yaw_err;
-        float slow_scale = _smooth_step(_point_yaw_err_abs / _point_slow_yaw);
-        float omega_limit = _point_max_omega * slow_scale;
-        float brake_limit = sqrtf(2.0f * _point_max_alpha * _point_yaw_err_abs);
-        if (omega_limit > brake_limit) omega_limit = brake_limit;
-        if (omega_limit < _point_min_omega && brake_limit > _point_min_omega) omega_limit = _point_min_omega;
-        target_omega = StdMath::fclamp(omega_by_p, -omega_limit, omega_limit);
+        float brake_limit = sqrtf(2.0f * _point_max_alpha * _point_yaw_err_abs) * _point_decel_factor;
+        float omega_cap = _point_max_omega;
+        if (omega_cap > brake_limit) omega_cap = brake_limit;
+
+        // 同理，yaw 末端也不保底，不然会在目标角附近来回拱。
+        target_omega = StdMath::fclamp(omega_by_p, -omega_cap, omega_cap);
     }
 
     float omega_delta = target_omega - _point_last_omega;
