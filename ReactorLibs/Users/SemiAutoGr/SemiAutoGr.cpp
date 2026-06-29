@@ -23,6 +23,7 @@
 #include "a23_2.hpp"
 
 void Response_Button();
+void FetchBlock();
 
 // 自动状态机
 StateGraph SemiAutoGr("SemiAuto");
@@ -222,6 +223,8 @@ void Walk_into_Area2(StateCore *core)
     Response_Button();
     Seq::Wait(0.01f);
   }
+
+  FetchBlock();
 
   Climb_Up200();
 
