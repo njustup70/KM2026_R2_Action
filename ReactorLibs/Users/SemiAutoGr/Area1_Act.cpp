@@ -37,7 +37,7 @@
 
 static const float dist_sick_center = 0.34f;
 static const float spear_sick_value[6] =
-    {0.140f,
+    {0.115f,
      0.315f,
      0.515f,
      0.715f,
@@ -147,7 +147,75 @@ void LetsGo(uint8_t spear_id, Vec3 tolerance)
       break;
   }
 }
-} // namespace ToDock
+}
+
+void Aim_And_Fetch(int spear_id)
+{
+  int sick_cnt = 0;
+  const float sick_kd = 0.1f;
+  const float sick_d_alpha = 0.7f;
+  float last_err_dist = spear_sick_value[spear_id] - APP::comm_center.sick_data_m[1];
+  float d_err_dist_filt = 0.0f;
+
+  // 以西克自己为基准校准，直到西克值满足要求（0.5cm）
+  while (sick_cnt < 10)
+  {
+    if (fabs(spear_sick_value[spear_id] - APP::comm_center.sick_data_m[1]) < 0.004)
+    {
+      sick_cnt++;
+    }
+    else
+      sick_cnt = 0;
+
+    // 利用西克获取相对误差(m)
+    float err_dist = spear_sick_value[spear_id] - APP::comm_center.sick_data_m[1];
+    float d_err_dist = (err_dist - last_err_dist) / 0.005f;
+    d_err_dist_filt = d_err_dist_filt * sick_d_alpha + d_err_dist * (1.0f - sick_d_alpha);
+    float err_spd = err_dist * 2.7f - sick_kd * d_err_dist_filt;
+    last_err_dist = err_dist;
+
+    // if (fabs(err_spd) < 0.05f)
+    // {
+    //   err_spd < 0 ? err_spd = -0.05f : err_spd = 0.05f;
+    // }
+
+    Vec2 sick_fix = Vec2(err_spd, 0).Rotate(-System.position.z);
+
+    APP::chas.Move(sick_fix.ToVec3(), 0.01f);
+    Seq::Wait(0.005f); // 200hz更新频率
+  }
+
+  APP::monit.LogInfo("Finished Aim.");
+
+  APP::chas.Move((0,0,0), 0.25f);
+  Seq::Wait(0.25f);
+
+  // 向前走，取矛头
+  int walk_cnt_ms = 0;
+  while (walk_cnt_ms < 2500) // 0.4s
+  {
+    // 利用西克获取相对误差(m)
+    float err_dist = spear_sick_value[spear_id] - APP::comm_center.sick_data_m[1];
+    float err_spd = err_dist * 5.0f;
+
+    // Vec2 sick_fix = Vec2(err_spd, 0).Rotate(-System.position.z);
+    // float y_err = 5.51f - System.position.y;
+    Vec2 go_ahead = Vec2(0, 0.1f).Rotate(-System.position.z);
+
+    // APP::chas.Move(go_ahead.ToVec3() + sick_fix.ToVec3(), 0.01f);
+    APP::chas.Move(go_ahead.ToVec3(), 0.01f);
+
+    Seq::Wait(0.005f); // 200hz更新频率
+    walk_cnt_ms += 5;
+  }
+
+  APP::monit.LogInfo("Move to target position.");
+
+  APP::jaw.CloseClaw();
+  Seq::Wait(0.15);
+}
+
+
 
 /**
  * @brief 从原点出发取矛头
@@ -158,7 +226,7 @@ void FetchSpear_FromOrigin(uint8_t spear_id)
   APP::jaw.PitchDown();
   APP::jaw.OpenClaw();
 
-  OriginTo::StartSpearChaseById(spear_id, Vec3(0.015f, 0.05f, 0.02f));
+  OriginTo::StartSpearChaseById(spear_id, Vec3(0.05f, 0.05f, 0.02f));
 
   uint32_t log_tick = 0;
   // 追逐路径，直到完成
@@ -172,39 +240,18 @@ void FetchSpear_FromOrigin(uint8_t spear_id)
     if (++log_tick >= 20)
     {
       log_tick = 0;
-      APP::monit.LogInfo("stt_pos(%.2f, %.2f, %.2f),sick:%.3f",
-                         System.position.x, System.position.y, System.position.z, APP::comm_center.sick_data_m[1]);
+      // APP::monit.LogInfo("stt_pos(%.2f, %.2f, %.2f),sick:%.3f",
+      //                    System.position.x, System.position.y, System.position.z, APP::comm_center.sick_data_m[1]);
     }
     Seq::Wait(0.005f); // 200hz更新频率
   }
 
   APP::monit.LogInfo("Finished Aim.");
 
-  // 向前走，取矛头
-  int walk_cnt_ms = 0;
-  while (walk_cnt_ms < 500) // 0.4s
-  {
-    // 利用西克获取相对误差(m)
-    float err_dist = spear_sick_value[spear_id] - APP::comm_center.sick_data_m[1];
-    float err_spd = err_dist * 2.4f;
-
-    Vec2 sick_fix = Vec2(err_spd, 0).Rotate(-System.position.z);
-    float y_err = 5.51f - System.position.y;
-    Vec2 go_ahead = Vec2(0, y_err * 2.4f + 0.10f).Rotate(-System.position.z);
-
-    APP::chas.Move(go_ahead.ToVec3() + sick_fix.ToVec3(), 0.01f);
-
-    Seq::Wait(0.005f); // 200hz更新频率
-    walk_cnt_ms += 5;
-  }
-
-  APP::monit.LogInfo("Move to target position.");
-
-  APP::jaw.CloseClaw();
-  Seq::Wait(0.15);
+  Aim_And_Fetch(spear_id);
 
   // 记录抓取位置，以及西克数据
-  APP::monit.LogInfo("Catch At:(%.3f,%.3f), sick:%.3f", APP::comm_center.slam_pos.x,
+  APP::monit.LogSpec("Catch At:(%.3f,%.3f), sick:%.3f", APP::comm_center.slam_pos.x,
                      APP::comm_center.slam_pos.y, APP::comm_center.sick_data_m[1]);
 
   // 先往上抬 1.5cm
@@ -226,7 +273,7 @@ void FetchSpear_FromDock(uint8_t spear_id)
   APP::jaw.OpenClaw();
 
   // 根据矛头编号，选择对应的路径（技能挑战赛）
-  DockTo::StartSpearChaseById(spear_id, Vec3(0.02f, 0.05f, 0.02f));
+  DockTo::StartSpearChaseById(spear_id, Vec3(0.05f, 0.05f, 0.02f));
 
   uint32_t log_tick = 0;
 
@@ -241,36 +288,15 @@ void FetchSpear_FromDock(uint8_t spear_id)
     if (++log_tick >= 20)
     {
       log_tick = 0;
-      APP::monit.LogInfo("stt_pos(%.2f, %.2f, %.2f),sick:%.3f",
-                         System.position.x, System.position.y, System.position.z, APP::comm_center.sick_data_m[1]);
+      // APP::monit.LogInfo("stt_pos(%.2f, %.2f, %.2f),sick:%.3f",
+      //                    System.position.x, System.position.y, System.position.z, APP::comm_center.sick_data_m[1]);
     }
     Seq::Wait(0.005f); // 200hz更新频率
   }
 
   APP::monit.LogInfo("Finished Aim.");
 
-  // 向前走，取矛头
-  int walk_cnt_ms = 0;
-  while (walk_cnt_ms < 500) // 0.4s
-  {
-    // 利用西克获取相对误差(m)
-    float err_dist = spear_sick_value[spear_id] - APP::comm_center.sick_data_m[1];
-    float err_spd = err_dist * 2.4f;
-
-    Vec2 sick_fix = Vec2(err_spd, 0).Rotate(-System.position.z);
-    float y_err = 5.51f - System.position.y;
-    Vec2 go_ahead = Vec2(0, y_err * 2.4f + 0.10f).Rotate(-System.position.z);
-
-    APP::chas.Move(go_ahead.ToVec3() + sick_fix.ToVec3(), 0.01f);
-
-    Seq::Wait(0.005f); // 200hz更新频率
-    walk_cnt_ms += 5;
-  }
-
-  APP::monit.LogInfo("Move to target position.");
-
-  APP::jaw.CloseClaw();
-  Seq::Wait(0.15);
+  Aim_And_Fetch(spear_id);
 
   // 记录抓取位置，以及西克数据
   APP::monit.LogInfo("Catch At:(%.3f,%.3f), sick:%.3f", APP::comm_center.slam_pos.x,
@@ -286,7 +312,7 @@ void FetchSpear_FromDock(uint8_t spear_id)
 
 void GotoDock(uint8_t spear_id)
 {
-  ToDock::LetsGo(spear_id, Vec3(0.015f, 0.015f, 0.02f));
+  ToDock::LetsGo(spear_id, Vec3(0.035f, 0.05f, 0.02f));
 
   uint32_t log_tick = 0;
 
@@ -299,8 +325,8 @@ void GotoDock(uint8_t spear_id)
     if (++log_tick >= 20)
     {
       log_tick = 0;
-      APP::monit.LogInfo("todock_v(%.3f, %.3f, %.3f)",
-                         world_vec.x, world_vec.y, world_vec.z);
+      // APP::monit.LogInfo("todock_v(%.3f, %.3f, %.3f)",
+      //                    world_vec.x, world_vec.y, world_vec.z);
     }
     Seq::Wait(0.005f); // 200hz更新频率
   }

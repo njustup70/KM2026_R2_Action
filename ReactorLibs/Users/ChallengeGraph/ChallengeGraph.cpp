@@ -85,6 +85,9 @@ void Waiting_for_Start(StateCore *core)
   APP::monit.LogInfo("Waiting for start...");
   APP::main_loop.test_led.Breath(Color::White, 4.0f);
 
+  APP::leg.F_AlmostOrigin();
+  APP::leg.B_AlmostOrigin();
+
   // 等待遥控器指令，然后才进入下一步
   while(MOD::farcon.button_second_half[0] != 1)
   {
@@ -114,8 +117,6 @@ void Waiting_for_Start(StateCore *core)
 
   // 等待出发信号
   APP::monit.LogInfo("Ready to Go...");   
-  APP::leg.F_AlmostOrigin();
-  APP::leg.B_AlmostOrigin();
   
   // 等待遥控器的出发指令
   while(MOD::farcon.button_second_half[0] != 1)
@@ -183,8 +184,11 @@ void Walk_To_Dock(StateCore *core)
     Response_Button();
     Seq::Wait(0.01f);
   }
+  
+  APP::jaw.SetTrackMode(false);
 
-  APP::jaw.CloseClaw();
+  APP::jaw.SetPosCode(APP::jaw._hori_origin_code - JawConst::_hori_max_travel_code / 2 - 20000, 
+    APP::jaw._vert_origin_code - 260000);
 
   APP::monit.LogInfo("Go to Climb.");
 
@@ -246,7 +250,7 @@ void Dock_Fetch_And_Back(StateCore *core)
   APP::jaw.SetTrackMode(false);
 
   APP::jaw.SetPosCode(APP::jaw._hori_origin_code - JawConst::_hori_max_travel_code / 2 - 20000, 
-    APP::jaw._vert_origin_code - 226000);
+    APP::jaw._vert_origin_code - 260000);
 
   APP::monit.LogInfo("Go to Climb.");
 

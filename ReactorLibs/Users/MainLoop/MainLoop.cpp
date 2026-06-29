@@ -18,9 +18,9 @@ void MainLoop::Update()
     static float last_report_time = 0.0f;
     cnt++;
 
-    if (DWT_GetTimeline_Sec() - last_report_time >= 4.0f)
+    if (System.runtime_tick - last_report_time >= 15.0f)
     {
-        last_report_time = DWT_GetTimeline_Sec();
+        last_report_time = System.runtime_tick;
         debug_cnt = MOD::host_pc.GetRecentRxFreqHz();
         APP::monit.LogInfo("[HostPC] RX_freq: %.1f Hz, cnt:%d", MOD::host_pc.GetRecentRxFreqHz(), cnt);
     }

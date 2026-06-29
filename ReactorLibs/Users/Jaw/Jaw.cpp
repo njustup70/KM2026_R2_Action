@@ -444,7 +444,7 @@ void Jaw::_GetVertOrigin()
             // 记录中点偏移
             _vert_origin_code = motor_3508_vert.driver.measure.total_angle;
             // 往回走到三分之一
-            _y_pos = _vert_origin_code - 226000; //后面加的是夹到矛头最好的位置偏移
+            _y_pos = _vert_origin_code - 260000; //后面加的是夹到矛头最好的位置偏移
             motor_3508_vert.SetPos(_y_pos);
         }
     }
