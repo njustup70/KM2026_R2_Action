@@ -21,6 +21,8 @@ class GetBlock : public Application
 public:
     void Store();
     void Put();
+    void OpenPump();
+    void ClosePump();
 
     bool IsUpperOccupied() const { return _upper; }
     bool IsLowerOccupied() const { return _lower; }

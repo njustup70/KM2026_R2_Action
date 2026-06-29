@@ -96,17 +96,17 @@ void GetBlock::Update()
 
     _ReadSensors();
 
-    if(is_debug)
-    {
-        motor_dm_lift.SetPosVel(-_lift_targ_pos, _lift_vel);
-        // motor_2006_feed.SetPos(-_feed_pos_extend);
-        // relay_pump.On();
+    // if(is_debug)
+    // {
+    //     // motor_dm_lift.SetPosVel(-_lift_targ_pos, _lift_vel);
+    //     // motor_2006_feed.SetPos(-_feed_pos_extend);
+    //     relay_pump.On();
 
-    }
-    else
-    {
-        relay_pump.Off();     
-    }
+    // }
+    // else
+    // {
+    //     relay_pump.Off();     
+    // }
 
     // if(_belt_enable)
     // {
@@ -117,16 +117,16 @@ void GetBlock::Update()
     //     _StopBelt();
     // }
 
-    if(_store_debug)
-    {
-        _store_debug = false;
-        Store();
-    }
-    if(_put_debug)
-    {
-        _put_debug = false;
-        Put();
-    }
+    // if(_store_debug)
+    // {
+    //     _store_debug = false;
+    //     Store();
+    // }
+    // if(_put_debug)
+    // {
+    //     _put_debug = false;
+    //     Put();
+    // }
 
     _UpdateFSM();
 }
@@ -255,6 +255,16 @@ void GetBlock::Put()
     _fsm_busy = true;
     _action_tick = System.runtime_tick;
     APP::monit.LogInfo("[GetBlock] Put begin, upper=%d lower=%d", _upper, _lower);
+}
+
+void GetBlock::OpenPump()
+{
+    relay_pump.On();
+};
+
+void GetBlock::ClosePump()
+{
+    relay_pump.Off();
 }
 
 // ==================== 内部状态机 ====================
