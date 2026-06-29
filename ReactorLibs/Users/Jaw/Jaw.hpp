@@ -3,6 +3,14 @@
 #include "motor_dji.hpp"  
 #include "relay.hpp"
 
+namespace JawConst 
+{
+    /// @brief 各方向上的最大行程
+    static const int _hori_max_travel_code = 327000;
+    static const int _vert_max_travel_code = 276000;
+    static const int _pitch_max_travel_code = 300000;
+}
+
 class Jaw : public Application
 {
     SINGLETON(Jaw) : Application("Jaw") {};
@@ -40,11 +48,6 @@ private:
     bool _hori_origined = false;
     bool _vert_origined = false;
     bool _pitch_origined = false;
-
-    // 原点位置
-    int _hori_origin_code = 0;
-    int _vert_origin_code = 0;
-    int _pitch_origin_code = 0;
 
     // 上位机下发的取矛头平面误差（单位 mm）
     float _spear_left_err_mm = 0.0f;
@@ -84,6 +87,11 @@ private:
     // void ClearSpearErrFlag() { _spear_err_valid = false; }
 
 public:
+    // 原点位置
+    int _hori_origin_code = 0;
+    int _vert_origin_code = 0;
+    int _pitch_origin_code = 0;
+
     int GetPitchOriginCode() const { return _pitch_origin_code; }
     bool IsOrigined() const { return _origined; }
 
@@ -103,6 +111,7 @@ public:
      * @param y_mm 
      */
     void SetPos(float x_mm, float y_mm);
+    void SetPosCode(int x_code, int y_code);
 
     /**
      * @brief 只设置 x 方向位置，y 方向保持当前值不变。

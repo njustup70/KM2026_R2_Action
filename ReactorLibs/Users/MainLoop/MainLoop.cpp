@@ -3,6 +3,8 @@
 
 MainLoop& APP::main_loop = MainLoop::GetInstance();
 
+float debug_cnt = 0;
+
 void MainLoop::Start()
 {
     test_led.Init(Hardware::tim_led, BSP::TIM::CH4);
@@ -13,14 +15,13 @@ void MainLoop::Start()
 void MainLoop::Update()
 {
     test_led.Handle();
-
     static float last_report_time = 0.0f;
-    const float now = DWT_GetTimeline_Sec();
     cnt++;
 
-    if (now - last_report_time >= 3.0f)
+    if (DWT_GetTimeline_Sec() - last_report_time >= 4.0f)
     {
-        last_report_time = now;
-        APP::monit.LogInfo("[HostPC] RX_freq: %.1f Hz", MOD::host_pc.GetRecentRxFreqHz());
+        last_report_time = DWT_GetTimeline_Sec();
+        debug_cnt = MOD::host_pc.GetRecentRxFreqHz();
+        APP::monit.LogInfo("[HostPC] RX_freq: %.1f Hz, cnt:%d", MOD::host_pc.GetRecentRxFreqHz(), cnt);
     }
 }

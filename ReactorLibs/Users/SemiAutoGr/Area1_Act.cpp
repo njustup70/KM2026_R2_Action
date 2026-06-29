@@ -37,14 +37,14 @@
 
 static const float dist_sick_center = 0.34f;
 static const float spear_sick_value[6] =
-    {0.115f,
+    {0.140f,
      0.315f,
      0.515f,
      0.715f,
      0.915f,
      1.115f};
 
-namespace OriginTo    // 从原点出发的
+namespace OriginTo // 从原点出发的
 {
 template <size_t N>
 void StartSpearChase(const Path<N> &path, Vec3 tolerance)
@@ -83,9 +83,9 @@ void StartSpearChaseById(uint8_t spear_id, Vec3 tolerance)
       break;
   }
 }
-}
+} // namespace OriginTo
 
-namespace DockTo  // 从对接位置出发的
+namespace DockTo // 从对接位置出发的
 {
 template <size_t N>
 void StartSpearChase(const Path<N> &path, Vec3 tolerance)
@@ -117,7 +117,7 @@ void StartSpearChaseById(uint8_t spear_id, Vec3 tolerance)
 }
 }
 
-namespace ToDock  // 从对接位置出发的
+namespace ToDock // 从对接位置出发的
 {
 template <size_t N>
 void StartChase(const Path<N> &path, Vec3 tolerance)
@@ -147,7 +147,7 @@ void LetsGo(uint8_t spear_id, Vec3 tolerance)
       break;
   }
 }
-}
+} // namespace ToDock
 
 /**
  * @brief 从原点出发取矛头
@@ -287,4 +287,23 @@ void FetchSpear_FromDock(uint8_t spear_id)
 void GotoDock(uint8_t spear_id)
 {
   ToDock::LetsGo(spear_id, Vec3(0.015f, 0.015f, 0.02f));
+
+  uint32_t log_tick = 0;
+
+  while (!APP::path_chaser.IsFinished())
+  {
+    Vec3 speed_vec = APP::path_chaser.GetCmdBody();
+    Vec3 world_vec = APP::path_chaser.GetCmdWorld();
+    APP::chas.Move(speed_vec, 0.01f);
+
+    if (++log_tick >= 20)
+    {
+      log_tick = 0;
+      APP::monit.LogInfo("todock_v(%.3f, %.3f, %.3f)",
+                         world_vec.x, world_vec.y, world_vec.z);
+    }
+    Seq::Wait(0.005f); // 200hz更新频率
+  }
+
+  APP::monit.LogInfo("Move to target position.");
 }

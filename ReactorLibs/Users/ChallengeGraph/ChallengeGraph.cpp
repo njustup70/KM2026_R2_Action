@@ -65,7 +65,7 @@ void Config_R2_Challenge_StateGraph()
 
   s_dock_fetch.LinkTo(&fetch_again, s_dock_fetch);
   s_dock_fetch.LinkTo(&move_to_area2, s_walk_from_a1_to_a2);
-  
+
   s_walk_from_a1_to_a2.LinkTo(&s_walk_from_a1_to_a2.Complete, s_walk_from_a2_to_a3);
   s_walk_from_a2_to_a3.LinkTo(&s_walk_from_a2_to_a3.Complete, s_wait);
 
@@ -188,6 +188,9 @@ void Walk_To_Dock(StateCore *core)
 
   APP::monit.LogInfo("Go to Climb.");
 
+  need_spear_id++;
+  APP::comm_center.ClearDockFlag(); // 清除对接标志，避免下次误触发
+
   core->GetCurState().Complete = true;
 }
 
@@ -215,7 +218,7 @@ void Dock_Fetch_And_Back(StateCore *core)
   APP::jaw.SetTrackMode(true);
 
   // 等待遥控器指令，然后才进入下一个状态
-  APP::main_loop.test_led.Expand(Color::Up_Yellow, 1.2f);
+  APP::main_loop.test_led.Expand(Color::Up_Purpor, 1.2f);
 
   while(MOD::farcon.button_second_half[0] != 1)
   {
@@ -240,12 +243,17 @@ void Dock_Fetch_And_Back(StateCore *core)
   }
 
   APP::jaw.CloseClaw();
+  APP::jaw.SetTrackMode(false);
+
+  APP::jaw.SetPosCode(APP::jaw._hori_origin_code - JawConst::_hori_max_travel_code / 2 - 20000, 
+    APP::jaw._vert_origin_code - 226000);
 
   APP::monit.LogInfo("Go to Climb.");
 
   if (need_spear_id < 2)
   {
     need_spear_id++;
+    APP::comm_center.ClearDockFlag();  // 清除对接标志，避免下次误触发
     fetch_again = true;
   }
   else

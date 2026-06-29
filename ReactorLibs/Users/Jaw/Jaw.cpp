@@ -17,14 +17,6 @@ Jaw& APP::jaw = Jaw::GetInstance();
 static Monitor& monit = Monitor::GetInstance();
 static HostPC& host_pc = HostPC::GetInstance();
 
-namespace JawConst 
-{
-    /// @brief 各方向上的最大行程
-    static const int _hori_max_travel_code = 327000;
-    static const int _vert_max_travel_code = 276000;
-    static const int _pitch_max_travel_code = 300000;
-}
-
 static float C620VertComp(const FeedforwardInfo& info);
 static float C620HoriFriction(const FeedforwardInfo& info);
 static float M2006GravityComp(const FeedforwardInfo& info);
@@ -332,6 +324,24 @@ void Jaw::SetPos(float x_mm, float y_mm)
 
     _x_pos = target_hori;
     _y_pos = target_vert;
+}
+
+void Jaw::SetPosCode(int x_code, int y_code)
+{
+    if (!_origined) return;
+
+    int hori_min = _hori_origin_code - JawConst::_hori_max_travel_code;
+    int hori_max = _hori_origin_code;
+    if (x_code > hori_max) x_code = hori_max;
+    if (x_code < hori_min) x_code = hori_min;
+
+    int vert_min = _vert_origin_code - JawConst::_vert_max_travel_code;
+    int vert_max = _vert_origin_code;
+    if (y_code > vert_max) y_code = vert_max;
+    if (y_code < vert_min) y_code = vert_min;
+
+    _x_pos = x_code;
+    _y_pos = y_code;
 }
 
 void Jaw::SetXPos(float x_mm)
