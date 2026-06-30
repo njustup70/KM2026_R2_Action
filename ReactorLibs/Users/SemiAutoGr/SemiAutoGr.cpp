@@ -21,8 +21,15 @@
 #include "a12_2.hpp"
 #include "a23_2.hpp"
 
-void Response_Button();
-void FetchBlock();
+// enum class BlockHeight : uint8_t 
+// {
+//   UP200, // 取上 200 的块
+//   UP400, // 取上 400 的块
+//   DOWN200, /// 取下 200 的块
+// };
+
+static void Response_Button();
+// static void FetchBlock();
 
 // 自动状态机
 StateGraph SemiAutoGr("SemiAuto");
@@ -229,8 +236,6 @@ void Walk_into_Area2(StateCore *core)
     Seq::Wait(0.01f);
   }
 
-  FetchBlock();
-
   Climb_Up200();
 
   // 等待遥控器指令，然后才进入下一步
@@ -268,32 +273,6 @@ void Walk_into_Area2(StateCore *core)
   APP::monit.LogInfo("Now, Go to Area3--ARENA");
 
   core->GetCurState().Complete = true;
-}
-
-/// @brief 伸爪取块
-/// @param 
-static void FetchBlock()
-{
-  Seq::Wait(1.0f);
-
-  // 伸出夹爪
-  APP::vac_claw.StretchOut();
-
-  Seq::Wait(0.5f);
-
-  APP::get_block.OpenPump();
-
-  Seq::Wait(1.5f);
-
-  APP::vac_claw.StretchBack();
-
-  Seq::Wait(0.5f);
-
-  // 这里应该加负压泵的阀，快速放块
-
-  APP::get_block.ClosePump();
-
-  APP::get_block.Store();
 }
 
 /// @brief 转向指定角度（相对当前朝向）
@@ -386,7 +365,7 @@ static void Walk_into_Area2_Host(StateCore *core)
         case CMD_DOWN_400:  Decend_400();              break;
         case CMD_TURN_CW:   TurnRelative(PI/2);  break;
         case CMD_TURN_CCW:  TurnRelative(-PI/2);    break;
-        case CMD_GET_BLOCK: /* 这个需要把爪和取块库封装一下 */   break;
+        case CMD_GET_BLOCK: APP::vac_claw.need_to_fetch = true;   break;
         default:
           APP::monit.LogWarning("[Area2] Unknown cmd=0x%02X", s_cmd);
           break;

@@ -7,8 +7,38 @@
 #include "PathChaser.hpp"
 #include "VacuumClaw.hpp"
 #include "CommCenter.hpp"
+#include "Get_Block.hpp"
 
 #include "Area2_Act.hpp"
+
+/// @brief 伸爪取块
+/// @param 取多少高度的块
+static void FetchBlock()
+{
+  // 等 1s 稳定
+  Seq::Wait(1.0f);
+
+  // 伸出夹爪
+  APP::vac_claw.StretchOut();
+
+  Seq::Wait(0.5f);
+
+  APP::get_block.OpenPump();
+
+  Seq::Wait(1.5f);
+
+  APP::vac_claw.StretchBack();
+
+  Seq::Wait(0.5f);
+
+  // 这里应该加负压泵的阀，快速放块
+
+  APP::get_block.ClosePump();
+
+  APP::vac_claw.need_to_fetch = false; // 复位，准备取下一个物块
+
+  APP::get_block.Store();
+}
 
 const Vec2 MeiHuaForest_Pos[12] = {
   Vec2(3.8, 1.8), Vec2(3.8, 3), Vec2(3.8, 4.2),
@@ -54,7 +84,8 @@ void Climb_Up200()
   Seq::Wait(0.5f);
 
   // 如果需要取块，那么爪子也要有所行动。要先伸出来
-  // if (need_to_fetch) APP::vac_claw.StretchOut();
+  if (APP::vac_claw.need_to_fetch) FetchBlock();
+
   // 往前缓慢移动，直到抵靠到前端
   APP::chas.Move(Vec2(0.5, 0), 3.0f);
   Seq::Wait(0.35f);
@@ -121,7 +152,7 @@ void Climb_Up400()
   APP::leg.B_Down_400();
 
   // 如果需要取块，那么爪子也要有所行动。要先伸出来
-  // if (need_to_fetch) APP::vac_claw.StretchOut();
+  if (APP::vac_claw.need_to_fetch) FetchBlock();
 
   // 往前缓慢移动，直到抵靠到前端
   APP::chas.Move(Vec2(0.3, 0), 2.0f);
@@ -169,6 +200,10 @@ void Decend_200()
   
   // 先缓慢向前走
   APP::chas.Move(Vec2(0.24, 0), 3.0f);
+
+  // 如果要取块，则伸出爪取块
+  // Seq::Wait(0.8f); // 可能要加延时
+  if(APP::vac_claw.need_to_fetch) FetchBlock();
 
   // 等待小黄1号检测不到后，放下前腿
   Seq::WaitUntil([&]()
