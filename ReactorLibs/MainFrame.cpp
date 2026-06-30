@@ -44,7 +44,7 @@ void MainFrameCpp()
   // 初始化遥控器
   MOD::farcon.init(Hardware::huart_farcon);
 
-  System.SetPositionSource(APP::comm_center.slam_pos);
+  System.SetPositionSource(APP::comm_center.slam_pos, Vec3(0.0f, 0.0f, 0.0f));
 
   System.RegistApp(APP::main_loop);
 

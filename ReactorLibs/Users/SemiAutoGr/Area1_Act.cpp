@@ -252,7 +252,7 @@ void FetchSpear_FromOrigin(uint8_t spear_id)
   APP::jaw.PitchDown();
   APP::jaw.OpenClaw();
 
-  OriginTo::StartSpearChaseById(spear_id, Vec3(0.05f, 0.05f, 0.02f));
+  OriginTo::StartSpearChaseById(spear_id, Vec3(0.02f, 0.02f, 0.02f));
 
   // 追逐路径，直到完成
   while (!APP::path_chaser.IsFinished())
@@ -295,7 +295,7 @@ void FetchSpear_FromDock(uint8_t spear_id)
   APP::jaw.OpenClaw();
 
   // 根据矛头编号，选择对应的路径（技能挑战赛）
-  DockTo::StartSpearChaseById(spear_id, Vec3(0.05f, 0.05f, 0.02f));
+  DockTo::StartSpearChaseById(spear_id, Vec3(0.015f, 0.015f, 0.02f));
 
   uint32_t log_tick = 0;
 
@@ -303,22 +303,20 @@ void FetchSpear_FromDock(uint8_t spear_id)
   while (!APP::path_chaser.IsFinished())
   {
     Vec3 speed_vec = APP::path_chaser.GetCmdBody();
-    // Vec3 world_vec = APP::path_chaser.GetCmdWorld();
 
     APP::chas.Move(speed_vec, 0.01f);
 
     if (++log_tick >= 20)
     {
       log_tick = 0;
-      // APP::monit.LogInfo("stt_pos(%.2f, %.2f, %.2f),sick:%.3f",
-      //                    System.position.x, System.position.y, System.position.z, APP::comm_center.sick_data_m[1]);
     }
     Seq::Wait(0.005f); // 200hz更新频率
   }
 
   APP::monit.LogInfo("Finished Aim.");
 
-  Aim_And_Fetch(spear_id);
+  // Aim_And_Fetch(spear_id);
+  Fetch();
 
   // 记录抓取位置，以及西克数据
   APP::monit.LogInfo("Catch At:(%.3f,%.3f), sick:%.3f", APP::comm_center.slam_pos.x,
