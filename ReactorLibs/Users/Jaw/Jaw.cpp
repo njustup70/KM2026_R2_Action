@@ -408,7 +408,7 @@ void Jaw::_GetHoriOrigin()
             // 记录中点偏移
             _hori_origin_code = motor_3508_hori.driver.measure.total_angle;
             // 往回走到中点
-            _x_pos = _hori_origin_code - JawConst::_hori_max_travel_code / 2 - 20000;
+            _x_pos = _hori_origin_code - JawConst::_hori_max_travel_code / 2 - 100000;
             motor_3508_hori.SetPos(_x_pos);
         }
     }
@@ -444,7 +444,7 @@ void Jaw::_GetVertOrigin()
             // 记录中点偏移
             _vert_origin_code = motor_3508_vert.driver.measure.total_angle;
             // 往回走到三分之一
-            _y_pos = _vert_origin_code - 260000; //后面加的是夹到矛头最好的位置偏移
+            _y_pos = _vert_origin_code - 220000; //后面加的是夹到矛头最好的位置偏移
             motor_3508_vert.SetPos(_y_pos);
         }
     }

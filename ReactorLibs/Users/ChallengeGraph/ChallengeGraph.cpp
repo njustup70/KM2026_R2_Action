@@ -187,8 +187,8 @@ void Walk_To_Dock(StateCore *core)
   
   APP::jaw.SetTrackMode(false);
 
-  APP::jaw.SetPosCode(APP::jaw._hori_origin_code - JawConst::_hori_max_travel_code / 2 - 20000, 
-    APP::jaw._vert_origin_code - 260000);
+  APP::jaw.SetPosCode(APP::jaw._hori_origin_code - JawConst::_hori_max_travel_code / 2 - 100000, 
+    APP::jaw._vert_origin_code - 220000);
 
   APP::monit.LogInfo("Go to Climb.");
 
@@ -249,8 +249,8 @@ void Dock_Fetch_And_Back(StateCore *core)
   APP::jaw.CloseClaw();
   APP::jaw.SetTrackMode(false);
 
-  APP::jaw.SetPosCode(APP::jaw._hori_origin_code - JawConst::_hori_max_travel_code / 2 - 20000, 
-    APP::jaw._vert_origin_code - 260000);
+  APP::jaw.SetPosCode(APP::jaw._hori_origin_code - JawConst::_hori_max_travel_code / 2 - 100000, 
+    APP::jaw._vert_origin_code - 220000);
 
   APP::monit.LogInfo("Go to Climb.");
 

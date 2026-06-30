@@ -215,8 +215,8 @@ class PathChaserType : public Application
     float _point_kp_yaw = 1.75f;          // 普通跑点yaw P增益
     float _point_max_vel = 2.5f;        // 普通跑点最大平移速度，单位m/s
     float _point_min_vel = 0.05f;        // 预留给低层死区补偿的参数；当前普通跑点末端不再用作保底速度
-    float _point_max_omega = 2.7f;      // 普通跑点最大角速度，单位rad/s
-    float _point_min_omega = 0.1f;      // 预留给低层死区补偿的参数；当前普通跑点末端不再用作保底角速度
+    float _point_max_omega = 3.14f;      // 普通跑点最大角速度，单位rad/s
+    float _point_min_omega = 0.05f;      // 预留给低层死区补偿的参数；当前普通跑点末端不再用作保底角速度
     float _point_max_acc = 1.5f;        // 平移速度变化率上限，单位m/s^2
     float _point_max_alpha = 2.5f;      // 角速度变化率上限，单位rad/s^2
     float _point_decel_factor = 0.75f;   // 普通跑点末端刹车保守系数，越小越早收速度
