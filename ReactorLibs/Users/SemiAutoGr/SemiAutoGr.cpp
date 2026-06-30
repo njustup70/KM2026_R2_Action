@@ -21,15 +21,7 @@
 #include "a12_2.hpp"
 #include "a23_2.hpp"
 
-// enum class BlockHeight : uint8_t 
-// {
-//   UP200, // 取上 200 的块
-//   UP400, // 取上 400 的块
-//   DOWN200, /// 取下 200 的块
-// };
-
 static void Response_Button();
-// static void FetchBlock();
 
 // 自动状态机
 StateGraph SemiAutoGr("SemiAuto");
@@ -42,20 +34,18 @@ static void Walk_into_Area3(StateCore *core);
 void Config_SemiAutoStateGraph()
 {
   StateBlock& s_wait = SemiAutoGr.AddState("wait");
-  StateBlock& s_area1_1 = SemiAutoGr.AddState("area1_1");
-  StateBlock& s_area1_2 = SemiAutoGr.AddState("area1_2");
+  // StateBlock& s_area1_1 = SemiAutoGr.AddState("area1_1");
+  // StateBlock& s_area1_2 = SemiAutoGr.AddState("area1_2");
   StateBlock& s_walk_from_a1_to_a2 = SemiAutoGr.AddState("walk_a1_to_a2");
   StateBlock& s_walk_from_a2_to_a3 = SemiAutoGr.AddState("walk_a2_to_a3");
 
   s_wait.StateAction = Waiting_for_Start;
-  s_area1_1.StateAction = Walk_Fetch;
-  s_area1_2.StateAction = Walk_To_Dock;
+  // s_area1_1.StateAction = Walk_Fetch;
+  // s_area1_2.StateAction = Walk_To_Dock;
   s_walk_from_a1_to_a2.StateAction = Walk_into_Area2;
   s_walk_from_a2_to_a3.StateAction = Walk_into_Area3;
 
-  s_wait.LinkTo(&s_wait.Complete, s_area1_1);
-  s_area1_1.LinkTo(&s_area1_1.Complete, s_area1_2);
-  s_area1_2.LinkTo(&s_area1_2.Complete, s_walk_from_a1_to_a2);
+  s_wait.LinkTo(&s_wait.Complete, s_walk_from_a1_to_a2);
   s_walk_from_a1_to_a2.LinkTo(&s_walk_from_a1_to_a2.Complete, s_walk_from_a2_to_a3);
   s_walk_from_a2_to_a3.LinkTo(&s_walk_from_a2_to_a3.Complete, s_wait);
 
@@ -218,7 +208,8 @@ void Walk_into_Area2(StateCore *core)
 
   APP::monit.LogInfo("Try to Climb.");
   // 来自文件：Area2_Act.hpp。里边主要是一些二区的行为
-  Climb_Up200();
+  // APP::vac_claw.need_to_fetch = true;
+  Area2::mei_lin_array.Climb_Up200();
 
   // 等待遥控器指令，然后才进入下一步
   while(MOD::farcon.button_second_half[0] != 1)
@@ -227,7 +218,7 @@ void Walk_into_Area2(StateCore *core)
     Seq::Wait(0.01f);
   }
 
-  Climb_Up200();
+  Area2::mei_lin_array.Climb_Up200();
 
   // 等待遥控器指令，然后才进入下一步
   while(MOD::farcon.button_second_half[0] != 1)
@@ -236,7 +227,7 @@ void Walk_into_Area2(StateCore *core)
     Seq::Wait(0.01f);
   }
 
-  Climb_Up200();
+  Area2::mei_lin_array.Climb_Up200();
 
   // 等待遥控器指令，然后才进入下一步
   while(MOD::farcon.button_second_half[0] != 1)
@@ -245,7 +236,7 @@ void Walk_into_Area2(StateCore *core)
     Seq::Wait(0.01f);
   }
 
-  Decend_200();
+  Area2::mei_lin_array.Decend_200();
 
   // 等待遥控器指令，然后才进入下一步
   while(MOD::farcon.button_second_half[0] != 1)
@@ -254,7 +245,7 @@ void Walk_into_Area2(StateCore *core)
     Seq::Wait(0.01f);
   }
 
-  Decend_400();
+  Area2::mei_lin_array.Decend_400();
 
   // 避免西克打出去了
   Seq::Wait(3.00f);
@@ -275,20 +266,6 @@ void Walk_into_Area2(StateCore *core)
   core->GetCurState().Complete = true;
 }
 
-/// @brief 转向指定角度（相对当前朝向）
-/// @param delta_rad 正值=逆时针，负值=顺时针
-static void TurnRelative(float delta_rad)
-{
-    float target_yaw = APP::chas.chas_odom.pos.z + delta_rad;
-    APP::path_chaser.ChaseYaw(target_yaw);
-
-    while (!APP::path_chaser.IsFinished())
-    {
-        APP::chas.Move(APP::path_chaser.GetCmdBody(), 0.01f);
-        Seq::Wait(0.005f);
-    }
-}
-
 static void Walk_into_Area2_Host(StateCore *core)
 {
   if (!MOVE::MoveToTargPos(A12_2))
@@ -298,86 +275,8 @@ static void Walk_into_Area2_Host(StateCore *core)
     return;
   }
 
-  // 此时走到了梅林跟前
-
-  // ====== 二区功能码 ======
-
-  // ====== 工控机方发送 ======
-  static constexpr uint8_t CMD_UP_200     = 0x64;
-  static constexpr uint8_t CMD_DOWN_200   = 0x65;
-  static constexpr uint8_t CMD_UP_400     = 0x66;
-  static constexpr uint8_t CMD_DOWN_400   = 0x67;
-  static constexpr uint8_t CMD_TURN_CW    = 0x68; // 正方向转 PI/2
-  static constexpr uint8_t CMD_TURN_CCW   = 0x69; // 负方向转 PI/2
-  static constexpr uint8_t CMD_GET_BLOCK  = 0x6A;
-  static constexpr uint8_t CMD_AREA_DONE  = 0x6B;   // ← 二区流程完成→退出
-  // ====== A板发送 ======
-  static constexpr uint8_t ACK_DONE       = 0x6C;   // ← 某动作完成
-
-  static volatile uint8_t s_cmd = 0;
-  static volatile bool s_pending = false;
-
-  // 注册回调（只一次）
-  static bool s_reg = false;
-  if (!s_reg)
-  {
-    auto handler = [](uint8_t func_code, const uint8_t*, uint8_t, void*) {
-      s_cmd = func_code;
-      s_pending = true;
-    };
-    MOD::host_pc.Regist(CMD_UP_200,    handler);
-    MOD::host_pc.Regist(CMD_DOWN_200,  handler);
-    MOD::host_pc.Regist(CMD_UP_400,    handler);
-    MOD::host_pc.Regist(CMD_DOWN_400,  handler);
-    MOD::host_pc.Regist(CMD_TURN_CW,   handler);
-    MOD::host_pc.Regist(CMD_TURN_CCW,  handler);
-    MOD::host_pc.Regist(CMD_GET_BLOCK, handler);
-    MOD::host_pc.Regist(CMD_AREA_DONE, handler);
-    s_reg = true;
-  }
-
-  APP::monit.LogInfo("[Area2] Waiting for commands from host...");
-
-  // ====== 命令响应主循环 ======
-  while (true)
-  {
-    // 留个遥控器保险
-    Response_Button();
-
-    if (s_pending)
-    {
-      s_pending = false;
-
-      // 收到 0x6B → 二区流程完成，退出
-      if (s_cmd == CMD_AREA_DONE)
-      {
-        APP::monit.LogInfo("[Area2] Area2 done, exit");
-        break;
-      }
-
-      APP::monit.LogInfo("[Area2] Cmd=0x%02X received", s_cmd);
-
-      switch (s_cmd)
-      {
-        case CMD_UP_200:    Climb_Up200();            break;
-        case CMD_DOWN_200:  Decend_200();              break;
-        case CMD_UP_400:    Climb_Up400();             break;
-        case CMD_DOWN_400:  Decend_400();              break;
-        case CMD_TURN_CW:   TurnRelative(PI/2);  break;
-        case CMD_TURN_CCW:  TurnRelative(-PI/2);    break;
-        case CMD_GET_BLOCK: APP::vac_claw.need_to_fetch = true;   break;
-        default:
-          APP::monit.LogWarning("[Area2] Unknown cmd=0x%02X", s_cmd);
-          break;
-      }
-
-      // 动作完成 → 发 0x6C
-      MOD::host_pc.SendAck(ACK_DONE, 0); // 0表示成功
-      APP::monit.LogInfo("[Area2] Cmd=0x%02X Complet", s_cmd);
-    }
-
-    Seq::Wait(0.01f);
-  }
+  // 此时走到了梅林跟前，准备执行二区序列动作
+  Area2::mei_lin_array.ExecuteSequence();
 
   APP::monit.LogInfo("Now, Go to Area3--ARENA");
 
