@@ -70,7 +70,8 @@ void MainFrameCpp()
   // System.RegistApp(APP::sick_pc);
 
   // Config_AutoStateGraph(); // Auto：0
-  Config_R2_Challenge_StateGraph(); // Manul：1
+  Config_SemiAutoStateGraph();
+  // Config_R2_Challenge_StateGraph(); // Manul：1
 }
 
 /***********    一些不通用的回调函数    ***********/
