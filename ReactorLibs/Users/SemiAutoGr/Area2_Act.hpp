@@ -72,6 +72,8 @@ private:
   uint8_t _seq[MAX_SEQ] = {0}; // 动作缓存
   int _seq_len = 0;            // 已缓存的动作数
   bool _seq_ready = false;     // 序列收完标志
+
+  bool _skip_approach = false; // 是否跳过接近动作
 };
 
 namespace Area2

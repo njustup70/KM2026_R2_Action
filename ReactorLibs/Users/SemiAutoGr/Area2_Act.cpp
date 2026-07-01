@@ -72,6 +72,8 @@ static void FetchUp200()
   // 再走0.3秒，慢慢走，确保前端抵住
   APP::chas.Move(Vec2(0.2, 0), 1.0f);
   Seq::Wait(0.3f);
+
+  APP::chas.Move(Vec2(0.0f, 0.0f), 1.0f);  
 }
 
 // 取上400的块之前，先要抬腿抵住
@@ -96,6 +98,8 @@ static void FetchUp400()
   // 再走0.3秒，慢慢走，确保前端抵住
   APP::chas.Move(Vec2(0.2, 0), 1.0f);
   Seq::Wait(0.3f);
+
+  APP::chas.Move(Vec2(0.0f, 0.0f), 1.0f);  
 }
 
 static void FetchDown200()
@@ -134,30 +138,46 @@ void MeiLinArray::FetchBlock(BlockHeight height)
     default:
     APP::monit.LogError("Unamed BlockHeight");
   }
+
+  _skip_approach = true; // 已经靠上去了，标记跳过下一次 Climb 的重复抵靠动作
   
-  // 等稳定
-  Seq::Wait(0.5f);
+  // // 等稳定
+  // Seq::Wait(0.5f);
   // APP::chas.Move(Vec2(0.2,0), 2.0f);
   // Seq::Wait(1.0f);
 
-  // 伸出夹爪
+  // 抬升先上去
+  APP::get_block.motor_dm_lift.SetPosVel(-750, 15);
+
+  // 先开爪
+  APP::vac_claw.OpenSnap();
+  Seq::Wait(0.4f);
+
+  // 再伸出
   APP::vac_claw.StretchOut();
 
-  Seq::Wait(0.5f);
+  // 等待伸出完成后，闭上爪
+  Seq::Wait(1.5f);
+  APP::vac_claw.CloseSnap();
 
+  // 等爪子抓住后
+  Seq::Wait(3.5f);
+
+  // 打开负压泵
   APP::get_block.OpenPump();
 
-  Seq::Wait(1.5f);
-
+  // 等待吸住后，翻转物块，收爪
+  Seq::Wait(1.0f);
   APP::vac_claw.StretchBack();
 
-  Seq::Wait(0.5f);
-
-  // 这里应该加负压泵的阀，快速放块
-
+  // 此时爪还抓着物块，关闭负压泵
   APP::get_block.ClosePump();
 
-  APP::vac_claw.need_to_fetch = false; // 复位，准备取下一个物块
+  APP::get_block._StartBelt();
+
+  APP::vac_claw.OpenSnap();
+
+  APP::get_block.OpenPRV();
 
   APP::get_block.Store();
 }
@@ -200,16 +220,21 @@ void MeiLinArray::Climb_Up200()
   APP::monit.LogInfo("Climb200:StartPos:(%.2f,%.2f)",
      APP::comm_center.slam_pos.x, APP::comm_center.slam_pos.y);
 
-  // 登200时，先放低前后腿
-  APP::leg.F_Down_200();
-  APP::leg.B_Down_200();
-  Seq::Wait(0.5f);
+  if(!_skip_approach)
+  {
+    // 登200时，先放低前后腿
+    APP::leg.F_Down_200();
+    APP::leg.B_Down_200();
+    Seq::Wait(0.5f);
 
-  // 往前缓慢移动，直到抵靠到前端
-  APP::chas.Move(Vec2(0.5, 0), 3.0f);
-  Seq::Wait(0.35f);
-  APP::chas.Move(Vec2(0.25, 0), 3.0f);
-  Seq::Wait(0.15f);
+    // 往前缓慢移动，直到抵靠到前端
+    APP::chas.Move(Vec2(0.5, 0), 3.0f);
+    Seq::Wait(0.35f);
+    APP::chas.Move(Vec2(0.25, 0), 3.0f);
+    Seq::Wait(0.15f);
+  }
+  _skip_approach = false; // 复位标志，下次正常执行上面的抵靠动作
+
 
   // 等待小黄0号检测到可以抬前腿
   Seq::WaitUntil([&]()

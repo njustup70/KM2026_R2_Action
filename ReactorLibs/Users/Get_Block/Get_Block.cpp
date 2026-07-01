@@ -3,8 +3,8 @@
 GetBlock& APP::get_block = GetBlock::GetInstance();
 
 // ==================== 超时间隔 ====================
-static constexpr float T_BELT = 10.0f;
-static constexpr float T_LIFT = 10.0f;
+static constexpr float T_BELT = 8.0f;
+static constexpr float T_LIFT = 5.0f;
 static constexpr float T_LIFT_SETTLE = 2.0f;    // 传感器触发后等待抬升到位的短超时
 static constexpr float T_LIFT_BEFORE_BELT = 2.0f; // 取块1时抬升先走一段再转摩擦带
 static constexpr float T_FEED = 10.0f;
@@ -33,6 +33,7 @@ void GetBlock::Start()
         .ADRC_SOTF(0.2f)
         .Apply();
     motor_2006_fric.driver.Enable();
+    motor_2006_fric.SetDt(0.002);
 
     /****  抬升 DM (hcan_sub, ID 10) ，向上为负，总行程 0 - 400 rad 左右****/
     motor_dm_lift.Init(Hardware::hcan_sub, 10, 20, POSANDVEL, DM_S2325);
@@ -53,6 +54,7 @@ void GetBlock::Start()
         .ADRC_SOTF(0.6f)
         .Apply();
     motor_2006_feed.driver.Enable();
+    motor_2006_feed.SetDt(0.002);
 
     /****  两个传感器（下仓、上仓） ****/
     _pin_sensor[0] = PIN_SENSOR_LOWER;
@@ -65,7 +67,11 @@ void GetBlock::Start()
     /****  负压泵 ****/
     pin_pump = PIN_PUMP;
     relay_pump.Init(pin_pump, Relay::HIGH_ON);
-    
+
+    /*  泄压阀  */
+    pin_PRV = PIN_PRESSURE_RELIEF_VALVE;
+    relay_PRV.Init(pin_PRV, Relay::HIGH_ON);
+    relay_PRV.Off(); // 初始状态下关闭泄压阀
 
     /**** 初始位置 ****/
     motor_dm_lift.SetPosVel(-_lift_pos_lower, _lift_vel);
@@ -265,6 +271,16 @@ void GetBlock::OpenPump()
 void GetBlock::ClosePump()
 {
     relay_pump.Off();
+}
+
+void GetBlock::OpenPRV()
+{
+    relay_PRV.On();
+}
+
+void GetBlock::ClosePRV()
+{
+    relay_PRV.Off();
 }
 
 // ==================== 内部状态机 ====================
