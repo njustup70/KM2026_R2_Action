@@ -3,6 +3,7 @@
 #include "PathChaser.hpp"
 #include "Chassis.hpp"
 #include "led_ws2812.hpp"
+#include "infrared_detector.hpp"
 
 class MainLoop : public Application
 {
@@ -11,6 +12,11 @@ class MainLoop : public Application
 
     public:
     LedWs2812<13> test_led;
+
+    // 取矛头的小黄
+    InfraredDetector spear_detector;
+    bool spear_detected = false;
+
     int cnt = 0;
 };
 
