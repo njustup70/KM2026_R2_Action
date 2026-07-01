@@ -17,8 +17,7 @@
 #include "CommCenter.hpp"
 #include "SickPC.hpp"
 #include "optical_comm.hpp"
-
-
+#include "VacuumClaw.hpp"
 #include "SemiAutoGr.hpp"
 #include "ChallengeGraph.hpp"
 
@@ -67,10 +66,13 @@ void MainFrameCpp()
 
   System.RegistApp(APP::get_block);
 
+  System.RegistApp(APP::vac_claw);
+  APP::vac_claw.Enable();
   // System.RegistApp(APP::sick_pc);
 
   // Config_AutoStateGraph(); // Auto：0
-  Config_R2_Challenge_StateGraph(); // Manul：1
+  Config_SemiAutoStateGraph();
+  // Config_R2_Challenge_StateGraph(); // Manul：1
 }
 
 /***********    一些不通用的回调函数    ***********/
