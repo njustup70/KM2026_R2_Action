@@ -408,7 +408,7 @@ void Jaw::_GetHoriOrigin()
             // 记录中点偏移
             _hori_origin_code = motor_3508_hori.driver.measure.total_angle;
             // 往回走到中点
-            _x_pos = _hori_origin_code - JawConst::_hori_max_travel_code / 2 - 20000;
+            _x_pos = _hori_origin_code - JawConst::_hori_max_travel_code / 2 - 100000;
             motor_3508_hori.SetPos(_x_pos);
         }
     }

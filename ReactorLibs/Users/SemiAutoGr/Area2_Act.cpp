@@ -342,7 +342,16 @@ void MeiLinArray::Decend_200()
      APP::comm_center.slam_pos.x, APP::comm_center.slam_pos.y);
   
   // 先缓慢向前走
-  APP::chas.Move(Vec2(0.24, 0), 3.0f);
+  APP::chas.Move(Vec2(0.25, 0), 3.0f);
+
+  // 等待小黄0号检测不到后，减速
+  Seq::WaitUntil([&]()
+  {
+    return !APP::leg.detector[0].Read();
+  });
+
+  // 先缓慢向前走
+  APP::chas.Move(Vec2(0.1, 0), 3.0f);
 
   // // 如果要取块，则伸出爪取块
   // // Seq::Wait(0.8f); // 可能要加延时
@@ -393,7 +402,16 @@ void MeiLinArray::Decend_400()
   
   // 先缓慢向前走
   APP::chas.Move(Vec2(0.2, 0), 6.0f);
-  Seq::Wait(0.5f);
+  Seq::Wait(0.25f);
+  
+  // 等待小黄0号检测不到后，减速
+  Seq::WaitUntil([&]()
+  {
+    return !APP::leg.detector[0].Read();
+  });
+
+  // 先缓慢向前走
+  APP::chas.Move(Vec2(0.1, 0), 3.0f);
 
   // 等待小黄1号检测不到后，放下前腿
   Seq::WaitUntil([&]()
