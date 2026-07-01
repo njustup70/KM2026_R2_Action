@@ -14,7 +14,6 @@
 #include "MainLoop.hpp"
 
 /// @brief 所有的路径文件
-// #include "r2_area1_1.hpp"
 #include "ttd_1.hpp"
 #include "ttd_2.hpp"
 #include "ttd_3.hpp"
@@ -592,5 +591,17 @@ void Response_Button()
  
       is_daji_enable = !is_daji_enable;
       last_trigger_time = DWT_GetTimeline_Sec();
+    }
+
+    if(MOD::farcon.button_second_half[4] == 1)
+    {
+      // 抬升达妙
+      APP::get_block.motor_dm_lift.SetPosVel(-760, 15.0f);
+    }
+
+    if(MOD::farcon.button_second_half[5] == 1)
+    {
+      // 放下达妙
+      APP::get_block.motor_dm_lift.SetPosVel(0.0f, 15.0f);
     }
 }

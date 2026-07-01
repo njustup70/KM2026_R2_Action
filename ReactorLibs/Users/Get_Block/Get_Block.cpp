@@ -39,6 +39,7 @@ void GetBlock::Start()
     motor_dm_lift.SetFeedbackRange(3.14159f, 10.0f, 5.0f);
     motor_dm_lift.SetPosLimit(1500.0f, -1500.0f);
     motor_dm_lift.SetVelLimit(15.0f);
+    motor_s2325.SetAutoEnable(true, 1000); // user_want_enable 可禁止重使能
     motor_dm_lift.Enable();
 
     /****  送块 2006 (hcan_main, ID 5) ，送出去是负值，总行程 1780000 ****/
