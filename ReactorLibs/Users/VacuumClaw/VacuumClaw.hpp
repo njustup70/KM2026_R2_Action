@@ -58,6 +58,8 @@ class VacuumClaw : public Application
     void Enable();
     void Disable();
 
+    bool need_to_fetch = false; // 判断是否要伸爪取块
+
 };
 
 namespace APP
