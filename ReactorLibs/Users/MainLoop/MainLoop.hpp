@@ -3,6 +3,8 @@
 #include "PathChaser.hpp"
 #include "Chassis.hpp"
 #include "led_ws2812.hpp"
+#include "IR_TX.hpp"
+#include "IR_RX.hpp"
 
 class MainLoop : public Application
 {
@@ -11,6 +13,12 @@ class MainLoop : public Application
 
     public:
     LedWs2812<13> test_led;
+
+    // 红外收发模块
+    IR_TX ir_tx;                           // 发射
+    IR_RX ir_rx_front;                     // 前向接收
+    IR_RX ir_rx_back;      
+    
     int cnt = 0;
 };
 
