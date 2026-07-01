@@ -3,6 +3,8 @@
 #include "PathChaser.hpp"
 #include "Chassis.hpp"
 #include "led_ws2812.hpp"
+#include "IR_RX.hpp"
+#include "IR_TX.hpp"
 
 class MainLoop : public Application
 {
@@ -12,6 +14,20 @@ class MainLoop : public Application
     public:
     LedWs2812<13> test_led;
     int cnt = 0;
+
+    IR_RX  ir_rx;
+    IR_TX  ir_tx;
+
+    /// @brief 红外发送（带序号日志）
+    void SendIR(uint8_t address, uint8_t command);
+
+private:
+    uint16_t _ir_tx_seq      = 0;   // 发送序号
+    uint16_t _ir_rx_seq      = 0;   // 接收序号
+    uint8_t  _ir_tx_last_addr = 0;  // DMA回调用：最近发送的地址
+    uint8_t  _ir_tx_last_cmd  = 0;  // DMA回调用：最近发送的命令
+
+    static void _IrTxDoneCb(BSP::TIM::TimID tim, BSP::TIM::Channel ch, void *ctx);
 };
 
 namespace APP

@@ -89,7 +89,6 @@ void IR_RX::_ExtiRouter(Pin pin)
     for (uint8_t i = 0; i < _exti_route_count; i++)
     {
         if (_exti_routes[i].used &&
-            _exti_routes[i].pin.port   == pin.port &&
             _exti_routes[i].pin.number == pin.number)
         {
             IR_RX *inst = _exti_routes[i].instance;

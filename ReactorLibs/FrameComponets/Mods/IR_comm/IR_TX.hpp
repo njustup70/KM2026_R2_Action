@@ -92,9 +92,9 @@ private:
     void _BuildFrame(uint8_t address, uint8_t command);
     void _BuildRepeat();
 
-    static void _PulseFinishedCb(BSP::TIM::TimID tim, BSP::TIM::Channel ch, void *ctx);
+    static void _UpdateDmaDoneCb(BSP::TIM::TimID tim, BSP::TIM::Channel ch, void *ctx);
 
-    uint32_t _dma_buf[IRTX_DMA_BUF_SIZE];
+    uint16_t _dma_buf[IRTX_DMA_BUF_SIZE];
     uint16_t _dma_len            = 0;
     bool     _dma_busy           = false;
     bool     _initialized        = false;

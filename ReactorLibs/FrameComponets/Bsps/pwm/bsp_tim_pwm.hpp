@@ -68,6 +68,23 @@ namespace TIM
 
     /// @brief 注销某个 TIM 通道的 PWM DMA完成回调
     void UnRegistPFCb(TimID tim, Channel channel);
+
+    // ==================== 路线 A: Update DMA ====================
+
+    /// @brief 使用 TIM Update 事件触发 DMA 写 CCR (适合 IR_TX 等场景)
+    /// @param buf  16-bit 半字缓冲区，内容即每次更新时写入 CCR 的值
+    /// @param len  半字数量
+    bool StartUpdateDma(TimID tim, Channel channel, const uint16_t* buf, size_t len);
+
+    /// @brief 停止 Update DMA
+    void StopUpdateDma(TimID tim, Channel channel);
+
+    /// @brief 注册 Update DMA 完成回调 (与 RegistPFCb 独立)
+    bool RegistUpdateDmaCb(TimID tim, Channel channel,
+                           PulseFinishedCallback cb, void* user_ctx);
+
+    /// @brief 注销 Update DMA 完成回调
+    void UnRegistUpdateDmaCb(TimID tim, Channel channel);
 }
 }
 

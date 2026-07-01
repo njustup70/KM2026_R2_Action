@@ -208,8 +208,147 @@ namespace TIM
         slot->callback = nullptr;
         slot->user_ctx = nullptr;
     }
+
+    // ==================== Update DMA 回调槽 ====================
+    struct UpdateDmaCallbackSlot
+    {
+        BSP::TIM::TimID tim = nullptr;
+        BSP::TIM::Channel channel = BSP::TIM::CH1;
+        BSP::TIM::PulseFinishedCallback callback = nullptr;
+        void* user_ctx = nullptr;
+    };
+
+    constexpr size_t kMaxUpdateDmaSlots = 8;
+    UpdateDmaCallbackSlot g_update_dma_slots[kMaxUpdateDmaSlots];
+
+    static UpdateDmaCallbackSlot* FindUpdateDmaSlot(BSP::TIM::TimID tim, BSP::TIM::Channel channel)
+    {
+        for (size_t i = 0; i < kMaxUpdateDmaSlots; ++i)
+        {
+            if (g_update_dma_slots[i].tim == tim &&
+                g_update_dma_slots[i].channel == channel)
+            {
+                return &g_update_dma_slots[i];
+            }
+        }
+        return nullptr;
+    }
+
+    /// @brief DMA 完成中断路由器：遍历槽找到对应的 TIM，调用注册的回调
+    static void _UpdateDmaCbRouter(DMA_HandleTypeDef* hdma)
+    {
+        for (size_t i = 0; i < kMaxUpdateDmaSlots; ++i)
+        {
+            if (g_update_dma_slots[i].tim == nullptr) continue;
+            TIM_HandleTypeDef* htim = reinterpret_cast<TIM_HandleTypeDef*>(g_update_dma_slots[i].tim);
+            if (htim->hdma[TIM_DMA_ID_UPDATE] == hdma)
+            {
+                if (g_update_dma_slots[i].callback)
+                    g_update_dma_slots[i].callback(
+                        g_update_dma_slots[i].tim,
+                        g_update_dma_slots[i].channel,
+                        g_update_dma_slots[i].user_ctx);
+                return;
+            }
+        }
+    }
+
+
+bool StartUpdateDma(TimID tim, Channel channel, const uint16_t* buf, size_t len)
+{
+    if (tim == nullptr || channel == 0 || buf == nullptr || len == 0) return false;
+
+#ifdef USE_REAL_HAL
+    TIM_HandleTypeDef* htim = ToHal(tim);
+    if (htim->hdma[TIM_DMA_ID_UPDATE] == nullptr) return false;
+
+    // 1. 启动 PWM 输出（使能 CH3 + CH3N）
+    HAL_TIM_PWM_Start(htim, channel);
+    HAL_TIMEx_PWMN_Start(htim, channel);
+
+    // 2. 注册 DMA 完成回调
+    htim->hdma[TIM_DMA_ID_UPDATE]->XferCpltCallback = _UpdateDmaCbRouter;
+    htim->hdma[TIM_DMA_ID_UPDATE]->XferErrorCallback = _UpdateDmaCbRouter;
+
+    // 3. 启动 DMA
+    HAL_DMA_Start_IT(htim->hdma[TIM_DMA_ID_UPDATE],
+                     (uint32_t)buf,
+                     (uint32_t)&htim->Instance->CCR3,
+                     len);
+
+    // 4. 使能 TIM Update DMA 请求
+    htim->Instance->DIER |= TIM_DIER_UDE;
+
+    return true;
+#else
+    (void)tim; (void)channel; (void)buf; (void)len;
+    return true;
+#endif
 }
+
+void StopUpdateDma(TimID tim, Channel channel)
+{
+    if (tim == nullptr || channel == 0) return;
+
+#ifdef USE_REAL_HAL
+    TIM_HandleTypeDef* htim = ToHal(tim);
+
+    // 1. 关闭 Update DMA 请求
+    htim->Instance->DIER &= ~TIM_DIER_UDE;
+
+    // 2. 停止 DMA 流
+    if (htim->hdma[TIM_DMA_ID_UPDATE])
+    {
+        HAL_DMA_Abort(htim->hdma[TIM_DMA_ID_UPDATE]);
+        htim->hdma[TIM_DMA_ID_UPDATE]->XferCpltCallback = nullptr;
+    }
+
+    // 3. 停止 PWM 输出
+    HAL_TIMEx_PWMN_Stop(htim, channel);
+    HAL_TIM_PWM_Stop(htim, channel);
+#endif
 }
+
+bool RegistUpdateDmaCb(TimID tim, Channel channel,
+                       PulseFinishedCallback cb, void* user_ctx)
+{
+    if (tim == nullptr || channel == 0) return false;
+
+    UpdateDmaCallbackSlot* existed = FindUpdateDmaSlot(tim, channel);
+    if (existed != nullptr)
+    {
+        existed->callback = cb;
+        existed->user_ctx = user_ctx;
+        return true;
+    }
+
+    for (size_t i = 0; i < kMaxUpdateDmaSlots; ++i)
+    {
+        if (g_update_dma_slots[i].tim == nullptr)
+        {
+            g_update_dma_slots[i].tim = tim;
+            g_update_dma_slots[i].channel = channel;
+            g_update_dma_slots[i].callback = cb;
+            g_update_dma_slots[i].user_ctx = user_ctx;
+            return true;
+        }
+    }
+    return false;
+}
+
+void UnRegistUpdateDmaCb(TimID tim, Channel channel)
+{
+    UpdateDmaCallbackSlot* slot = FindUpdateDmaSlot(tim, channel);
+    if (slot == nullptr) return;
+
+    slot->tim = nullptr;
+    slot->channel = BSP::TIM::CH1;
+    slot->callback = nullptr;
+    slot->user_ctx = nullptr;
+}
+
+} // namespace TIM
+} // namespace BSP
 
 extern "C" void HAL_TIM_PWM_PulseFinishedCallback(TIM_HandleTypeDef* htim)
 {
