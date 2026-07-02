@@ -329,5 +329,15 @@ void Response_Button_main()
       // APP::leg.SetFrontPos(-5.0f);
       APP::leg.SetBackPos(-5.0f);
       last_shouhoutui_time = DWT_GetTimeline_Sec();
-    }  
+    }
+
+    if(MOD::farcon.button_first_half[6] == 1)
+    {
+      APP::vac_claw.OpenSnap();
+    }
+
+    if(MOD::farcon.button_first_half[7] == 1)
+    {
+      APP::vac_claw.CloseSnap();
+    }
 }

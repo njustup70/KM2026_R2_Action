@@ -156,20 +156,20 @@ class PathChaserType : public Application
     uint16_t _waypoint_count = 0;
     
     float _kp_pos = 1.5f;              // 时间参考路径的位置误差反馈增益
-    float _kp_yaw = 3.2f;              // 时间参考路径的姿态误差反馈增益
-    float _ff_gain = 1.5f;            // 时间参考路径的前馈增强系数
+    float _kp_yaw = 1.25f;              // 时间参考路径的姿态误差反馈增益
+    float _ff_gain = 0.5f;            // 时间参考路径的前馈增强系数
     float _max_vel = 999.0f;             // 合速度上限，单位m/s
     float _max_omega = 999.0f;           // 角速度上限，单位rad/s
-    float _max_pos_fb = 0.5f;         // 时间参考路径的位置反馈速度上限，单位m/s
-    float _max_yaw_fb = 0.5f;         // 时间参考路径的姿态反馈角速度上限，单位rad/s
-    float _ff_slow_start_err = 0.4f;  // 位置误差超过该值后开始压低前馈
-    float _ff_slow_stop_err = 1.0f;   // 位置误差达到该值后前馈降到最小比例
+    float _max_pos_fb = 0.75f;         // 时间参考路径的位置反馈速度上限，单位m/s
+    float _max_yaw_fb = 1.5f;         // 时间参考路径的姿态反馈角速度上限，单位rad/s
+    float _ff_slow_start_err = 999.9f;  // 位置误差超过该值后开始压低前馈
+    float _ff_slow_stop_err = 9999.9f;   // 位置误差达到该值后前馈降到最小比例
     float _min_ff_scale = 0.20f;       // 误差较大时保留的最小前馈比例
     float _time_end_ff_fade_time = 0.0f; // 时间参考路径末端前馈衰减时间窗，单位s
-    float _time_end_slow_dist = 0.7f; // 时间参考路径末端刹车距离，单位m
-    float _time_end_max_acc = 1.25f;    // 时间参考路径末端刹车限速使用的最大减速度，单位m/s^2
-    float _time_end_min_vel = 0.10f;   // 时间参考路径末端未完成时保留的最低修正速度，单位m/s
-    float _pos_tol = 0.05f;            // 普通跑点位置阈值，单位m
+    float _time_end_slow_dist = 0.68f; // 时间参考路径末端刹车距离，单位m
+    float _time_end_max_acc = 0.85f;    // 时间参考路径末端刹车限速使用的最大减速度，单位m/s^2
+    float _time_end_min_vel = 0.00f;   // 时间参考路径末端未完成时保留的最低修正速度，单位m/s
+    float _pos_tol = 0.01f;            // 普通跑点位置阈值，单位m
     float _yaw_tol = 0.02f;            // 普通跑点姿态阈值，单位rad
     Vec3 _path_default_tolerance = Vec3(0.03f, 0.03f, 0.02f); // 路径默认终点容差(x/y/yaw)，单位m/m/rad
     Vec3 _path_tolerance = Vec3(0.05f, 0.05f, 0.02f); // 当前路径终点容差(x/y/yaw)，单位m/m/rad
@@ -211,13 +211,13 @@ class PathChaserType : public Application
     float _point_remain_dist = 0.0f;
     float _point_yaw_err_abs = 0.0f;
 
-    float _point_kp_pos = 1.25f;          // 普通跑点位置P增益
-    float _point_kp_yaw = 1.25f;          // 普通跑点yaw P增益
-    float _point_max_vel = 1.5f;        // 普通跑点最大平移速度，单位m/s
+    float _point_kp_pos = 2.5f;          // 普通跑点位置P增益
+    float _point_kp_yaw = 1.75f;          // 普通跑点yaw P增益
+    float _point_max_vel = 2.5f;        // 普通跑点最大平移速度，单位m/s
     float _point_min_vel = 0.05f;        // 预留给低层死区补偿的参数；当前普通跑点末端不再用作保底速度
-    float _point_max_omega = 2.7f;      // 普通跑点最大角速度，单位rad/s
-    float _point_min_omega = 0.1f;      // 预留给低层死区补偿的参数；当前普通跑点末端不再用作保底角速度
-    float _point_max_acc = 1.25f;        // 平移速度变化率上限，单位m/s^2
+    float _point_max_omega = 3.14f;      // 普通跑点最大角速度，单位rad/s
+    float _point_min_omega = 0.05f;      // 预留给低层死区补偿的参数；当前普通跑点末端不再用作保底角速度
+    float _point_max_acc = 1.5f;        // 平移速度变化率上限，单位m/s^2
     float _point_max_alpha = 2.5f;      // 角速度变化率上限，单位rad/s^2
     float _point_decel_factor = 0.75f;   // 普通跑点末端刹车保守系数，越小越早收速度
 

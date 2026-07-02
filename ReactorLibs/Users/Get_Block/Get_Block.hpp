@@ -101,6 +101,10 @@ private:
     float _lift_pos_upper = 750.0f;   // 高位（块通过单向门）TODO:标定
     float _lift_vel       = 15.0f;   // 抬升速度 rad/s
 
+    // ==================== DM电机目标值（Update中持续发送） ====================
+    float dm_fric_spd = 0.0f;   // 下摩擦带目标速度
+    float dm_lift_pos  = 0.0f;  // 抬升机构目标位置
+
     // ==================== 送块2006位置常量（需标定） ====================
     float _feed_pos_retract = 0.0f;     // 收回
     float _feed_pos_extend  = 1780000.0f;  // 伸出（上仓块被推出）

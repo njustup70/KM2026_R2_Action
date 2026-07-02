@@ -3,6 +3,7 @@
 #include "motor_dji.hpp"
 #include "motor_dm.hpp"
 #include "relay.hpp"
+#include "infrared_detector.hpp"
 
 class VacuumClaw : public Application
 {
@@ -23,7 +24,7 @@ private:
     /***** 内部维护的状态值 *****/
     float stretch_pos = 0.0f;   // 
     float snap_pos = 0.0f;      // 
-    float pitch_pos = 0.0f;     // 
+    float pitch_pos = 1.6f;     // 
     bool enabled = false;
 
     bool is_debug = false; // 用于快速debug
@@ -47,6 +48,11 @@ public:
 
     /// @brief 用于翻转物块的电机
     MotorDM motor_pitch;
+
+    // 调零的小黄
+    InfraredDetector clawzero_detector;
+    // bool clawzero_detected = false;
+
     /**
      * @brief 伸出夹爪，保持开启状态
      * @details 水平快速伸出，同时Pitch变为水平状态，用于夹取的snap电机打开
