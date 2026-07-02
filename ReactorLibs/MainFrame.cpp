@@ -109,16 +109,72 @@ void Action_of_Dege_Fetch_UP200(StateCore *core)
     Response_Button_main();
     Seq::Wait(0.01f);
   }  
-
+  
   Area2::mei_lin_array.FetchBlock(BlockHeight::UP200);
 
-  Area2::mei_lin_array.Climb_Up200();
+  // Area2::block_pos.GetIn(1);
+  // Area2::mei_lin_array.Climb_Up200();
 
   while(MOD::farcon.button_second_half[0] != 1)
   {
     Response_Button_main();
     Seq::Wait(0.01f);
   }  
+  // Area2::mei_lin_array.FetchBlock(BlockHeight::UP200);
+
+  // Area2::mei_lin_array.Climb_Up200();
+
+  // while(MOD::farcon.button_second_half[0] != 1)
+  // {
+  //   Response_Button_main();
+  //   Seq::Wait(0.01f);
+  // }   
+  
+  // Area2::mei_lin_array.Climb_Up200();
+
+  // while(MOD::farcon.button_second_half[0] != 1)
+  // {
+  //   Response_Button_main();
+  //   Seq::Wait(0.01f);
+  // } 
+
+  // Area2::mei_lin_array.FetchBlock(BlockHeight::UP200);  
+
+  // Area2::mei_lin_array.Climb_Up200();
+
+  // // while(MOD::farcon.button_second_half[0] != 1)
+  // // {
+  // //   Response_Button_main();
+  // //   Seq::Wait(0.01f);
+  // // }   
+
+  // Area2::mei_lin_array.Decend_200();
+
+  // // Area2::mei_lin_array.FetchBlock(BlockHeight::DOWN200);
+
+  // // while(MOD::farcon.button_second_half[0] != 1)
+  // // {
+  // //   Response_Button_main();
+  // //   Seq::Wait(0.01f);
+  // // }  
+  
+  // Area2::mei_lin_array.Decend_400();
+
+  // while(MOD::farcon.button_second_half[0] != 1)
+  // {
+  //   Response_Button_main();
+  //   Seq::Wait(0.01f);
+  // }    
+
+  // APP::get_block.Put();
+
+  // while(MOD::farcon.button_second_half[0] != 1)
+  // {
+  //   Response_Button_main();
+  //   Seq::Wait(0.01f);
+  // }    
+
+  // APP::get_block.Put();  
 
     core->GetCurState().Complete = true;
 }
@@ -176,6 +232,9 @@ void MainFrameCpp()
 
 }
 
+
+const static float max_farcon_alpha = 1.8f; // 最大加速度 m/s^2
+const static float max_farcon_beta = 1.8f; // 最大角加速度 rad/s^2
 /***********    一些不通用的回调函数    ***********/
 void Response_Button_main()
 {
@@ -186,7 +245,7 @@ void Response_Button_main()
     }
     else if(MOD::farcon.toggle[2] == 1)
     {
-      max_velo = 5.0f;
+      max_velo = 0.5f;
     }
 
     // 计算遥控器死区：0-15不算，将15-100映射到原来的0.0-1.0
@@ -197,11 +256,35 @@ void Response_Button_main()
       return (v > 0 ? 1.0f : -1.0f) * ((a - deadzone) / (100.0f - deadzone));
     };
 
+    // 计算目标速度（摇杆直接映射到的期望速度）
+    Vec3 target_vel;
+    target_vel.x = -map_axis(MOD::farcon.jys_value[3]) * max_velo;
+    target_vel.y = -map_axis(MOD::farcon.jys_value[2]) * max_velo;
+    target_vel.z = -map_axis(MOD::farcon.jys_value[0]) * max_velo;
+
+    // 加速度限制：平滑过渡到目标速度
+    static Vec3 last_vel(0, 0, 0);
+    static float last_accel_time = DWT_GetTimeline_Sec();
+
+    float now = DWT_GetTimeline_Sec();
+    float dt = now - last_accel_time;
+    // 限制最大 dt，防止长时间阻塞后速度跳变
+    if (dt > 0.05f) dt = 0.05f;
+    if (dt < 0.0f)  dt = 0.0f;  // 防止时间回绕
+    last_accel_time = now;
+
+    // 限幅函数
+    auto limit_delta = [](float delta, float max_delta) -> float {
+        if (delta > max_delta) return max_delta;
+        if (delta < -max_delta) return -max_delta;
+        return delta;
+    };
+
     Vec3 vel;
-    // 计算速度
-    vel.x = -map_axis(MOD::farcon.jys_value[3]) * max_velo; // 最大速度0.5m/s
-    vel.y = -map_axis(MOD::farcon.jys_value[2]) * max_velo; // 最大速度0.5m/s
-    vel.z = -map_axis(MOD::farcon.jys_value[0]) * max_velo; // 最大角速度1.0rad/s
+    vel.x = last_vel.x + limit_delta(target_vel.x - last_vel.x, max_farcon_alpha * dt);
+    vel.y = last_vel.y + limit_delta(target_vel.y - last_vel.y, max_farcon_alpha * dt);
+    vel.z = last_vel.z + limit_delta(target_vel.z - last_vel.z, max_farcon_beta  * dt);
+    last_vel = vel;
 
     if (vel.Length() > 0.03f)
     {
@@ -290,35 +373,35 @@ void Response_Button_main()
 
     // 处理放块
     static float last_put_time = 0;
-    // if(MOD::farcon.button_second_half[4] == 1 && DWT_GetTimeline_Sec() - last_put_time > 1.0f)
-    // {
-    //   static bool is_put = false;
-    //   if(!is_put)
-    //   {
-    //     APP::get_block.motor_2006_feed.SetPos(-1780000.0f);
-    //     is_put = true;
-    //   }
-    //   else
-    //   {
-    //     APP::get_block.motor_2006_feed.SetPos(-100.0f);
-    //     is_put = false;
-    //   }
-    //   last_put_time = DWT_GetTimeline_Sec();
-    // }    
+    if(MOD::farcon.button_second_half[4] == 1 && DWT_GetTimeline_Sec() - last_put_time > 1.0f)
+    {
+      static bool is_put = false;
+      if(!is_put)
+      {
+        APP::get_block.motor_2006_feed.SetPos(-1780000.0f);
+        is_put = true;
+      }
+      else
+      {
+        APP::get_block.motor_2006_feed.SetPos(-10000.0f);
+        is_put = false;
+      }
+      last_put_time = DWT_GetTimeline_Sec();
+    }    
 
     // 同时放低前后腿，准备登R1
     static float last_taitui_time = 0;
     if(MOD::farcon.button_first_half[0] == 1 && DWT_GetTimeline_Sec() - last_taitui_time > 1.0f)
     {
-      APP::leg.SetFrontPos(-380.0f);
-      APP::leg.SetBackPos(-380.0f);
+      APP::leg.SetFrontPos(-400.0f);
+      APP::leg.SetBackPos(-400.0f);
       last_taitui_time = DWT_GetTimeline_Sec();
     }
 
     static float last_shouqiantui_time = 0;
     if(MOD::farcon.button_first_half[1] == 1 && DWT_GetTimeline_Sec() - last_shouqiantui_time > 1.0f)
     {
-      APP::leg.SetFrontPos(-5.0f);
+      APP::leg.SetFrontPos(-10.0f);
       // APP::leg.SetBackPos(-380.0f);
       last_shouqiantui_time = DWT_GetTimeline_Sec();
     }  
@@ -327,7 +410,7 @@ void Response_Button_main()
     if(MOD::farcon.button_first_half[2] == 1 && DWT_GetTimeline_Sec() - last_shouhoutui_time > 1.0f)
     {
       // APP::leg.SetFrontPos(-5.0f);
-      APP::leg.SetBackPos(-5.0f);
+      APP::leg.SetBackPos(-10.0f);
       last_shouhoutui_time = DWT_GetTimeline_Sec();
     }
 
@@ -339,5 +422,37 @@ void Response_Button_main()
     if(MOD::farcon.button_first_half[7] == 1)
     {
       APP::vac_claw.CloseSnap();
+    }
+
+    // 处理梅林的上下
+    if(MOD::farcon.button_middle[0][0] == 1) // KFS0
+    {
+      Area2::mei_lin_array.Climb_Up200();
+    }
+    if(MOD::farcon.button_middle[0][1] == 1) // KFS1
+    {
+      Area2::mei_lin_array.Decend_200();
+    }
+    if(MOD::farcon.button_middle[0][2] == 1) // KFS2
+    {
+      Area2::mei_lin_array.Climb_Up400();
+    }
+    if(MOD::farcon.button_middle[1][0] == 1) // KFS3
+    {
+      Area2::mei_lin_array.Decend_400();
+    }
+    if(MOD::farcon.button_middle[1][1])
+    {
+      Area2::mei_lin_array.TurnLeft();
+    }
+    if(MOD::farcon.button_middle[1][2])
+    {
+      Area2::mei_lin_array.TurnRight();
+    }
+
+    // 进行梅林上的位置闭环
+    if(MOD::farcon.button_first_half[4] == 1)
+    {
+      Area2::mei_lin_array.ChaseCurrentGrid();
     }
 }
