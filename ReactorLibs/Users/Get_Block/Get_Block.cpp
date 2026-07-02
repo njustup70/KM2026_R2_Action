@@ -57,12 +57,8 @@ void GetBlock::Start()
     motor_2006_feed.SetDt(0.002);
 
     /****  两个传感器（下仓、上仓） ****/
-    _pin_sensor[0] = PIN_SENSOR_LOWER;
-    _pin_sensor[1] = PIN_SENSOR_UPPER;
-    for (int i = 0; i < 2; i++)
-    {
-        _sensor[i].Init(_pin_sensor[i]);
-    }
+    _sensor[0].Init(PIN_SENSOR_LOWER);
+    _sensor[1].Init(PIN_SENSOR_UPPER);
 
     /****  负压泵 ****/
     pin_pump = PIN_PUMP;
@@ -101,38 +97,6 @@ void GetBlock::Update()
     }
 
     _ReadSensors();
-
-    // if(is_debug)
-    // {
-    //     // motor_dm_lift.SetPosVel(-_lift_targ_pos, _lift_vel);
-    //     // motor_2006_feed.SetPos(-_feed_pos_extend);
-    //     relay_pump.On();
-
-    // }
-    // else
-    // {
-    //     relay_pump.Off();     
-    // }
-
-    // if(_belt_enable)
-    // {
-    //     _StartBelt();
-    // }
-    // else
-    // {
-    //     _StopBelt();
-    // }
-
-    // if(_store_debug)
-    // {
-    //     _store_debug = false;
-    //     Store();
-    // }
-    // if(_put_debug)
-    // {
-    //     _put_debug = false;
-    //     Put();
-    // }
 
     _UpdateFSM();
 }
