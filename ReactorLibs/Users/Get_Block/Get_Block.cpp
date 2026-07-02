@@ -3,10 +3,10 @@
 GetBlock& APP::get_block = GetBlock::GetInstance();
 
 // ==================== 超时间隔 ====================
-static constexpr float T_BELT = 8.0f;
-static constexpr float T_LIFT = 5.0f;
+static constexpr float T_BELT = 20.0f;
+static constexpr float T_LIFT = 3.5f; // 摩擦带上下的时间
 static constexpr float T_LIFT_SETTLE = 2.0f;    // 传感器触发后等待抬升到位的短超时
-static constexpr float T_LIFT_BEFORE_BELT = 2.0f; // 取块1时抬升先走一段再转摩擦带
+static constexpr float T_LIFT_BEFORE_BELT = 6.0f; // 取块1时抬升先走一段再转摩擦带
 static constexpr float T_FEED = 10.0f;
 static constexpr float BELT_RPM    = 15.0f;
 static constexpr float DM_BELT_VEL = 15.0f;
@@ -101,8 +101,15 @@ void GetBlock::Update()
 
     _ReadSensors();
 
-    motor_s2325.SetVel(dm_fric_spd);
-    motor_dm_lift.SetPosVel(dm_lift_pos, _lift_vel);
+    static int damiao_cnt = 0;
+    damiao_cnt++;
+    if (damiao_cnt >= 4)
+    {
+        motor_s2325.SetVel(dm_fric_spd);
+        motor_dm_lift.SetPosVel(dm_lift_pos, _lift_vel);
+        damiao_cnt = 0;
+    }
+    
     
     _UpdateFSM();
 }
@@ -258,6 +265,33 @@ void GetBlock::_UpdateFSM()
 {
     if (!_fsm_busy) return;
 
+    // ===== 状态变化日志 =====
+    static FSM _last_fsm = FSM::IDLE;
+    if (_fsm != _last_fsm)
+    {
+        _last_fsm = _fsm;
+        static const char* _state_name[] = {
+            "IDLE",                // 0
+            "STORE_LIFT_BEFORE_BELT", // 1
+            "STORE_LIFT_DOWN_TO_PICK",// 2
+            "STORE_BELT_IN",       // 3
+            "STORE_LIFT_UP",       // 4
+            "STORE_WAIT_SECOND",   // 5
+            "STORE_HOLD_PUT",      // 6
+            "STORE_LIFT_DOWN",     // 7
+            "STORE_LIFT_BOTTOM",   // 8
+            "PUT_FEED_PUSH",       // 9
+            "PUT_FEED_RETRACT",    // 10
+            "PUT_LIFT_UP",         // 11
+            "PUT_LIFT_DOWN",       // 12
+            "COMPLETE",            // 13
+            "ABORT",               // 14
+        };
+        int idx = (int)_fsm;
+        if (idx >= 0 && idx < 15)
+            APP::monit.LogInfo("[GetBlock] FSM >>> %s", _state_name[idx]);
+    }
+
     switch (_fsm)
     {
     // ═══════════════════ 存块: 入料 ═══════════════════
@@ -403,7 +437,7 @@ void GetBlock::_UpdateFSM()
         dm_lift_pos = -_lift_pos_lower;
 
         // 上仓传感器不再检测到块（块已随挡片下移离开），或超时兜底
-        if (!_grid[1] || _IsTimeout(T_LIFT))
+        if (!_grid[1] && _IsTimeout(T_LIFT))
         {
             _action_tick = System.runtime_tick;
             _fsm = FSM::STORE_LIFT_BOTTOM;
