@@ -28,6 +28,10 @@ enum : uint8_t
   FETCH_DOWN200 = 0x6C,
   AREA_DONE = 0x6E,
   ACK_DONE = 0x6F,
+  FETCH_LEFT_UP_200 = 0x70,
+  FETCH_LEFT_DOWN_200 = 0x71,
+  FETCH_RIGHT_UP_200 = 0x72,
+  FETCH_RIGHT_DOWN_200 = 0x73,  
 };
 }
 
@@ -61,9 +65,18 @@ public:
 
   void Decend_400();
 
+  void FetchSideBlock();
+
   void FetchBlock(BlockHeight height);
 
   void TurnRelative(float delta_rad);
+
+  void TurnLeft();
+
+  void TurnRight();
+
+  /// @brief 根据当前坐标判断在哪个梅林块上，并导航到该块中心
+  void ChaseCurrentGrid();
 
   static void Area2ActRxCallback(uint8_t func_code, const uint8_t *payload, uint8_t payload_len, void *user_ctx);
 
@@ -76,7 +89,28 @@ private:
   bool _skip_approach = false; // 是否跳过接近动作
 };
 
+class MeiLin_BlockPos
+{
+  SINGLETON(MeiLin_BlockPos);
+public:
+  void GetIn(int block_id);
+  void Forward(); // 内部根据逻辑更新_cur_block_id
+  // void Backward(); // 应该不存在后退的情况
+  void TurnLeft(); 
+  void TurnRight();
+  uint8_t GetCurId(); // 获取当前梅林ID，供外部进行姿态校准
+  float GetTargetYaw();
+
+private:
+  uint8_t _forward = 0;
+  uint8_t _left = 0;
+  bool _first_move = true;  // ← 首次 Forward 只落位不前进
+  uint8_t _cur_block_id = 0; // 当前所在的梅林块编号
+  // uint8_t _cur_block_id[3][4];
+};
+
 namespace Area2
 {
 extern MeiLinArray &mei_lin_array;
+extern MeiLin_BlockPos &block_pos;
 }
