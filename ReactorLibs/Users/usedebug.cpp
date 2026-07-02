@@ -11,6 +11,7 @@
 #include "InterBoardComm.hpp"
 #include "VacuumClaw.hpp"
 #include "MainLoop.hpp"
+#include "Area2_Act.hpp"
 
 HostPC& host_pc_debug = HostPC::GetInstance();
 Farcon& farcon_debug = Farcon::GetInstance();
@@ -25,3 +26,5 @@ StateCore& state_core_debug = StateCore::GetInstance();
 BoardComm& board_can_debug = BoardComm::GetInstance();
 VacuumClaw& vac_claw_debug = VacuumClaw::GetInstance();
 MainLoop& main_loop_debug = MainLoop::GetInstance();
+MeiLin_BlockPos& block_pos_debug = MeiLin_BlockPos::GetInstance();
+MeiLinArray& mei_lin_array_debug = MeiLinArray::GetInstance();
