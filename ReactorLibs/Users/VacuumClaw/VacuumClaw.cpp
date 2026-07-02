@@ -29,8 +29,8 @@ void VacuumClaw::Start()
         .ADRC_Womega(42.0f, 9.6f)
         .ADRC_Physic(9.0e-5f, 0.30f, 0.005f)
         .ADRC_Limit(15.0f)
-        .SpdLimit(1500.0f)
-        .ADRC_MaxPlannedVel(1000.0f)
+        .SpdLimit(2000.0f)
+        .ADRC_MaxPlannedVel(1800.0f)
         .ADRC_SOTF(0.0067f)
         .Apply();
     motor_snap.driver.Enable();
@@ -120,7 +120,39 @@ void VacuumClaw::StretchOut()
     // 等爪子pitch竖直
     Seq::Wait(1.5f);
 
-    // 伸出
+    // // 伸出
+    // stretch_pos = 252000;
+
+    // 第一阶段：快速伸到 20000
+    stretch_pos = 180000;
+    Seq::Wait(0.3f);
+
+    // 第二阶段：梯形缓慢伸出到 252000
+    constexpr float target_pos = 252000.0f;
+    constexpr float step_size  = 2800.0f;   // 每步增量
+    constexpr float step_dt    = 0.1f;       // 每步间隔
+
+    for (float pos = 180000.0f + step_size; pos < target_pos; pos += step_size)
+    {
+        stretch_pos = pos;
+        Seq::Wait(step_dt);
+    }
+    stretch_pos = target_pos;
+}
+
+// 取块第一步，先伸出一点，可以定心
+void VacuumClaw::StretchOut_First()
+{
+    // pitch 竖直
+    pitch_pos = 0.0f;
+    motor_pitch.SetPosVel(-pitch_pos, 1.5);    
+
+    stretch_pos = 150000;
+}
+
+// 取块第二步，开泵了，继续伸出剩下部分
+void VacuumClaw::StretchOut_Second()
+{
     stretch_pos = 252000;
 }
 
@@ -130,7 +162,7 @@ void VacuumClaw::StretchBack()
     motor_pitch.SetPosVel(-pitch_pos, 1.5);
 
     // 等物块被翻转过来
-    Seq::Wait(1.5f);
+    Seq::Wait(2.4f);
 
     // 收回
     stretch_pos = 1000.0; // 防堵转，给个略大于0的值
@@ -154,10 +186,18 @@ void VacuumClaw::OpenSnap()
         APP::monit.LogWarning("Unorigined snapclaw!");
 }
 
+void VacuumClaw::OpenSnapMini()
+{
+    if (_snap_origined) 
+        snap_pos = _snap_origin_code + 180000; // 这是合上爪子后，为了能吸住物块，微微张开爪子让车往前走一小段彻底吸住物块
+    else
+        APP::monit.LogWarning("Unorigined snapclaw!");   
+}
+
 void VacuumClaw::CloseSnap()
 {
     if (_snap_origined)
-        snap_pos = _snap_origin_code + 200000;
+        snap_pos = _snap_origin_code + 185000;
     else
         APP::monit.LogWarning("Unorigined snapclaw!");
 }

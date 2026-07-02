@@ -65,7 +65,14 @@ public:
      */
     void StretchBack();
 
+    // 取块第一步，先伸出一点，可以定心
+    void StretchOut_First();
+    // 取块第二步，开泵了，继续伸出剩下部分
+    void StretchOut_Second();
+
     void OpenSnap();
+
+    void OpenSnapMini();
 
     void CloseSnap();
     
