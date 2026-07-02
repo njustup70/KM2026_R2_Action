@@ -303,6 +303,7 @@ void GetBlock::_UpdateFSM()
         {
             _StopBelt();
             _lower = true;
+            ClosePRV();
 
             if (_storing_b2)
             {
