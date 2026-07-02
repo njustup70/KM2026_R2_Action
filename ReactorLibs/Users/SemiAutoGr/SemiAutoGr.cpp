@@ -285,7 +285,7 @@ void Walk_into_Area3(StateCore *core)
   }
 
   // 跑到中间的格子放
-  MOVE::MoveToTargPos(A3_To_Arena2);
+  // MOVE::MoveToTargPos(A3_To_Arena2);
 
   // 等待遥控器指令，然后才进入下一步
   while(MOD::farcon.button_second_half[0] != 1)

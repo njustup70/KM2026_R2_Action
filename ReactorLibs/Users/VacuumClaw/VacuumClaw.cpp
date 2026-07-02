@@ -19,10 +19,10 @@ void VacuumClaw::Start()
         .SpdLimit(1000.0f)
         .ADRC_MaxPlannedVel(800.0f)
         .ADRC_SOTF(0.12f)
+        .SetDt(0.002f)
         .Apply();
     motor_stretch.driver.Enable();
-    motor_stretch.SetDt(0.002);
-
+    
     // ADRC控制
     motor_snap.ConfigADRC()
         .AsPosC()
@@ -42,6 +42,13 @@ void VacuumClaw::Start()
     motor_pitch.SetPosLimit(pitch_lim_max, pitch_lim_min);
     motor_pitch.SetVelLimit(5.0f);
     motor_pitch.Enable();
+
+    Pin clawzero_ir = {'E', 12};
+    // 调零的小黄
+    clawzero_detector.Init(clawzero_ir);
+
+    // 达妙初始为竖直
+    pitch_pos = 1.6f;
 
     // Seq::Wait(1.0f);
     // motor_pitch.SetZeroPosi();
@@ -63,26 +70,26 @@ void VacuumClaw::Update()
     motor_stretch.SetPos(stretch_pos); // 伸出为正
     motor_snap.SetPos(snap_pos); // 张开为负
 
-    // if(!_snap_origined)
-    // {
-    //     _GetClawOrigin();
-    // }
-    
-    // 第一次 update 的时候达妙设置一次零点
-    if(set_damiao_zero)
+    if(!_snap_origined)
     {
-        set_damiao_zero = false;
-        motor_pitch.SetPosVel(0.0f, 1.5);
+        if (!motor_snap.driver.online)
+        {
+            if (motor_snap.driver.enabled)
+            {
+                APP::monit.LogError("Dangerous to turn on claw later!");
+                motor_snap.driver.Disable();
+            }
+            else return;
+        }
+        _GetClawOrigin();
     }
 
     static int damiao_cnt = 0;
     damiao_cnt++;
+    if(damiao_cnt >= 4)
     {
-        if(damiao_cnt >= 4)
-        {
-            damiao_cnt = 0;
-            motor_pitch.SetPosVel(-pitch_pos, 1.5);
-        }
+        damiao_cnt = 0;
+        motor_pitch.SetPosVel(-pitch_pos, 1.5);
     }
 
     if(is_out_debug)
@@ -141,45 +148,53 @@ void VacuumClaw::Disable()
 
 void VacuumClaw::OpenSnap()
 {
-    snap_pos = 1000.0f; // 留点余量
+    if (_snap_origined) 
+        snap_pos = _snap_origin_code - 102000; // 留点余量
+    else
+        APP::monit.LogWarning("Unorigined snapclaw!");
 }
 
 void VacuumClaw::CloseSnap()
 {
-    snap_pos = 279500.0f; // 留点余量
+    if (_snap_origined)
+        snap_pos = _snap_origin_code + 200000;
+    else
+        APP::monit.LogWarning("Unorigined snapclaw!");
 }
 
-// void VacuumClaw::_GetClawOrigin()
-// {
-//     static uint32_t runed_tick = 0;  
-//     static int32_t snap_probe_code = 0;
-//     static int32_t snap_probe_cnt = 0;
-//     runed_tick++;
+void VacuumClaw::_GetClawOrigin()
+{
+    static uint32_t runed_tick = 0;  
+    static int32_t snap_probe_code = 0;
+    static int32_t snap_probe_cnt = 0;
+    runed_tick++;
 
-//     // 对于竖直方向的电机，让他慢慢撞向右边的限位（PosCode增大的方向）
-//     motor_snap.SetPos(-snap_probe_code);
+    // 对于竖直方向的电机，让他慢慢撞向右边的限位（PosCode增大的方向）
+    motor_snap.SetPos(snap_probe_code);
 
-//     // 如果撞到限位了（用eso的扰动观测来确定），连续5个Tick，就停止
-//     if (fabs(motor_snap.motor_adrc.eso.z3) > 2000 && runed_tick > 30) // 注意正负号！
-//     {
-//         snap_probe_cnt++;
-//         if (snap_probe_cnt >= 10)
-//         {
-//             // 完成零位校准
-//             _snap_origined = true;
-//             // 记录中点偏移
-//             _snap_origin_code = motor_snap.driver.measure.total_angle;
-//             // 往回一点点，防止卡住影响其他轴
-//             snap_pos = _snap_origin_code + 150000;
-//             motor_snap.SetPos(snap_pos);
-//         }
-//     }
-//     else
-//     {
-//         snap_probe_cnt = 0;
-//         // 每周期（5ms）加 20 Code，每秒加 4000 Code
-//         if (runed_tick > 30)    snap_probe_code -= 80;
-//         // 但是最开始缓慢前进，目的是破除静态库伦摩擦力
-//         else                    snap_probe_code -= 15;
-//     }   
-// }
+    // 如果被小黄看到了，连续5个Tick，就停止
+    if (clawzero_detector.Read() && runed_tick > 30) // 注意正负号！
+    {
+        snap_probe_cnt++;
+        if (snap_probe_cnt >= 10)
+        {
+            // 完成零位校准
+            _snap_origined = true;
+
+            // 记录中点偏移
+            _snap_origin_code = motor_snap.driver.measure.total_angle;
+
+            // 走到最大位置
+            snap_pos = _snap_origin_code - 102000;
+            motor_snap.SetPos(snap_pos);
+        }
+    }
+    else
+    {
+        snap_probe_cnt = 0;
+        // 每周期（5ms）加 20 Code，每秒加 4000 Code
+        if (runed_tick > 30)    snap_probe_code += 80;
+        // 但是最开始缓慢前进，目的是破除静态库伦摩擦力
+        else                    snap_probe_code += 15;
+    }
+}

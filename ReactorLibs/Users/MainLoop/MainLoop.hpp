@@ -17,6 +17,9 @@ class MainLoop : public Application
     InfraredDetector spear_detector;
     bool spear_detected = false;
 
+    
+    
+
     int cnt = 0;
 };
 
