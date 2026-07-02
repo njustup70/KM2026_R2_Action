@@ -63,7 +63,6 @@ void Waiting_for_Start(StateCore *core)
 {
   APP::jaw.CloseClaw();
   APP::monit.LogInfo("Waiting for start...");
-  // APP::main_loop.test_led.GradientFlow(Color::Up_Purpor * 0.6f, Color::Up_Yellow * 0.6f, 1.0f);
   APP::main_loop.test_led.Breath(Color::White, 4.0f);
 
   // 等待遥控器指令，然后才进入下一步
@@ -73,7 +72,6 @@ void Waiting_for_Start(StateCore *core)
     Seq::Wait(0.01f);
   }
 
-  // APP::main_loop.test_led.GradientFlow(Color::Up_Purpor * 0.3f, Color::Up_Yellow * 0.3f, 1.0f);
   APP::main_loop.test_led.Running(Color::White, 0.3f, 2.0f);
 
   // 取矛头先初始化
@@ -118,18 +116,10 @@ void Walk_Fetch(StateCore *core)
 {
   APP::leg.SetFrontPos(-10);
   APP::leg.SetBackPos(-10);
-
   APP::main_loop.test_led.GradientFlow(Color::Up_Purpor * 0.65f, Color::Up_Yellow * 0.65f, 1.0f);
 
-  // 目前暂时只写了第二（序号1）个和第三个（序号2）
+  // 取矛头
   FetchSpear_FromOrigin(2);
-
-  // 等待遥控器的出发指令
-  // while(MOD::farcon.button_second_half[0] != 1)
-  // {
-  //   Response_Button();
-  //   Seq::Wait(0.01f);
-  // }
 
   core->GetCurState().Complete = true;
 }
@@ -142,23 +132,13 @@ void Walk_Fetch(StateCore *core)
 void Walk_To_Dock(StateCore *core)
 {
   // 先向前走一点
-  // APP::chas.Move(Vec3(2.0f, 0, 0), 0.5f);
-  // Seq::Wait(0.25f);
 
   // 走到对接点
   MOVE::MoveToTargPos(TTD_3);
 
   // 进入对接模式
   APP::jaw.SetTrackMode(true);
-
-  // Seq::WaitUntil()
-
-  // 等待遥控器指令，然后才进入下一个状态
-  // Seq::WaitUntil([]()
-  // {
-  //   return MOD::farcon.button_first_half[0] == 1;
-  // });
-  APP::main_loop.test_led.Breath(Color::Blue, 2.4f);
+  APP::main_loop.test_led.Breath(Color::Up_Purpor, 2.4f);
 
   while(MOD::farcon.button_second_half[0] != 1)
   {
@@ -188,16 +168,9 @@ void Walk_To_Dock(StateCore *core)
  * @param core 
  */
 void Walk_into_Area2(StateCore *core)
-{
-  // if (!MOVE::MoveToTargPos(A12_2))
-  // {
-  //   APP::monit.LogError("[SemiAuto] Walk_into_Area2: path rejected.");
-  //   Seq::Wait(3600.0f);
-  //   return;
-  // }
-  MOVE::MoveToTargGes(Vec3(2.5f, 3.0f, 0.0f));
+{ 
+  MOVE::MoveToTargGes(Vec3(2.4f, 3.0f, 0.0f));
   // 此时走到了梅林跟前
-
 
   // 等待遥控器指令，然后才进入下一步
   while(MOD::farcon.button_second_half[0] != 1)
@@ -249,8 +222,9 @@ void Walk_into_Area2(StateCore *core)
 
   // 避免西克打出去了
   Seq::Wait(3.00f);
-  APP::comm_center.SlamCorrection();
+  // APP::comm_center.SlamCorrection();
   Seq::Wait(3.00f);
+
   APP::monit.LogInfo("Pos corrected: (%.3f, %.3f, %.3f)",
   System.position.x, System.position.y, System.position.z);
 
@@ -300,7 +274,7 @@ void Walk_into_Area3(StateCore *core)
     Seq::Wait(0.01f);
   }
 
-  // 等待下一个指令
+  // 跑上三区的平台
   MOVE::MoveToTargGes(Vec3(11.45f, 0.77f, 0.0f));
 
   // 等待遥控器指令，然后才进入下一步
@@ -310,8 +284,8 @@ void Walk_into_Area3(StateCore *core)
     Seq::Wait(0.01f);
   }
 
-  // 等待下一个指令
-  MOVE::MoveToTargGes(Vec3(10.75f, 5.4f, 1.57f));
+  // 跑到中间的格子放
+  MOVE::MoveToTargPos(A3_To_Arena2);
 
   // 等待遥控器指令，然后才进入下一步
   while(MOD::farcon.button_second_half[0] != 1)
@@ -324,6 +298,8 @@ void Walk_into_Area3(StateCore *core)
   APP::leg.B_Down_400();
   APP::leg.F_Down_400();
 
+  Seq::Wait(5.0f);
+
   // 等待遥控器指令，然后才进入下一步
   while(MOD::farcon.button_second_half[0] != 1)
   {
@@ -332,6 +308,8 @@ void Walk_into_Area3(StateCore *core)
   }
 
   APP::get_block.Put();
+
+  Seq::Wait(999.9f);
 }
 
 
@@ -361,16 +339,8 @@ static void Response_Button()
     vel.y = -map_axis(MOD::farcon.jys_value[2]) * max_velo; // 最大速度0.5m/s
     vel.z = -map_axis(MOD::farcon.jys_value[0]) * max_velo; // 最大角速度1.0rad/s
 
-    if (vel.Length() > 0.03f)
-    {
-      // 向底盘发送移动指令
-      APP::chas.Move(vel, 0.2f);
-    }
-    else
-    {
-      // 如果摇杆没有动作，则发送零速度指令
-      APP::chas.Move(Vec3(0, 0, 0), 0.2f);
-    }
+    // 向底盘发送移动指令
+    APP::chas.Move(vel, 0.2f);
 
     static float last_trigger_time = 0;
     if(MOD::farcon.button_second_half[7] == 1 && DWT_GetTimeline_Sec() - last_trigger_time > 1.0f)
@@ -388,5 +358,17 @@ static void Response_Button()
  
       is_daji_enable = !is_daji_enable;
       last_trigger_time = DWT_GetTimeline_Sec();
+    }
+
+    if(MOD::farcon.button_second_half[4] == 1)
+    {
+      // 抬升达妙，向上为负
+      APP::get_block.motor_dm_lift.SetPosVel(-750, 15.0f);
+    }
+
+    if(MOD::farcon.button_second_half[5] == 1)
+    {
+      // 放下达妙
+      APP::get_block.motor_dm_lift.SetPosVel(0.0f, 15.0f);
     }
 }
