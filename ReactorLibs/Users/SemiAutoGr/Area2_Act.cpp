@@ -236,6 +236,80 @@ void MeiLinArray::FetchSideBlock()
   // 判断取 上200 的 还是 下200 的
 }
 
+// /// @brief 伸爪取块
+// /// @param 
+// void MeiLinArray::FetchBlock(BlockHeight height)
+// {
+//   switch (height)
+//   {
+//     case BlockHeight::UP200:
+//       FetchUp200();
+//     break;
+
+//     case BlockHeight::UP400:
+//       FetchUp400();
+//     break;
+
+//     case BlockHeight::DOWN200:
+//       FetchDown200();
+//     break;
+
+//     default:
+//       APP::monit.LogError("Unamed BlockHeight");
+//     break;
+//   }
+
+//   _skip_approach = true; // 已经靠上去了，标记跳过下一次 Climb 的重复抵靠动作
+  
+//   // // 等稳定
+//   // Seq::Wait(0.5f);
+//   // APP::chas.Move(Vec2(0.2,0), 2.0f);
+//   // Seq::Wait(1.0f);
+
+//   // 抬升先上去
+//   APP::get_block.dm_lift_pos = -750.0f;
+
+//   // 先开爪
+//   APP::vac_claw.OpenSnap();
+//   Seq::Wait(0.4f);
+
+//   // 再伸出
+//   APP::vac_claw.StretchOut();
+
+//   // 等待伸出完成后，闭上爪
+//   Seq::Wait(1.2f);
+//   APP::vac_claw.CloseSnap();
+
+//   // 微微张开爪子
+//   APP::vac_claw.OpenSnapMini();
+//   // 往前慢慢走一些
+//   APP::chas.Move(Vec2(0.1, 0), 0.25f);
+//   Seq::Wait(0.25f);
+
+//   // 打开负压泵
+//   APP::get_block.OpenPump();
+
+//   // // 等爪子抓住后
+//   // Seq::Wait(2.5f);
+
+//   // 等待吸住后，翻转物块，收爪
+//   Seq::Wait(1.0f);
+//   APP::vac_claw.StretchBack();
+
+//   // 此时爪还抓着物块，关闭负压泵
+//   APP::get_block.ClosePump();
+
+//   APP::get_block._StartBelt();
+
+//   APP::vac_claw.OpenSnap();
+
+//   APP::get_block.OpenPRV();
+
+//   APP::get_block.Store();
+
+//   APP::get_block.ClosePRV();
+// }
+
 /// @brief 伸爪取块
 /// @param 
 void MeiLinArray::FetchBlock(BlockHeight height)
@@ -274,40 +348,38 @@ void MeiLinArray::FetchBlock(BlockHeight height)
   Seq::Wait(0.4f);
 
   // 再伸出
-  APP::vac_claw.StretchOut();
+  APP::vac_claw.StretchOut_First();
 
-  // 等待伸出完成后，闭上爪
-  Seq::Wait(1.2f);
+  Seq::Wait(0.8f);
+
+  // 关爪子定心
   APP::vac_claw.CloseSnap();
 
-  // 微微张开爪子
+  // 等一会再小开爪
+  Seq::Wait(0.8f);
   APP::vac_claw.OpenSnapMini();
-  // 往前慢慢走一些
-  APP::chas.Move(Vec2(0.1, 0), 0.25f);
-  Seq::Wait(0.25f);
 
-  // 打开负压泵
+  // 先开泵，然后直接伸出第二段
   APP::get_block.OpenPump();
+  APP::vac_claw.StretchOut_Second();
 
-  // // 等爪子抓住后
-  // Seq::Wait(2.5f);
-
-  // 等待吸住后，翻转物块，收爪
-  Seq::Wait(1.0f);
+  // 等一会，再翻转物块，收回爪子
+  Seq::Wait(0.8f);
   APP::vac_claw.StretchBack();
-
-  // 此时爪还抓着物块，关闭负压泵
-  APP::get_block.ClosePump();
 
   APP::get_block._StartBelt();
 
+  Seq::Wait(0.2f);
+
   APP::vac_claw.OpenSnap();
+    // 此时爪还抓着物块，关闭负压泵
+  APP::get_block.ClosePump();
 
   APP::get_block.OpenPRV();
 
   APP::get_block.Store();
 
-  APP::get_block.ClosePRV();
+  // APP::get_block.ClosePRV();
 }
 
 bool IR_Read(InfraredDetector& ir)
