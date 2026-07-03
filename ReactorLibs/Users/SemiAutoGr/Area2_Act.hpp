@@ -13,9 +13,8 @@ enum class BlockHeight : uint8_t
 };
 
 // 动作码
-namespace Area2Code
-{
-enum : uint8_t
+
+enum Area2Code
 {
   UP_200 = 0x64,
   DOWN_200 = 0x65,
@@ -31,9 +30,12 @@ enum : uint8_t
   FETCH_LEFT_UP_200 = 0x70,
   FETCH_LEFT_DOWN_200 = 0x71,
   FETCH_RIGHT_UP_200 = 0x72,
-  FETCH_RIGHT_DOWN_200 = 0x73,  
+  FETCH_RIGHT_DOWN_200 = 0x73,
+
+  ENTER_0 = 0x80,
+  ENTER_1 = 0x81,
+  ENTER_2 = 0x82,
 };
-}
 
 // 用于管理 R2 二区动作的类
 class MeiLinArray
@@ -41,6 +43,12 @@ class MeiLinArray
   SINGLETON(MeiLinArray);
 
 public:
+  // 进入二区的动作码，默认是 0
+  Area2Code enter_code = Area2Code::ENTER_0; // 进入二区的动作码，默认是 0
+
+  /// @brief 是否收到工控机发来的动作序列，安全标准位
+  bool host_a2act_recved = false; 
+
   void Init(); // 初始化，注册回调函数
 
   /// @brief 手动设置动作序列（调试用），最后一条需为 AREA_DONE
@@ -82,7 +90,8 @@ public:
 
 private:
   static constexpr int MAX_SEQ = 64;
-  uint8_t _seq[MAX_SEQ] = {0}; // 动作缓存
+  Area2Code _seq[MAX_SEQ] = {Area2Code::AREA_DONE}; // 动作缓存
+
   int _seq_len = 0;            // 已缓存的动作数
   bool _seq_ready = false;     // 序列收完标志
 
