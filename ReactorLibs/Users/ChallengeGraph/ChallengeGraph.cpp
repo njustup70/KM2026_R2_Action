@@ -41,6 +41,7 @@ static void Walk_To_Dock(StateCore *core);
 void Dock_Fetch_And_Back(StateCore *core);
 static void Goto_Area2(StateCore *core);
 static void Area2_HostAction(StateCore *core);
+static void Area2End_BackOrigin(StateCore *core);
 
 
 static void Walk_into_Area2(StateCore *core);
@@ -55,8 +56,7 @@ void Config_R2_Challenge_StateGraph()
  
   StateBlock& s_walk_from_a1_to_a2 = R2_Challenge_Graph.AddState("walk_a12");
   StateBlock& s_a2_hostact = R2_Challenge_Graph.AddState("area2_hostact");  // 二区由工控机控制的动作序列
-
-  StateBlock& s_walk_from_a2_to_a3 = R2_Challenge_Graph.AddState("walk_a23");
+  StateBlock& s_a2end_backorigin = R2_Challenge_Graph.AddState("a2end_backor");  // 二区结束后，回到原点
 
   s_wait.StateAction = Waiting_for_Start;
 
@@ -68,10 +68,7 @@ void Config_R2_Challenge_StateGraph()
   /**   二区的状态**/
   s_walk_from_a1_to_a2.StateAction = Goto_Area2;
   s_a2_hostact.StateAction = Area2_HostAction;
-  
-  /**   三区的状态**/
-  s_walk_from_a2_to_a3.StateAction = Walk_into_Area3;
-
+  s_a2end_backorigin.StateAction = Area2End_BackOrigin;
 
   /**----------     状态转移链接    ----------**/
   s_wait.LinkTo(&s_wait.Complete, s_area1_f1);
@@ -82,11 +79,14 @@ void Config_R2_Challenge_StateGraph()
   s_dock_fetch.LinkTo(&fetch_again, s_dock_fetch);
   s_dock_fetch.LinkTo(&move_to_area2, s_walk_from_a1_to_a2);
   
+  // 进入二区，并执行任务
   s_walk_from_a1_to_a2.LinkTo(&s_walk_from_a1_to_a2.Complete, s_a2_hostact);
-  s_a2_hostact.LinkTo(&s_a2_hostact.Complete, s_walk_from_a2_to_a3);
-  s_walk_from_a2_to_a3.LinkTo(&s_walk_from_a2_to_a3.Complete, s_wait);
+  s_a2_hostact.LinkTo(&s_a2_hostact.Complete, s_a2end_backorigin);
+  // 可以选择回到原点
+  s_a2end_backorigin.LinkTo(&s_a2end_backorigin.Complete, s_wait);
 
-  // 向状态机核心注册
+
+  /**----------     向状态机核心注册    ----------**/
   APP::state_core.RegistGraph(R2_Challenge_Graph);
   APP::state_core.Enable(0); // 启动状态机核心，指定初始状态图为0号图
 }
@@ -353,6 +353,47 @@ void Area2_HostAction(StateCore *core)
 
   // 此时走到了梅林跟前，准备执行二区序列动作
   Area2::mei_lin_array.ExecuteSequence();
+
+  while(MOD::farcon.button_second_half[0] != 1)
+  {
+    Response_Button();
+    Seq::Wait(0.01f);
+  }
+
+  core->GetCurState().Complete = true;
+}
+
+/*******************************************************************************/
+
+/**
+ * @brief 技能挑战赛——“崇武探幽”结束后，可以选择自动回到原点
+ * 
+ * @param core 
+ */
+void Area2End_BackOrigin(StateCore *core)
+{
+  // 再次确认，确保安全
+  APP::monit.LogInfo("Please Confirm Again: Back to Origin?");
+  APP::main_loop.test_led.GradientFlow(Color::Up_Yellow, Color::Up_Purpor, 1.25f);
+
+  Seq::Wait(1.0f);
+
+  while(MOD::farcon.button_second_half[0] != 1)
+  {
+    Response_Button();
+    Seq::Wait(0.01f);
+  }
+
+  // 回到原点
+  APP::monit.LogInfo("Back to Origin...");
+
+  // 走到原点
+  MOVE::MoveToTargGes(Vec3(8.7f, 5.45f, 0.0f));
+  MOVE::MoveToTargGes(Vec3(2.45f, 5.45f, 0.0f));
+  MOVE::MoveToTargGes(Vec3(0.5f, 4.61f, 0.0f));
+
+  // 成功回到原点
+  APP::monit.LogOK("All Process Done. Congratulations!");
 
   while(MOD::farcon.button_second_half[0] != 1)
   {
