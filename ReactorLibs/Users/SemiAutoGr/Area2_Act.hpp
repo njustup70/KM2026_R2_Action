@@ -56,6 +56,8 @@ public:
   
   void ExecuteSequence();
 
+  void HandleClimbAct();
+
   /****************  R2 在二区的单个封装动作，公开，可以留给外面调试用 ******************/
   /**
    * @brief 二区行为之 上200
@@ -96,6 +98,8 @@ private:
   bool _seq_ready = false;     // 序列收完标志
 
   bool _skip_approach = false; // 是否跳过接近动作
+
+  bool _is_enter_act = true; // 第一次接收0x80/0x81/0x82，进行对_seq[0]的判断，第二次进入就执行判断_seq[0]和_seq[1]是否相同的逻辑
 };
 
 class MeiLin_BlockPos
