@@ -306,10 +306,14 @@ void Dock_Fetch_And_Back(StateCore *core)
 
 void Goto_Area2(StateCore *core)
 {
+  APP::main_loop.test_led.Lit(Color::Red);
+
   // 确认工控机已经发送了动作序列
   Seq::WaitUntil([](){
     return Area2::mei_lin_array.host_a2act_recved;
   });
+
+  APP::main_loop.test_led.Lit(Color::White);
 
   // 首先，根据工控机的要求，走到相应的块的面前
   switch (Area2::mei_lin_array.enter_code)
