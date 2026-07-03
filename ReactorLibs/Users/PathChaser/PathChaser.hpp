@@ -157,17 +157,17 @@ class PathChaserType : public Application
     
     float _kp_pos = 1.5f;              // 时间参考路径的位置误差反馈增益
     float _kp_yaw = 1.25f;              // 时间参考路径的姿态误差反馈增益
-    float _ff_gain = 0.5f;            // 时间参考路径的前馈增强系数
+    float _ff_gain = 0.6f;            // 时间参考路径的前馈增强系数
     float _max_vel = 999.0f;             // 合速度上限，单位m/s
     float _max_omega = 999.0f;           // 角速度上限，单位rad/s
-    float _max_pos_fb = 0.75f;         // 时间参考路径的位置反馈速度上限，单位m/s
+    float _max_pos_fb = 0.8f;         // 时间参考路径的位置反馈速度上限，单位m/s
     float _max_yaw_fb = 1.5f;         // 时间参考路径的姿态反馈角速度上限，单位rad/s
     float _ff_slow_start_err = 999.9f;  // 位置误差超过该值后开始压低前馈
     float _ff_slow_stop_err = 9999.9f;   // 位置误差达到该值后前馈降到最小比例
     float _min_ff_scale = 0.20f;       // 误差较大时保留的最小前馈比例
     float _time_end_ff_fade_time = 0.0f; // 时间参考路径末端前馈衰减时间窗，单位s
     float _time_end_slow_dist = 0.68f; // 时间参考路径末端刹车距离，单位m
-    float _time_end_max_acc = 0.85f;    // 时间参考路径末端刹车限速使用的最大减速度，单位m/s^2
+    float _time_end_max_acc = 0.9f;    // 时间参考路径末端刹车限速使用的最大减速度，单位m/s^2
     float _time_end_min_vel = 0.00f;   // 时间参考路径末端未完成时保留的最低修正速度，单位m/s
     float _pos_tol = 0.01f;            // 普通跑点位置阈值，单位m
     float _yaw_tol = 0.02f;            // 普通跑点姿态阈值，单位rad

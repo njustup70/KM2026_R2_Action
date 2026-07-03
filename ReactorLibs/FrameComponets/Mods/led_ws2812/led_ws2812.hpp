@@ -30,6 +30,7 @@ private:
         GradientFlow,
         Running,
         Expand,
+        Blink,
     };
 
     uint32_t PwmMaxValue = 0;       // PWM最大值
@@ -49,6 +50,8 @@ private:
     Color effect_color_1_;
     float effect_period_ = 1.0f;
     float effect_width_ = 0.2f;
+    uint8_t effect_blink_times_ = 1;
+    bool blink_state_on_ = false;
 
     // 灯带的写入缓冲区，每颗灯24bit，颜色顺序是GRB，末尾补一段低电平用于锁存
     uint32_t WS2812buf2send[MaxLedNumsT * kBitsPerLed + kResetSlots] = {0};
@@ -99,6 +102,7 @@ public:
     void _ApplyGradientFlowFrame();
     void _ApplyRunningFrame();
     void _ApplyExpandFrame();
+    void _ApplyBlinkFrame();
     void _ResetEffectRuntime();
     void _ActivateStaticMode();
     void _SetColorRaw(int8_t Led_id, uint8_t R, uint8_t G, uint8_t B);
@@ -114,6 +118,7 @@ public:
     void Breath(Color color_0, float period);
     void GradientFlow(Color color_0, Color color_1, float period);
     void Running(Color color, float width, float period);
+    void Blink(Color color, uint8_t times, float period);
     void Lit(Color color); // 供外部调用的Fill，省算力
     void Expand(Color color_0, float period);
 
@@ -220,6 +225,7 @@ template <size_t MaxLedNumsT>
 void LedWs2812<MaxLedNumsT>::_ActivateStaticMode()
 {
     current_mode_ = EffectMode::Static;
+    blink_state_on_ = false;
 }
 
 template <size_t MaxLedNumsT>
@@ -342,6 +348,39 @@ void LedWs2812<MaxLedNumsT>::_ApplyExpandFrame()
 }
 
 template <size_t MaxLedNumsT>
+void LedWs2812<MaxLedNumsT>::_ApplyBlinkFrame()
+{
+    if (LedNums == 0) return;
+
+    uint8_t blink_times = (effect_blink_times_ == 0) ? 1 : effect_blink_times_;
+    float slot_period = _NormalizePeriod(effect_period_);
+    float cycle_period = blink_times * slot_period * 2.0f;
+
+    float delta_t = DWT_GetDeltaTime(&dwt_tick);
+    RuntimeCnt += delta_t;
+    if (RuntimeCnt >= cycle_period) RuntimeCnt = fmod(RuntimeCnt, cycle_period);
+
+    bool should_on = false;
+    if (RuntimeCnt < (blink_times * slot_period))
+    {
+        should_on = fmod(RuntimeCnt, slot_period) < (slot_period * 0.5f);
+    }
+
+    if (should_on == blink_state_on_) return;
+
+    blink_state_on_ = should_on;
+    if (should_on)
+    {
+        Color color = effect_color_0_ * BiasFactor;
+        _FillFrame(color.r, color.g, color.b);
+    }
+    else
+    {
+        _FillFrame(0, 0, 0);
+    }
+}
+
+template <size_t MaxLedNumsT>
 void LedWs2812<MaxLedNumsT>::Fill(uint8_t R, uint8_t G, uint8_t B)
 {
     _ActivateStaticMode();
@@ -401,6 +440,25 @@ void LedWs2812<MaxLedNumsT>::Running(Color color, float width, float period)
 }
 
 template <size_t MaxLedNumsT>
+void LedWs2812<MaxLedNumsT>::Blink(Color color, uint8_t times, float period)
+{
+    uint8_t normalized_times = (times == 0) ? 1 : times;
+    float normalized_period = _NormalizePeriod(period);
+    bool keep_runtime = (current_mode_ == EffectMode::Blink)
+        && _IsSameColor(effect_color_0_, color)
+        && (effect_blink_times_ == normalized_times)
+        && (effect_period_ == normalized_period);
+
+    effect_color_0_ = color;
+    effect_blink_times_ = normalized_times;
+    effect_period_ = normalized_period;
+    current_mode_ = EffectMode::Blink;
+
+    if (!keep_runtime) _ResetEffectRuntime();
+    _ApplyBlinkFrame();
+}
+
+template <size_t MaxLedNumsT>
 void LedWs2812<MaxLedNumsT>::Lit(Color color)
 {
     color = color * BiasFactor;
@@ -455,10 +513,14 @@ void LedWs2812<MaxLedNumsT>::Handle()
         case EffectMode::Expand:
             _ApplyExpandFrame();
             break;
+        case EffectMode::Blink:
+            _ApplyBlinkFrame();
+            break;
         default:
             return;
     }
 
+    if (!dirty_) return;
     Upload();
 }
 
