@@ -22,8 +22,8 @@ private:
     int snap_lim_max = 999999;
 
     /***** 内部维护的状态值 *****/
-    float stretch_pos = 0.0f;   // 
-    float snap_pos = 0.0f;      // 
+    // float stretch_pos = 0.0f;   // 
+    // float snap_pos = 0.0f;      // 
     float pitch_pos = 1.6f;     // 
     bool enabled = false;
 
@@ -84,7 +84,9 @@ public:
     void Disable();
 
     bool need_to_fetch = false; // 判断是否要伸爪取块
-
+    bool is_stretch_back; // 爪子是否伸回来了
+    float stretch_pos = 0.0f; 
+    float snap_pos = 0.0f;    
 };
 
 namespace APP

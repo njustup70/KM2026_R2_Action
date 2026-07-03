@@ -159,13 +159,13 @@ void VacuumClaw::StretchOut_Second()
 void VacuumClaw::StretchBack()
 {
     pitch_pos = 1.7; // 翻转物块
-    motor_pitch.SetPosVel(-pitch_pos, 1.5);
+    motor_pitch.SetPosVel(-pitch_pos, 1.7);
 
     // 等物块被翻转过来
     Seq::Wait(2.4f);
 
     // 收回
-    stretch_pos = 1000.0; // 防堵转，给个略大于0的值
+    stretch_pos = 100.0; // 防堵转，给个略大于0的值
 }
 
 void VacuumClaw::Enable()
