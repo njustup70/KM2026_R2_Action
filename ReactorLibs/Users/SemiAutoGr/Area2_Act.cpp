@@ -220,9 +220,9 @@ static void FetchUp400()
 static void FetchDown200()
 {
   // 往前缓慢移动，直到抵靠到前端
-  APP::chas.Move(Vec2(0.5, 0), 3.0f);
-  Seq::Wait(0.35f);
   APP::chas.Move(Vec2(0.25, 0), 3.0f);
+  Seq::Wait(0.35f);
+  APP::chas.Move(Vec2(0.15, 0), 3.0f);
   Seq::Wait(0.15f);
 
   // 等待小黄0号检测到就停车
@@ -370,7 +370,7 @@ void MeiLinArray::FetchBlock(BlockHeight height)
   // Seq::Wait(1.0f);
 
   // 抬升先上去
-  APP::get_block.dm_lift_pos = -750.0f;
+  APP::get_block.dm_lift_pos = -755.0f;
 
   // 先开爪
   APP::vac_claw.OpenSnap();
@@ -383,6 +383,12 @@ void MeiLinArray::FetchBlock(BlockHeight height)
 
   // 关爪子定心
   APP::vac_claw.CloseSnap();
+
+  // 必须等爪子完全合上
+  Seq::WaitUntil([]()
+  {
+    return (APP::vac_claw.motor_snap.driver.measure.total_angle - APP::vac_claw.snap_pos) < 800;
+  });  
 
   // 等一会再小开爪
   Seq::Wait(0.8f);
@@ -397,13 +403,15 @@ void MeiLinArray::FetchBlock(BlockHeight height)
   APP::vac_claw.StretchBack();
 
   APP::get_block._StartBelt();
-
-  Seq::Wait(0.2f);
+  
+  // 此时爪还抓着物块，但是取下200块的时候，泵不开物块会掉下来，所以等爪子收回摩擦带能碰着物块再开夹爪、关泵
+  Seq::WaitUntil([]()
+  {
+    return (APP::vac_claw.motor_stretch.driver.measure.total_angle - APP::vac_claw.stretch_pos) < 50;
+  });
 
   APP::vac_claw.OpenSnap();
-    // 此时爪还抓着物块，关闭负压泵
   APP::get_block.ClosePump();
-
   APP::get_block.OpenPRV();
 
   APP::get_block.Store();
@@ -430,6 +438,24 @@ bool IR_Read(InfraredDetector& ir)
   return false;
 }
 
+bool NIR_Read(InfraredDetector& ir)
+{
+  static int read_cnt = 0;
+  if (!ir.Read())
+  {
+    read_cnt++;
+    if (read_cnt >= 5) // 连续5次检测到，才认为是真的
+    {
+      read_cnt = 0;
+      return true;
+    }
+  }
+  else
+  {
+    read_cnt = 0;
+  }
+  return false;
+}
 
 
 /**
@@ -608,7 +634,7 @@ void MeiLinArray::Decend_200()
   // 等待小黄0号检测不到后，放下前腿
   Seq::WaitUntil([&]()
   {
-    return !APP::leg.detector[0].Read();
+    return NIR_Read(APP::leg.detector[0]);
   });
 
   // 先缓慢向前走
@@ -618,11 +644,12 @@ void MeiLinArray::Decend_200()
   // // Seq::Wait(0.8f); // 可能要加延时
   // if(APP::vac_claw.need_to_fetch) FetchBlock();
 
-  // 等待小黄1号检测不到后，放下前腿
+  // 等待小黄1号检测不到后，减速
   Seq::WaitUntil([&]()
   {
-    return !APP::leg.detector[1].Read();
+    return NIR_Read(APP::leg.detector[1]);
   });
+
   APP::chas.Move(Vec2(0, 0), 2.0f);
   APP::leg.F_Down_200();
   Seq::Wait(0.45f);
@@ -634,7 +661,7 @@ void MeiLinArray::Decend_200()
   APP::chas.Move(Vec2(0.24, 0), 3.0f);
   Seq::WaitUntil([&]()
   {
-    return !APP::leg.detector[3].Read();
+    return NIR_Read(APP::leg.detector[3]);
   });
   APP::chas.Move(Vec2(0, 0), 2.0f);
   APP::leg.B_Down_200();

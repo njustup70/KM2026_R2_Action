@@ -1,5 +1,6 @@
 #pragma once
 #include "StateCore.hpp"
+#include "infrared_detector.hpp"
 #include "PathChaser.hpp"
 #include "Chassis.hpp"
 #include <cstdint>
@@ -115,6 +116,9 @@ public:
   float GetTargetYaw();
 
 private:
+  bool IR_Read(InfraredDetector& ir);
+  bool NIR_Read(InfraredDetector& ir);
+  
   uint8_t _forward = 0;
   uint8_t _left = 0;
   bool _first_move = true;  // ← 首次 Forward 只落位不前进
