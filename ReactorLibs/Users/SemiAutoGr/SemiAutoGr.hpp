@@ -5,4 +5,5 @@
 #include <cstdint>
 
 void Config_SemiAutoStateGraph();
+void Response_Button_main();
 extern StateGraph SemiAutoGr;
