@@ -872,4 +872,6 @@ void MeiLinArray::Area2ActRxCallback(uint8_t func_code, const uint8_t *payload, 
 
   // 回复 ACK 告知上位机已收到
   MOD::host_pc.SendAck(Area2Code::ACK_DONE, 0);
+
+  self.host_a2act_recved = true;
 }
