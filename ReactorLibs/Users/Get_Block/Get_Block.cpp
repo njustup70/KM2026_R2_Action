@@ -3,10 +3,10 @@
 GetBlock& APP::get_block = GetBlock::GetInstance();
 
 // ==================== 超时间隔 ====================
-static constexpr float T_BELT = 10.0f;
-static constexpr float T_LIFT = 10.0f;
+static constexpr float T_BELT = 20.0f;
+static constexpr float T_LIFT = 3.5f; // 摩擦带上下的时间
 static constexpr float T_LIFT_SETTLE = 2.0f;    // 传感器触发后等待抬升到位的短超时
-static constexpr float T_LIFT_BEFORE_BELT = 2.0f; // 取块1时抬升先走一段再转摩擦带
+static constexpr float T_LIFT_BEFORE_BELT = 6.0f; // 取块1时抬升先走一段再转摩擦带
 static constexpr float T_FEED = 10.0f;
 static constexpr float BELT_RPM    = 15.0f;
 static constexpr float DM_BELT_VEL = 15.0f;
@@ -31,8 +31,10 @@ void GetBlock::Start()
         .SpdLimit(8000.0f)
         .ADRC_MaxPlannedVel(5000.0f)
         .ADRC_SOTF(0.2f)
+        .SetDt(0.002)
         .Apply();
     motor_2006_fric.driver.Enable();
+    
 
     /****  抬升 DM (hcan_sub, ID 10) ，向上为负，总行程 0 - 400 rad 左右****/
     motor_dm_lift.Init(Hardware::hcan_sub, 10, 20, POSANDVEL, DM_S2325);
@@ -52,24 +54,26 @@ void GetBlock::Start()
         .SpdLimit(8000.0f)
         .ADRC_MaxPlannedVel(5000.0f)
         .ADRC_SOTF(0.6f)
+        .SetDt(0.002)
         .Apply();
     motor_2006_feed.driver.Enable();
 
     /****  两个传感器（下仓、上仓） ****/
-    _pin_sensor[0] = PIN_SENSOR_LOWER;
-    _pin_sensor[1] = PIN_SENSOR_UPPER;
-    for (int i = 0; i < 2; i++)
-    {
-        _sensor[i].Init(_pin_sensor[i]);
-    }
+    _sensor[0].Init(PIN_SENSOR_LOWER);
+    _sensor[1].Init(PIN_SENSOR_UPPER);
 
     /****  负压泵 ****/
     pin_pump = PIN_PUMP;
     relay_pump.Init(pin_pump, Relay::HIGH_ON);
-    
+
+    /*  泄压阀  */
+    pin_PRV = PIN_PRESSURE_RELIEF_VALVE;
+    relay_PRV.Init(pin_PRV, Relay::HIGH_ON);
+    relay_PRV.Off(); // 初始状态下关闭泄压阀
 
     /**** 初始位置 ****/
-    motor_dm_lift.SetPosVel(-_lift_pos_lower, _lift_vel);
+    dm_fric_spd = 0.0f;
+    dm_lift_pos = -_lift_pos_lower;
     motor_2006_feed.SetPos(_feed_pos_retract);
 
     /**** 初始扫描 ****/
@@ -97,38 +101,16 @@ void GetBlock::Update()
 
     _ReadSensors();
 
-    // if(is_debug)
-    // {
-    //     // motor_dm_lift.SetPosVel(-_lift_targ_pos, _lift_vel);
-    //     // motor_2006_feed.SetPos(-_feed_pos_extend);
-    //     relay_pump.On();
-
-    // }
-    // else
-    // {
-    //     relay_pump.Off();     
-    // }
-
-    // if(_belt_enable)
-    // {
-    //     _StartBelt();
-    // }
-    // else
-    // {
-    //     _StopBelt();
-    // }
-
-    // if(_store_debug)
-    // {
-    //     _store_debug = false;
-    //     Store();
-    // }
-    // if(_put_debug)
-    // {
-    //     _put_debug = false;
-    //     Put();
-    // }
-
+    static int damiao_cnt = 0;
+    damiao_cnt++;
+    if (damiao_cnt >= 4)
+    {
+        motor_s2325.SetVel(dm_fric_spd);
+        motor_dm_lift.SetPosVel(dm_lift_pos, _lift_vel);
+        damiao_cnt = 0;
+    }
+    
+    
     _UpdateFSM();
 }
 
@@ -149,13 +131,13 @@ bool GetBlock::_IsTimeout(float sec) const
 void GetBlock::_StartBelt()
 {
     motor_2006_fric.SetSpd(BELT_RPM * MotorDJIConst::redu_M2006 * 60.0f / (2 * PI));
-    motor_s2325.SetVel(DM_BELT_VEL);
+    dm_fric_spd = DM_BELT_VEL;
 }
 
 void GetBlock::_StopBelt()
 {
     motor_2006_fric.SetSpd(0);
-    motor_s2325.SetVel(0);
+    dm_fric_spd = 0.0f;
 }
 
 // ==================== 存块 ====================
@@ -268,10 +250,47 @@ void GetBlock::ClosePump()
     relay_pump.Off();
 }
 
+void GetBlock::OpenPRV()
+{
+    relay_PRV.On();
+}
+
+void GetBlock::ClosePRV()
+{
+    relay_PRV.Off();
+}
+
 // ==================== 内部状态机 ====================
 void GetBlock::_UpdateFSM()
 {
     if (!_fsm_busy) return;
+
+    // ===== 状态变化日志 =====
+    static FSM _last_fsm = FSM::IDLE;
+    if (_fsm != _last_fsm)
+    {
+        _last_fsm = _fsm;
+        static const char* _state_name[] = {
+            "IDLE",                // 0
+            "STORE_LIFT_BEFORE_BELT", // 1
+            "STORE_LIFT_DOWN_TO_PICK",// 2
+            "STORE_BELT_IN",       // 3
+            "STORE_LIFT_UP",       // 4
+            "STORE_WAIT_SECOND",   // 5
+            "STORE_HOLD_PUT",      // 6
+            "STORE_LIFT_DOWN",     // 7
+            "STORE_LIFT_BOTTOM",   // 8
+            "PUT_FEED_PUSH",       // 9
+            "PUT_FEED_RETRACT",    // 10
+            "PUT_LIFT_UP",         // 11
+            "PUT_LIFT_DOWN",       // 12
+            "COMPLETE",            // 13
+            "ABORT",               // 14
+        };
+        int idx = (int)_fsm;
+        if (idx >= 0 && idx < 15)
+            APP::monit.LogInfo("[GetBlock] FSM >>> %s", _state_name[idx]);
+    }
 
     switch (_fsm)
     {
@@ -284,6 +303,7 @@ void GetBlock::_UpdateFSM()
         {
             _StopBelt();
             _lower = true;
+            ClosePRV();
 
             if (_storing_b2)
             {
@@ -314,7 +334,7 @@ void GetBlock::_UpdateFSM()
     // ═══════════════════ 存块: 抬升到高位 + 等一会再入料 ═══════════════════
     case FSM::STORE_LIFT_BEFORE_BELT:
     {
-        motor_dm_lift.SetPosVel(-_lift_pos_upper, _lift_vel);
+        dm_lift_pos = -_lift_pos_upper;
 
         // 抬升先走一段，再启动摩擦带
         if (_IsTimeout(T_LIFT_BEFORE_BELT))
@@ -343,7 +363,7 @@ void GetBlock::_UpdateFSM()
     // ═══════════════════ 存块: 高位降下来接块 ═══════════════════
     case FSM::STORE_LIFT_DOWN_TO_PICK:
     {
-        motor_dm_lift.SetPosVel(-_lift_pos_lower, _lift_vel);
+        dm_lift_pos = -_lift_pos_lower;
 
         if (_IsTimeout(T_LIFT))
         {
@@ -357,7 +377,7 @@ void GetBlock::_UpdateFSM()
     // ═══════════════════ 存块: 抬升 ↑ (挡片托着块到上仓) ═══════════════════
     case FSM::STORE_LIFT_UP:
     {
-        motor_dm_lift.SetPosVel(-_lift_pos_upper, _lift_vel);
+        dm_lift_pos = -_lift_pos_upper;
 
         // 传感器在上仓下沿，块刚进入就会被检测到 → 记录状态，继续上行到目标位置
         if (_grid[1] && !_upper)
@@ -394,7 +414,7 @@ void GetBlock::_UpdateFSM()
     case FSM::STORE_WAIT_SECOND:
     {
         // 抬升机构保持在上位
-        motor_dm_lift.SetPosVel(-_lift_pos_upper, _lift_vel);
+        dm_lift_pos = -_lift_pos_upper;
         // 无超时 — 外部调用 Store() 会捕获此状态并转入 STORE_BELT_IN
         break;
     }
@@ -404,7 +424,7 @@ void GetBlock::_UpdateFSM()
     {
         // 块2已在下仓，但挡片托着块1——不能降抬升(块1会掉)
         // 保持上位，等待外部 Put() 先推出块1，再降抬升处理块2
-        motor_dm_lift.SetPosVel(-_lift_pos_upper, _lift_vel);
+        dm_lift_pos = -_lift_pos_upper;
         // 无超时 — 外部调用 Put() 会捕获此状态并转入 PUT_FEED_PUSH
         break;
     }
@@ -415,10 +435,10 @@ void GetBlock::_UpdateFSM()
         // 下降时机：块1已被推出，块2在下仓
         // 挡片从上往下穿过块2→被块2顶开→通过后在块2下方闭合
         // 块2随挡片下移后离开上仓传感器检测范围 → 传感器辅助判断
-        motor_dm_lift.SetPosVel(-_lift_pos_lower, _lift_vel);
+        dm_lift_pos = -_lift_pos_lower;
 
         // 上仓传感器不再检测到块（块已随挡片下移离开），或超时兜底
-        if (!_grid[1] || _IsTimeout(T_LIFT))
+        if (!_grid[1] && _IsTimeout(T_LIFT))
         {
             _action_tick = System.runtime_tick;
             _fsm = FSM::STORE_LIFT_BOTTOM;
@@ -516,7 +536,7 @@ void GetBlock::_UpdateFSM()
     // ═══════════════════ 放块: 补料抬升 ═══════════════════
     case FSM::PUT_LIFT_UP:
     {
-        motor_dm_lift.SetPosVel(-_lift_pos_upper, _lift_vel);
+        dm_lift_pos = -_lift_pos_upper;
 
         // 传感器在上仓下沿，块刚进入就会检测到 → 记录状态，继续上行到顶
         if (_grid[1] && !_upper)
@@ -544,7 +564,7 @@ void GetBlock::_UpdateFSM()
     // ═══════════════════ 放块: 抬升回位 ═══════════════════
     case FSM::PUT_LIFT_DOWN:
     {
-        motor_dm_lift.SetPosVel(-_lift_pos_lower, _lift_vel);
+        dm_lift_pos = -_lift_pos_lower;
 
         if (_IsTimeout(T_LIFT))
         {
@@ -581,7 +601,7 @@ void GetBlock::_UpdateFSM()
     case FSM::ABORT:
     {
         _StopBelt();
-        motor_dm_lift.SetPosVel(-_lift_pos_lower, _lift_vel);
+        dm_lift_pos = -_lift_pos_lower;
         motor_2006_feed.SetPos(_feed_pos_retract);
         _fsm = FSM::COMPLETE;
         break;

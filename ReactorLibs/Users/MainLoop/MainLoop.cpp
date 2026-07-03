@@ -15,6 +15,7 @@ void MainLoop::Start()
     
     // 初始化小黄
     spear_detector.Init(spear_ir);
+    
 }
 
 void MainLoop::Update()

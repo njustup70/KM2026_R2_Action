@@ -8,6 +8,7 @@
 // ============ 小黄 ============
 #define PIN_SENSOR_LOWER  {'F', 1}   // 下仓：块在抬升平台上
 #define PIN_SENSOR_UPPER  {'E', 5}   // 上仓：有块（被抬升挡片托住触发）
+#define PIN_PRESSURE_RELIEF_VALVE  {'E', 4}   // 泄压阀（高电平打开）
 
 // ============ 负压泵的 GPIO ============
 #define PIN_PUMP  {'H', 2}   
@@ -23,6 +24,10 @@ public:
     void Put();
     void OpenPump();
     void ClosePump();
+    void OpenPRV();
+    void ClosePRV();
+    void _StartBelt();
+    void _StopBelt();
 
     bool IsUpperOccupied() const { return _upper; }
     bool IsLowerOccupied() const { return _lower; }
@@ -35,6 +40,12 @@ public:
     MotorDM motor_dm_lift;     // 抬升机构 (DM, hcan_sub ID 10)
     MotorDJI motor_2006_feed;   // 送块机构 (2006, hcan_main ID 5)
     MotorDJI motor_3508_claw; // 取块爪机构 (3508, hcan_main ID 6)
+
+    InfraredDetector _sensor[2];
+
+    // ==================== DM电机目标值（Update中持续发送） ====================
+    float dm_fric_spd = 0.0f;   // 下摩擦带目标速度
+    float dm_lift_pos  = 0.0f;  // 抬升机构目标位置
 
 private:
     // ==================== 状态机 ====================
@@ -80,20 +91,23 @@ private:
 
     // ==================== A板控制的负压泵 ====================
     Pin pin_pump;
+    Pin pin_PRV; // 泄压阀
     Relay relay_pump;
+    Relay relay_PRV; // 泄压阀
 
     // ==================== 两个传感器 ====================
     // [0]=下仓  [1]=上仓
-    InfraredDetector _sensor[2];
-    Pin _pin_sensor[2];
     bool _grid[2] = {false};  // 传感器缓存，_ReadSensors() 刷新
 
     // ==================== 抬升DM位置常量（需标定） ====================
     // 向上为负 rad
-    float _lift_targ_pos = 0.0f; //用于调试的变量
-    float _lift_pos_lower = 10.0f;   // 低位（下仓接料位），防卡
-    float _lift_pos_upper = 760.0f;   // 高位（块通过单向门）TODO:标定
-    float _lift_vel       = 15.0f;   // 抬升速度 rad/s
+    float _lift_pos_lower = 3.0f;   // 低位（下仓接料位），防卡
+    float _lift_pos_upper = 750.0f;   // 高位（块通过单向门）TODO:标定
+    float _lift_vel       = 17.0f;   // 抬升速度 rad/s
+
+    // // ==================== DM电机目标值（Update中持续发送） ====================
+    // float dm_fric_spd = 0.0f;   // 下摩擦带目标速度
+    // float dm_lift_pos  = 0.0f;  // 抬升机构目标位置
 
     // ==================== 送块2006位置常量（需标定） ====================
     float _feed_pos_retract = 0.0f;     // 收回
@@ -103,15 +117,15 @@ private:
     void _UpdateFSM();
     void _ReadSensors();
     bool _IsTimeout(float sec) const;
-    void _StartBelt();
-    void _StopBelt();
+    // void _StartBelt();
+    // void _StopBelt();
 
     bool _LiftNear(float pos_rad, float tol = 0.1f) const
     {
         return fabs(motor_dm_lift.driver.measure.total_angle - pos_rad) < tol;
     }
 
-    bool _FeedNear(float pos_code, float tol = 50.0f) const
+    bool _FeedNear(float pos_code, float tol = 10000.0f) const
     {
         return fabs(motor_2006_feed.driver.measure.total_angle - pos_code) < tol;
     }
