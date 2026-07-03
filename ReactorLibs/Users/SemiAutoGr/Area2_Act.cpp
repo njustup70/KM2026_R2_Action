@@ -12,6 +12,7 @@
 #include "Area2_Act.hpp"
 #include <cstring>
 #include "std_math.hpp"
+#include "SemiAutoGr.hpp"
 
 MeiLin_BlockPos::MeiLin_BlockPos() = default;
 MeiLin_BlockPos& Area2::block_pos = MeiLin_BlockPos::GetInstance();
@@ -834,6 +835,11 @@ void MeiLinArray::ExecuteSequence()
       default:
         APP::monit.LogWarning("[MeiLin] Unknown action 0x%02X, skip.", cmd);
         break;
+    }
+    while(MOD::farcon.button_second_half[0] != 1)
+    {
+      Response_Button_main();
+      Seq::Wait(0.01f);
     }
   }
 
