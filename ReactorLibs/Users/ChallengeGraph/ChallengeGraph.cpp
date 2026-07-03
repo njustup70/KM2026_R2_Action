@@ -32,20 +32,17 @@ static uint8_t need_spear_id = 0;
 static bool fetch_again = false;    // 是否需要再次取矛头
 static bool move_to_area2 = false;  // 是否可以移动到二区了
 
-
 // 自动状态机
 StateGraph R2_Challenge_Graph("R2_Challenge");
 static void Waiting_for_Start(StateCore *core);
 static void Walk_Fetch(StateCore *core);
 static void Walk_To_Dock(StateCore *core);
-void Dock_Fetch_And_Back(StateCore *core);
+static void Dock_Fetch_And_Back(StateCore *core);
 static void Goto_Area2(StateCore *core);
 static void Area2_HostAction(StateCore *core);
 static void Area2End_BackOrigin(StateCore *core);
 
-
 static void Walk_into_Area2(StateCore *core);
-static void Walk_into_Area3(StateCore *core);
 
 void Config_R2_Challenge_StateGraph()
 {
@@ -406,65 +403,6 @@ void Area2End_BackOrigin(StateCore *core)
   }
 
   core->GetCurState().Complete = true;
-}
-
-/*******************************************************************************/
-
-/**
- * @brief 
- * 
- * @param core 
- */
-void Walk_into_Area3(StateCore *core)
-{
-  APP::monit.LogInfo("Now, Go to Area3 -- ARENA");
-  
-  // 跑到Arena九宫格跟前
-  APP::leg.SetFrontPos(-40);
-  APP::leg.SetBackPos(-40);
-
-  // 一步一步跑，先测跑点
-  MOVE::MoveToTargGes(Vec3(8.65f, 0.77f, 0.0f));
-
-  // 等待遥控器指令，然后才进入下一步
-  while(MOD::farcon.button_second_half[0] != 1)
-  {
-    Response_Button();
-    Seq::Wait(0.01f);
-  }
-
-  // 等待下一个指令
-  MOVE::MoveToTargGes(Vec3(11.45f, 0.77f, 0.0f));
-
-  // 等待遥控器指令，然后才进入下一步
-  while(MOD::farcon.button_second_half[0] != 1)
-  {
-    Response_Button();
-    Seq::Wait(0.01f);
-  }
-
-  // 等待下一个指令
-  MOVE::MoveToTargGes(Vec3(10.75f, 5.4f, 1.57f));
-
-  // 等待遥控器指令，然后才进入下一步
-  while(MOD::farcon.button_second_half[0] != 1)
-  {
-    Response_Button();
-    Seq::Wait(0.01f);
-  }
-
-  // 抬腿但是（还不知道该抬多高）
-  APP::leg.B_Down_400();
-  APP::leg.F_Down_400();
-
-  // 等待遥控器指令，然后才进入下一步
-  while(MOD::farcon.button_second_half[0] != 1)
-  {
-    Response_Button();
-    Seq::Wait(0.01f);
-  }
-
-  APP::get_block.Put();
 }
 
 /*******************************************************************************/
