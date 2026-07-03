@@ -27,6 +27,10 @@ const Vec2 MeiHuaForest_Pos[12] = {
   Vec2(7.4, 1.8), Vec2(7.4, 3), Vec2(7.4, 4.2),
 };
 
+const Vec2 MeiHuaForest_Pos_Export[3] = {
+  Vec2(2.6, 1.8), Vec2(2.6,3.0), Vec2(2.6, 4.2),
+};
+
 /// @brief 刚进入二区时，定下进入哪个ID
 /// @param block_id，由算法组发来
 void MeiLin_BlockPos::GetIn(int block_id) 
@@ -229,12 +233,36 @@ static void FetchDown200()
   APP::chas.Move(Vec2(0.0f, 0.0f), 1.0f);  
 }
 
-void MeiLinArray::FetchSideBlock()
-{
-  // 判断向左还是向右转
+// 取左边上200的块
+// void MeiLinArray::FetchLeftSide_UP200()
+// {
+//   // 判断向左还是向右转
 
-  // 判断取 上200 的 还是 下200 的
-}
+//   // 判断取 上200 的 还是 下200 的
+
+//   Area2::mei_lin_array.TurnLeft();
+
+//   // 等0.5s转过来
+//   Seq::Wait(0.5);
+
+//   Area2::mei_lin_array.FetchBlock(BlockHeight::UP200);
+
+//   // 等一小会儿稳定一些，这个可以调短，因为FetchBlock最后调用Store的时候爪子已经伸回来了
+//   Seq::Wait(0.5);
+
+//   // 退回当前梅林的中心 
+//   Area2::mei_lin_array.ChaseCurrentGrid();
+
+//   // 放下腿
+//   APP::leg.F_Origin();
+//   APP::leg.B_Origin();
+
+//   // 等腿完全放下来才允许下一步动作
+//   Seq::WaitUntil([=]()
+//   {
+//     return (APP::leg.real_front_pos_mm > -10.0f) && (APP::leg.real_back_pos_mm > -10.0f); 
+//   });
+// }
 
 // /// @brief 伸爪取块
 // /// @param 
@@ -696,6 +724,76 @@ void MeiLinArray::Decend_400()
      APP::comm_center.slam_pos.x, APP::comm_center.slam_pos.y);
 }
 
+///@brief 判断_seq[0]和_seq[1]不一样后，进行的平移动作
+static void MoveBeforeClimb(Vec2 targ_mei_lin_xy)
+{
+  APP::path_chaser.ChaseGes(Vec3(targ_mei_lin_xy.x, targ_mei_lin_xy.y, 0));
+  while (!APP::path_chaser.IsFinished())
+  {
+    APP::chas.Move(APP::path_chaser.GetCmdBody(), 0.01f);
+    Seq::Wait(0.005f);
+  }
+}
+
+///@brief 用于处理进入二区前，上位机发来目标梅林后的动作
+void MeiLinArray::HandleClimbAct()
+{
+  // _seq：[0xFA][长度][0x91][0x80/0x81/0x82][0x80/0x81/0x82][后续动作]……[0x6E]
+  // 如果_seq的前两个字节( func_code 紧接着的)不一样，说明要先取，然后退后，再去正确的梅林ID，再上去
+  if(_is_enter_act)
+  {
+    switch(_seq[0])
+    {
+      case Area2Code::ENTER_0:
+        Area2::mei_lin_array.FetchBlock(BlockHeight::UP400);
+      break;
+
+      case Area2Code::ENTER_1:
+        Area2::mei_lin_array.FetchBlock(BlockHeight::UP200);
+      break;
+
+      case Area2Code::ENTER_2:
+        Area2::mei_lin_array.FetchBlock(BlockHeight::UP400);
+      break;
+
+      default:
+        APP::monit.LogError("Area2 First ActionCode: 0x%02X Error!", _seq[0]);
+      break;
+    }
+    _is_enter_act = false;
+  }
+  else
+  {
+    if(_seq[0] != _seq[1])
+    {
+      // 先后退一小段
+      APP::chas.Move(Vec2(-0.5,0), 0.5f);
+      Seq::Wait(0.5);
+      APP::chas.Move(Vec2(0,0), 0.5f);
+      
+      // 再位置闭环一下，到-3，-2，-1的“梅林”中心上
+      switch(_seq[1])
+      {
+        case Area2Code::ENTER_0:
+          MoveBeforeClimb(MeiHuaForest_Pos_Export[0]);
+        break;
+
+        case Area2Code::ENTER_1:
+          MoveBeforeClimb(MeiHuaForest_Pos_Export[1]);
+        break;
+
+        case Area2Code::ENTER_2:
+          MoveBeforeClimb(MeiHuaForest_Pos_Export[2]);
+        break;
+
+        default:
+          APP::monit.LogError("Area2 Second ActionCode: 0x%02X Error!",_seq[1]);
+        break;
+      }
+    }
+  }
+}
+
 void MeiLinArray::ExecuteSequence()
 {
   APP::monit.LogInfo("[MeiLin] Waiting for sequence (0x91)...");
@@ -730,6 +828,9 @@ void MeiLinArray::ExecuteSequence()
       case Area2Code::FETCH_RIGHT_UP_200: FetchSideBlock(); break;
       case Area2Code::FETCH_LEFT_DOWN_200: FetchSideBlock(); break;
       case Area2Code::FETCH_RIGHT_DOWN_200: FetchSideBlock(); break;
+      case Area2Code::ENTER_0: 
+      case Area2Code::ENTER_1: 
+      case Area2Code::ENTER_2: HandleClimbAct(); break;
       default:
         APP::monit.LogWarning("[MeiLin] Unknown action 0x%02X, skip.", cmd);
         break;
