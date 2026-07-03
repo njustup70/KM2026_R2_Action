@@ -825,10 +825,10 @@ void MeiLinArray::ExecuteSequence()
       case Area2Code::FETCH_UP200:   FetchBlock(BlockHeight::UP200);        break;
       case Area2Code::FETCH_UP400:   FetchBlock(BlockHeight::UP400);        break;
       case Area2Code::FETCH_DOWN200: FetchBlock(BlockHeight::DOWN200);      break;
-      case Area2Code::FETCH_LEFT_UP_200: FetchSideBlock(); break;
-      case Area2Code::FETCH_RIGHT_UP_200: FetchSideBlock(); break;
-      case Area2Code::FETCH_LEFT_DOWN_200: FetchSideBlock(); break;
-      case Area2Code::FETCH_RIGHT_DOWN_200: FetchSideBlock(); break;
+      // case Area2Code::FETCH_LEFT_UP_200: FetchSideBlock(); break;
+      // case Area2Code::FETCH_RIGHT_UP_200: FetchSideBlock(); break;
+      // case Area2Code::FETCH_LEFT_DOWN_200: FetchSideBlock(); break;
+      // case Area2Code::FETCH_RIGHT_DOWN_200: FetchSideBlock(); break;
       case Area2Code::ENTER_0: 
       case Area2Code::ENTER_1: 
       case Area2Code::ENTER_2: HandleClimbAct(); break;

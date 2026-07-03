@@ -27,10 +27,10 @@ enum Area2Code
   FETCH_DOWN200 = 0x6C,
   AREA_DONE = 0x6E,
   ACK_DONE = 0x6F,
-  FETCH_LEFT_UP_200 = 0x70,
-  FETCH_LEFT_DOWN_200 = 0x71,
-  FETCH_RIGHT_UP_200 = 0x72,
-  FETCH_RIGHT_DOWN_200 = 0x73,
+  // FETCH_LEFT_UP_200 = 0x70,
+  // FETCH_LEFT_DOWN_200 = 0x71,
+  // FETCH_RIGHT_UP_200 = 0x72,
+  // FETCH_RIGHT_DOWN_200 = 0x73,
 
   ENTER_0 = 0x80,
   ENTER_1 = 0x81,
@@ -75,7 +75,7 @@ public:
 
   void Decend_400();
 
-  void FetchSideBlock();
+  // void FetchSideBlock();
 
   void FetchBlock(BlockHeight height);
 
