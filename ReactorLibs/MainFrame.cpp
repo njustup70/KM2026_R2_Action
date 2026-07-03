@@ -192,8 +192,6 @@ void MainFrameCpp()
   // 初始化遥控器
   MOD::farcon.init(Hardware::huart_farcon);
 
-  // APP::monit.Track(APP::vac_claw.motor_snap.motor_adrc.eso.z3);
-
   System.SetPositionSource(APP::comm_center.slam_pos);
 
   System.RegistApp(APP::main_loop);
@@ -202,7 +200,7 @@ void MainFrameCpp()
   System.RegistApp(APP::comm_center);
 
   // 启动矛头控制应用
-  // System.RegistApp(APP::jaw);
+  System.RegistApp(APP::jaw);
 
   // 底盘启动
   System.RegistApp(APP::chas);
@@ -221,14 +219,14 @@ void MainFrameCpp()
   APP::vac_claw.Enable();
   // System.RegistApp(APP::sick_pc);
 
-  // Config_AutoStateGraph(); // Auto：0
+  // Config_AutoStateGraph();
   // Config_SemiAutoStateGraph();
-  // Config_R2_Challenge_StateGraph(); // Manul：1
+  Config_R2_Challenge_StateGraph();
 
   /*简并模式测试*/
-  graph.Degenerate(Action_of_Dege_Fetch_UP200);
-  APP::state_core.RegistGraph(graph);
-  APP::state_core.Enable(0); // 启动状态机核心，指定初始状态图为0号图
+  // graph.Degenerate(Action_of_Dege_Fetch_UP200);
+  // APP::state_core.RegistGraph(graph);
+  // APP::state_core.Enable(0); // 启动状态机核心，指定初始状态图为0号图
 
 }
 

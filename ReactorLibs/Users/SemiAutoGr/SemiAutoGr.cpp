@@ -16,9 +16,11 @@
 /// @brief 所有的路径文件
 // #include "r2_area1_1.hpp"
 #include "ttd_3.hpp"
-#include "stt_r.hpp"
-#include "stt_rl_2.hpp"
+
+#include "a12_1.hpp"
 #include "a12_2.hpp"
+#include "a12_3.hpp"
+
 #include "a23_2.hpp"
 
 static void Response_Button();
@@ -318,11 +320,11 @@ static void Response_Button()
     static float max_velo = 1.5f;
     if(MOD::farcon.toggle[2] == 0)
     {
-      max_velo = 1.5f;
+      max_velo = 1.0f;
     }
     else if(MOD::farcon.toggle[2] == 1)
     {
-      max_velo = 5.0f;
+      max_velo = 0.33f;
     }
 
     // 计算遥控器死区：0-15不算，将15-100映射到原来的0.0-1.0

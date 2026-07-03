@@ -17,13 +17,6 @@
 // #include "r2_area1_1.hpp"
 #include "ttd_3.hpp"
 
-#include "stt_rl_2.hpp"
-#include "stt_rl_1.hpp"
-#include "stt_r.hpp"
-#include "stt_rl_4.hpp"
-#include "stt_rl_5.hpp"
-#include "stt_rl_6.hpp"
-
 #include "sttr1.hpp"
 #include "sttr2.hpp"
 #include "sttr3.hpp"
