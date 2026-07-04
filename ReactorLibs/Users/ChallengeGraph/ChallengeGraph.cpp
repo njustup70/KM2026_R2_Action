@@ -152,6 +152,10 @@ void Waiting_for_Start(StateCore *core)
  */
 void Walk_Fetch(StateCore *core)
 {
+  // Area2::mei_lin_array.FetchBlock(BlockHeight::UP400);
+
+  // Seq::Wait(3600.0f);
+
   APP::leg.SetFrontPos(-10);
   APP::leg.SetBackPos(-10);
 
@@ -369,6 +373,8 @@ void Area2_HostAction(StateCore *core)
 {
   APP::monit.LogInfo("Now, Start Area2 Actions.");
 
+  
+
   // 此时走到了梅林跟前，准备执行二区序列动作
   Area2::mei_lin_array.ExecuteSequence();
 
@@ -538,6 +544,18 @@ void Response_Button()
     {
       APP::leg.SetFrontPosSlow(-4, 5.0f);
       APP::leg.SetBackPosSlow(-4, 5.0f);
+    }
+
+    if (MOD::farcon.button_first_half[4] == 1)
+    {
+      APP::leg.SetFrontPos(-190);
+      APP::leg.SetBackPos(-190);
+    }
+
+    if (MOD::farcon.button_first_half[5] == 1)
+    {
+      APP::leg.SetFrontPos(-4);
+      APP::leg.SetBackPos(-4);
     }
 }
 
