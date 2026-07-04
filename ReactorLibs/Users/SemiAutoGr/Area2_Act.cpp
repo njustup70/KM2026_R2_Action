@@ -134,12 +134,18 @@ void MeiLinArray::TurnLeft()
 {
   TurnRelative(PI / 2.0f);
   Area2::block_pos.TurnLeft();
+
+  Area2::mei_lin_array.ChaseCurrentGrid();
+
 }
 
 void MeiLinArray::TurnRight()
 {
   TurnRelative(-PI / 2.0f);
   Area2::block_pos.TurnRight();
+
+  Area2::mei_lin_array.ChaseCurrentGrid();
+
 }
 
 /// @brief 根据当前坐标判断在哪个梅林块上，并导航到该块中心
@@ -220,9 +226,9 @@ static void FetchUp400()
 static void FetchDown200()
 {
   // 往前缓慢移动，直到抵靠到前端
-  APP::chas.Move(Vec2(0.25, 0), 3.0f);
+  APP::chas.Move(Vec2(0.45, 0), 7.0f);
   Seq::Wait(0.35f);
-  APP::chas.Move(Vec2(0.15, 0), 3.0f);
+  APP::chas.Move(Vec2(0.15, 0), 7.0f);
   Seq::Wait(0.15f);
 
   // 等待小黄0号检测到就停车
@@ -379,7 +385,7 @@ void MeiLinArray::FetchBlock(BlockHeight height)
   // 再伸出
   APP::vac_claw.StretchOut_First();
 
-  Seq::Wait(0.8f);
+  Seq::Wait(1.5f);
 
   // 关爪子定心
   APP::vac_claw.CloseSnap();
@@ -387,12 +393,12 @@ void MeiLinArray::FetchBlock(BlockHeight height)
   // 必须等爪子完全合上
   Seq::WaitUntil([]()
   {
-    return (APP::vac_claw.motor_snap.driver.measure.total_angle - APP::vac_claw.snap_pos) < 800;
+    return fabs(APP::vac_claw.motor_snap.driver.measure.total_angle - APP::vac_claw.snap_pos) < 1000;
   });  
 
   // 等一会再小开爪
-  Seq::Wait(0.8f);
-  APP::vac_claw.OpenSnapMini();
+  // Seq::Wait(0.8f);
+  // APP::vac_claw.OpenSnapMini();
 
   // 先开泵，然后直接伸出第二段
   APP::get_block.OpenPump();
@@ -407,7 +413,7 @@ void MeiLinArray::FetchBlock(BlockHeight height)
   // 此时爪还抓着物块，但是取下200块的时候，泵不开物块会掉下来，所以等爪子收回摩擦带能碰着物块再开夹爪、关泵
   Seq::WaitUntil([]()
   {
-    return (APP::vac_claw.motor_stretch.driver.measure.total_angle - APP::vac_claw.stretch_pos) < 50;
+    return fabs(APP::vac_claw.motor_stretch.driver.measure.total_angle - APP::vac_claw.stretch_pos) < 50;
   });
 
   APP::vac_claw.OpenSnap();
@@ -462,7 +468,7 @@ bool NIR_Read(InfraredDetector& ir)
  * @brief 二区行为之——上200
  * @details 内部区分需不需要取块
  */
-void MeiLinArray::Climb_Up200()
+void MeiLinArray::Climb_Up200(bool need_chase)
 {
   // 记录起始位置
   APP::monit.LogInfo("Climb200:StartPos:(%.2f,%.2f)",
@@ -531,6 +537,8 @@ void MeiLinArray::Climb_Up200()
 
   Area2::block_pos.Forward();
 
+  if (need_chase) Area2::mei_lin_array.ChaseCurrentGrid();
+
   // 记录结束位置
   APP::monit.LogInfo("Climb200:EndPos:(%.2f,%.2f)",
      APP::comm_center.slam_pos.x, APP::comm_center.slam_pos.y);
@@ -540,24 +548,28 @@ void MeiLinArray::Climb_Up200()
  * @brief 二区行为之——上400
  * @details 内部区分需不需要取块
  */
-void MeiLinArray::Climb_Up400()
+void MeiLinArray::Climb_Up400(bool need_chase)
 {
   // 记录起始位置
   APP::monit.LogInfo("Climb400:StartPos:(%.2f,%.2f)",
      APP::comm_center.slam_pos.x, APP::comm_center.slam_pos.y);
   
-  // 登400时，先放低前后腿
-  APP::leg.F_Down_400();
-  APP::leg.B_Down_400();
+  if(_skip_approach)
+  {
+    // 登400时，先放低前后腿
+    APP::leg.F_Down_400();
+    APP::leg.B_Down_400();
 
-  // // 如果需要取块，那么爪子也要有所行动。要先伸出来
-  // if (APP::vac_claw.need_to_fetch) FetchBlock();
+    // // 如果需要取块，那么爪子也要有所行动。要先伸出来
+    // if (APP::vac_claw.need_to_fetch) FetchBlock();
 
-  // 往前缓慢移动，直到抵靠到前端
-  APP::chas.Move(Vec2(0.5, 0), 3.0f);
-  Seq::Wait(0.35f);
-  APP::chas.Move(Vec2(0.25, 0), 3.0f);
-  Seq::Wait(0.15f);
+    // 往前缓慢移动，直到抵靠到前端
+    APP::chas.Move(Vec2(0.5, 0), 3.0f);
+    Seq::Wait(0.35f);
+    APP::chas.Move(Vec2(0.25, 0), 3.0f);
+    Seq::Wait(0.15f);
+  }
+  _skip_approach = false;
 
   // 等待小黄0号检测到可以抬前腿
   Seq::WaitUntil([&]()
@@ -583,14 +595,15 @@ void MeiLinArray::Climb_Up400()
   Seq::Wait(0.25f);
   
   /****   持续衰减的爆发移动速度加成  ****/
-  APP::chas.Move(Vec2(1.0, 0), 3.0f);
+  APP::chas.Move(Vec2(1.5, 0), 3.0f);
   Seq::Wait(0.2f);
-  APP::chas.Move(Vec2(0.5, 0), 3.0f);
+  APP::chas.Move(Vec2(0.75, 0), 3.0f);
   Seq::Wait(0.1f);
-  APP::chas.Move(Vec2(0.2, 0), 3.0f);
+  APP::chas.Move(Vec2(0.2, 0), 5.0f);
 
   // 防止小黄2号误检
-  Seq::Wait(0.1f);
+  Seq::Wait(0.2f);
+
   // 等待小黄2号检测到可以抬后腿
   Seq::WaitUntil([&]()
   {
@@ -608,12 +621,14 @@ void MeiLinArray::Climb_Up400()
   // 更新当前梅林ID
   Area2::block_pos.Forward();
 
+  if (need_chase) Area2::mei_lin_array.ChaseCurrentGrid();
+
   // 记录结束位置
   APP::monit.LogInfo("Climb400:EndPos:(%.2f,%.2f)",
      APP::comm_center.slam_pos.x, APP::comm_center.slam_pos.y);
 }
 
-void MeiLinArray::Decend_200()
+void MeiLinArray::Decend_200(bool need_chase)
 {
   // 这里等腿完全放下才允许下200
   Seq::WaitUntil([=]()
@@ -625,20 +640,25 @@ void MeiLinArray::Decend_200()
   APP::monit.LogInfo("Decend200:StartPos:(%.2f,%.2f)",
      APP::comm_center.slam_pos.x, APP::comm_center.slam_pos.y);
   
-  // 先缓慢向前走
-  APP::chas.Move(Vec2(0.25, 0), 3.0f);
-
-  // // 如果要取块，则伸出爪取块
-  // // Seq::Wait(0.8f); // 可能要加延时
-  // if(APP::vac_claw.need_to_fetch) FetchBlock();
-  // 等待小黄0号检测不到后，放下前腿
-  Seq::WaitUntil([&]()
+  if(_skip_approach)
   {
-    return NIR_Read(APP::leg.detector[0]);
-  });
+    // 先缓慢向前走
+    APP::chas.Move(Vec2(0.85, 0), 7.0f);
+
+    // // 如果要取块，则伸出爪取块
+    // // Seq::Wait(0.8f); // 可能要加延时
+    // if(APP::vac_claw.need_to_fetch) FetchBlock();
+
+    // 等待小黄0号检测不到后，放下前腿
+    Seq::WaitUntil([&]()
+    {
+      return NIR_Read(APP::leg.detector[0]);
+    });
+  }
+  _skip_approach = false;
 
   // 先缓慢向前走
-  APP::chas.Move(Vec2(0.1, 0), 3.0f);
+  APP::chas.Move(Vec2(0.25, 0), 7.0f);
 
   // // 如果要取块，则伸出爪取块
   // // Seq::Wait(0.8f); // 可能要加延时
@@ -658,7 +678,7 @@ void MeiLinArray::Decend_200()
   APP::leg.relay_daji.On();
 
   // 继续向前走。等待小黄3号检测不到后，放下后腿
-  APP::chas.Move(Vec2(0.24, 0), 3.0f);
+  APP::chas.Move(Vec2(0.24, 0), 7.0f);
   Seq::WaitUntil([&]()
   {
     return NIR_Read(APP::leg.detector[3]);
@@ -668,9 +688,9 @@ void MeiLinArray::Decend_200()
   Seq::Wait(0.45f);
 
   // 继续向前走一点，然后放下整个腿
-  APP::chas.Move(Vec2(0.4, 0), 2.0f);
+  APP::chas.Move(Vec2(0.4, 0), 7.0f);
   Seq::Wait(0.5f);
-  APP::chas.Move(Vec2(0.0, 0), 2.0f);
+  APP::chas.Move(Vec2(0.0, 0), 7.0f);
   APP::leg.F_Origin();
   APP::leg.B_Origin();
 
@@ -679,12 +699,14 @@ void MeiLinArray::Decend_200()
 
   Area2::block_pos.Forward();
 
+  if (need_chase) Area2::mei_lin_array.ChaseCurrentGrid();
+
   // 记录结束位置
   APP::monit.LogInfo("Decend200:EndPos:(%.2f,%.2f)",
      APP::comm_center.slam_pos.x, APP::comm_center.slam_pos.y);
 }
 
-void MeiLinArray::Decend_400()
+void MeiLinArray::Decend_400(bool need_chase)
 {
   // 这里等腿完全放下才允许下400
   Seq::WaitUntil([=]()
@@ -696,18 +718,22 @@ void MeiLinArray::Decend_400()
   APP::monit.LogInfo("Decend400:StartPos:(%.2f,%.2f)",
      APP::comm_center.slam_pos.x, APP::comm_center.slam_pos.y);
   
-  // 先缓慢向前走
-  APP::chas.Move(Vec2(0.2, 0), 6.0f);
-  Seq::Wait(0.25f);
-  
-  // 等待小黄0号检测不到后，减速
-  Seq::WaitUntil([&]()
+  if(_skip_approach)
   {
-    return !APP::leg.detector[0].Read();
-  });
+    // 先缓慢向前走
+    APP::chas.Move(Vec2(0.45, 0), 6.0f);
+    Seq::Wait(0.25f);
+    
+    // 等待小黄0号检测不到后，减速
+    Seq::WaitUntil([&]()
+    {
+      return !APP::leg.detector[0].Read();
+    });
+  }
+  _skip_approach = false;
 
   // 先缓慢向前走
-  APP::chas.Move(Vec2(0.1, 0), 3.0f);
+  APP::chas.Move(Vec2(0.1, 0), 7.0f);
 
   // 等待小黄1号检测不到后，放下前腿
   Seq::WaitUntil([&]()
@@ -723,7 +749,7 @@ void MeiLinArray::Decend_400()
   APP::leg.relay_daji.On();
 
   // 继续向前走。等待小黄3号检测不到后，放下后腿
-  APP::chas.Move(Vec2(0.2, 0), 6.0f);
+  APP::chas.Move(Vec2(0.2, 0), 7.0f);
   Seq::Wait(0.5f);
   
   Seq::WaitUntil([&]()
@@ -736,7 +762,7 @@ void MeiLinArray::Decend_400()
   Seq::Wait(1.25f);
 
   // 继续向前走一点，然后放下整个腿
-  APP::chas.Move(Vec2(0.4, 0), 2.0f);
+  APP::chas.Move(Vec2(0.4, 0), 7.0f);
   Seq::Wait(0.5f);
   APP::chas.Move(Vec2(0.0, 0), 2.0f);
   APP::leg.F_Origin();
@@ -746,6 +772,8 @@ void MeiLinArray::Decend_400()
   APP::leg.relay_daji.Off();
 
   Area2::block_pos.Forward();
+
+  if (need_chase) Area2::mei_lin_array.ChaseCurrentGrid();
 
   // 记录结束位置
   APP::monit.LogInfo("Decend400:EndPos:(%.2f,%.2f)",
@@ -822,6 +850,28 @@ void MeiLinArray::HandleClimbAct()
   }
 }
 
+static void MoveBackAndDecend()
+{
+  Seq::Wait(0.5);
+
+  // 先后退
+  APP::chas.Move(Vec2(-0.1f, 0.0f), 0.5);
+  Seq::Wait(0.5);
+
+  // 再根据当前梅林 ID 位置闭环
+  Area2::mei_lin_array.ChaseCurrentGrid();
+
+  // 再把腿放下
+  APP::leg.F_Origin();
+  APP::leg.B_Origin();
+
+  // 确保完全放下才允许下一步转向
+  Seq::WaitUntil([=]()
+  {
+    return (APP::leg.real_front_pos_mm > -10.0f) && (APP::leg.real_back_pos_mm > -10.0f); 
+  });
+}
+
 void MeiLinArray::ExecuteSequence()
 {
   APP::monit.LogInfo("[MeiLin] Waiting for sequence (0x91)...");
@@ -832,8 +882,13 @@ void MeiLinArray::ExecuteSequence()
 
   APP::monit.LogInfo("[MeiLin] Sequence received, %d actions.", _seq_len);
 
-  for (int i = 0; i < _seq_len; i++)
+  for (int i = need_extra_foreml_act ? 0 : 2; i < _seq_len; i++)
   {
+    /***    厕所    ***/
+    if (need_extra_foreml_act && i == 2) continue;
+    bool need_chase = true;
+    if (i == _seq_len - 2) need_chase = false;
+
     uint8_t cmd = _seq[i];
 
     if (cmd == Area2Code::AREA_DONE)
@@ -843,19 +898,27 @@ void MeiLinArray::ExecuteSequence()
 
     switch (cmd)
     {
-      case Area2Code::UP_200:        Climb_Up200();                         break;
-      case Area2Code::DOWN_200:      Decend_200();                          break;
-      case Area2Code::UP_400:        Climb_Up400();                         break;
-      case Area2Code::DOWN_400:      Decend_400();                          break;
+      case Area2Code::UP_200:        Climb_Up200(need_chase);                         break;
+      case Area2Code::DOWN_200:      Decend_200(need_chase);                          break;
+      case Area2Code::UP_400:        Climb_Up400(need_chase);                         break;
+      case Area2Code::DOWN_400:      Decend_400(need_chase);                          break;
       case Area2Code::TURN_CW:       TurnLeft();                    break;
       case Area2Code::TURN_CCW:      TurnRight();                   break;
-      case Area2Code::FETCH_UP200:   FetchBlock(BlockHeight::UP200);        break;
-      case Area2Code::FETCH_UP400:   FetchBlock(BlockHeight::UP400);        break;
-      case Area2Code::FETCH_DOWN200: FetchBlock(BlockHeight::DOWN200);      break;
-      // case Area2Code::FETCH_LEFT_UP_200: FetchSideBlock(); break;
-      // case Area2Code::FETCH_RIGHT_UP_200: FetchSideBlock(); break;
-      // case Area2Code::FETCH_LEFT_DOWN_200: FetchSideBlock(); break;
-      // case Area2Code::FETCH_RIGHT_DOWN_200: FetchSideBlock(); break;
+      case Area2Code::FETCH_UP200:
+        FetchBlock(BlockHeight::UP200); 
+        if (i + 1 < _seq_len && (_seq[i+1] == Area2Code::TURN_CW || _seq[i+1] == Area2Code::TURN_CCW))
+          MoveBackAndDecend();       
+        break;
+      case Area2Code::FETCH_UP400:
+        FetchBlock(BlockHeight::UP400); 
+        if (i + 1 < _seq_len && (_seq[i+1] == Area2Code::TURN_CW || _seq[i+1] == Area2Code::TURN_CCW))
+          MoveBackAndDecend();       
+        break;
+      case Area2Code::FETCH_DOWN200: 
+        FetchBlock(BlockHeight::DOWN200);
+        if (i + 1 < _seq_len && (_seq[i+1] == Area2Code::TURN_CW || _seq[i+1] == Area2Code::TURN_CCW))
+          MoveBackAndDecend();      
+        break;
       case Area2Code::ENTER_0: 
       case Area2Code::ENTER_1: 
       case Area2Code::ENTER_2: HandleClimbAct(); break;
@@ -884,12 +947,13 @@ void MeiLinArray::Area2ActRxCallback(uint8_t func_code, const uint8_t *payload, 
 
   MeiLinArray &self = MeiLinArray::GetInstance();
 
-  self._seq_len = 0;
   self._seq_ready = false;
 
   int copy_len = (payload_len > MAX_SEQ) ? MAX_SEQ : payload_len;
   memcpy(self._seq, payload, copy_len);
   self._seq_len = copy_len;
+
+  self.enter_code = self._seq[0];
 
   // 检查最后一条是不是 AREA_DONE，是的话直接标记就绪
   if (self._seq_len > 0 && self._seq[self._seq_len - 1] == Area2Code::AREA_DONE)
@@ -899,6 +963,8 @@ void MeiLinArray::Area2ActRxCallback(uint8_t func_code, const uint8_t *payload, 
 
   // 回复 ACK 告知上位机已收到
   MOD::host_pc.SendAck(Area2Code::ACK_DONE, 0);
+
+  if (self._seq[0] != self._seq[1]) self.need_extra_foreml_act = true;
 
   self.host_a2act_recved = true;
 }

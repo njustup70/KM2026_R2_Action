@@ -50,6 +50,9 @@ public:
   /// @brief 是否收到工控机发来的动作序列，安全标准位
   bool host_a2act_recved = false; 
 
+  /// @brief 判断是否有进入梅林前的动作
+  bool need_extra_foreml_act = false;
+
   void Init(); // 初始化，注册回调函数
 
   /// @brief 手动设置动作序列（调试用），最后一条需为 AREA_DONE
@@ -64,17 +67,17 @@ public:
    * @brief 二区行为之 上200
    * @details 内部区分需不需要取块
    */
-  void Climb_Up200();
+  void Climb_Up200(bool need_chase = true);
 
   /**
    * @brief 二区行为之 上400
    * @details 内部区分需不需要取块
    */
-  void Climb_Up400();
+  void Climb_Up400(bool need_chase = true);
 
-  void Decend_200();
+  void Decend_200(bool need_chase = true);
 
-  void Decend_400();
+  void Decend_400(bool need_chase = true);
 
   // void FetchSideBlock();
 
@@ -93,7 +96,7 @@ public:
 
 private:
   static constexpr int MAX_SEQ = 64;
-  Area2Code _seq[MAX_SEQ] = {Area2Code::AREA_DONE}; // 动作缓存
+  Area2Code _seq[MAX_SEQ] = {AREA_DONE}; // 动作缓存
 
   int _seq_len = 0;            // 已缓存的动作数
   bool _seq_ready = false;     // 序列收完标志
