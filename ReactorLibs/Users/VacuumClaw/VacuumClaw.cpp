@@ -147,13 +147,23 @@ void VacuumClaw::StretchOut_First()
     pitch_pos = 0.0f;
     motor_pitch.SetPosVel(-pitch_pos, 1.5);    
 
-    stretch_pos = 150000;
+    stretch_pos = 190000;
 }
 
 // 取块第二步，开泵了，继续伸出剩下部分
 void VacuumClaw::StretchOut_Second()
 {
-    stretch_pos = 252000;
+    // stretch_pos = 252000;
+    constexpr float target_pos = 252000.0f;
+    constexpr float step_size  = 6800.0f;   // 每步增量
+    constexpr float step_dt    = 0.1f;       // 每步间隔
+
+    for (float pos = 180000.0f + step_size; pos < target_pos; pos += step_size)
+    {
+        stretch_pos = pos;
+        Seq::Wait(step_dt);
+    }
+    stretch_pos = target_pos;
 }
 
 void VacuumClaw::StretchBack()
@@ -189,7 +199,7 @@ void VacuumClaw::OpenSnap()
 void VacuumClaw::OpenSnapMini()
 {
     if (_snap_origined) 
-        snap_pos = _snap_origin_code + 180000; // 这是合上爪子后，为了能吸住物块，微微张开爪子让车往前走一小段彻底吸住物块
+        snap_pos = _snap_origin_code + 140000; // 这是合上爪子后，为了能吸住物块，微微张开爪子让车往前走一小段彻底吸住物块
     else
         APP::monit.LogWarning("Unorigined snapclaw!");   
 }
@@ -197,7 +207,7 @@ void VacuumClaw::OpenSnapMini()
 void VacuumClaw::CloseSnap()
 {
     if (_snap_origined)
-        snap_pos = _snap_origin_code + 185000;
+        snap_pos = _snap_origin_code + 145000;
     else
         APP::monit.LogWarning("Unorigined snapclaw!");
 }
