@@ -530,29 +530,31 @@ void Response_Button_main()
       last_put_time = DWT_GetTimeline_Sec();
     }    
 
-    // 同时放低前后腿，准备登R1
-    static float last_taitui_time = 0;
-    if(MOD::farcon.button_first_half[0] == 1 && DWT_GetTimeline_Sec() - last_taitui_time > 1.0f)
+    /**************   均为左半按键  *************/
+    // 抬腿
+    if (MOD::farcon.button_first_half[0] == 1)
     {
-      APP::leg.SetFrontPos(-400.0f);
-      APP::leg.SetBackPos(-400.0f);
-      last_taitui_time = DWT_GetTimeline_Sec();
+      APP::leg.SetFrontPosSlow(-390.0f, 5.0f);
+      APP::leg.SetBackPosSlow(-390.0f, 5.0f);
     }
 
-    static float last_shouqiantui_time = 0;
-    if(MOD::farcon.button_first_half[1] == 1 && DWT_GetTimeline_Sec() - last_shouqiantui_time > 1.0f)
+    // 收回前腿
+    if (MOD::farcon.button_first_half[1] == 1)
     {
-      APP::leg.SetFrontPos(-10.0f);
-      // APP::leg.SetBackPos(-380.0f);
-      last_shouqiantui_time = DWT_GetTimeline_Sec();
-    }  
+      APP::leg.SetFrontPosSlow(-4, 5.0f);
+    }
 
-    static float last_shouhoutui_time = 0;
-    if(MOD::farcon.button_first_half[2] == 1 && DWT_GetTimeline_Sec() - last_shouhoutui_time > 1.0f)
+    // 收回后腿
+    if (MOD::farcon.button_first_half[2] == 1)
     {
-      // APP::leg.SetFrontPos(-5.0f);
-      APP::leg.SetBackPos(-10.0f);
-      last_shouhoutui_time = DWT_GetTimeline_Sec();
+      APP::leg.SetBackPosSlow(-4, 5.0f);
+    }
+
+    // 一起收回
+    if (MOD::farcon.button_first_half[3] == 1)
+    {
+      APP::leg.SetFrontPosSlow(-4, 5.0f);
+      APP::leg.SetBackPosSlow(-4, 5.0f);
     }
 
     if(MOD::farcon.button_first_half[6] == 1)
