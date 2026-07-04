@@ -110,7 +110,8 @@ void Action_of_Dege_Fetch_UP200(StateCore *core)
     Seq::Wait(0.01f);
   }  
   
-  Area2::mei_lin_array.FetchBlock(BlockHeight::UP200);
+  Area2::mei_lin_array.FetchBlock(BlockHeight::DOWN200);
+  
 
   // Area2::block_pos.GetIn(1);
   // Area2::mei_lin_array.Climb_Up200();
@@ -226,11 +227,12 @@ void MainFrameCpp()
   // Config_R2_Challenge_StateGraph();
 
   /*简并模式测试*/
-  // graph.Degenerate(Action_of_Dege_Fetch_UP200);
-  // APP::state_core.RegistGraph(graph);
-  // APP::state_core.Enable(0); // 启动状态机核心，指定初始状态图为0号图
+  graph.Degenerate(Action_of_Dege_Fetch_UP200);
+  APP::state_core.RegistGraph(graph);
+  APP::state_core.Enable(0); // 启动状态机核心，指定初始状态图为0号图
 
 }
+
 
 
 // const static float max_farcon_alpha = 1.8f; // 最大加速度 m/s^2

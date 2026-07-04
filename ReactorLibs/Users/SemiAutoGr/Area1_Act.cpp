@@ -244,7 +244,7 @@ void Fetch()
     Vec3 targ_body_vec = targ_body_vec_xy.ToVec3();
     targ_body_vec.z = yaw_err * 0.8f;
 
-    APP::monit.LogInfo("ir:%d", APP::main_loop.spear_detector.Read() ? 1 : 0);
+    // APP::monit.LogInfo("ir:%d", APP::main_loop.spear_detector.Read() ? 1 : 0);
 
     // 向前走，直到小黄看到为止
     APP::chas.Move(targ_body_vec, 0.006f);

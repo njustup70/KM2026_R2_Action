@@ -54,8 +54,8 @@ namespace MOVE
             if (++log_tick >= 20)
             {
                 log_tick = 0;
-                APP::monit.LogInfo("world_vec(%.3f, %.3f, %.3f)",
-                                   world_vec.x, world_vec.y, world_vec.z);
+                // APP::monit.LogInfo("world_vec(%.3f, %.3f, %.3f)",
+                //                    world_vec.x, world_vec.y, world_vec.z);
             }
             Seq::Wait(0.005f); // 200hz更新频率
         }
@@ -81,8 +81,8 @@ namespace MOVE
             if (++log_tick >= 20)
             {
                 log_tick = 0;
-                APP::monit.LogInfo("pt_world_vec(%.3f, %.3f, %.3f)",
-                                   world_vec.x, world_vec.y, world_vec.z);
+                // APP::monit.LogInfo("pt_world_vec(%.3f, %.3f, %.3f)",
+                //                    world_vec.x, world_vec.y, world_vec.z);
             }
             Seq::Wait(0.005f); // 200hz更新频率
         }
