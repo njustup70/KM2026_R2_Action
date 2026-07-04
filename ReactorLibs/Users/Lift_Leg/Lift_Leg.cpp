@@ -43,6 +43,42 @@ void Lift_Leg::_SendLegPos(int16_t fpos, int16_t bpos)
     MOD::board_can.SendTask(MOD::C_sub_ctrl_board_id, 6, payload, sizeof(payload), false);
 }
 
+void Lift_Leg::_UpdateSlowMove()
+{
+    const float now = DWT_GetTimeline_Sec();
+
+    auto update_axis = [now](SlowMoveState& st, int& pos, int16_t min_lim, int16_t max_lim)
+    {
+        if (!st.active)
+        {
+            return;
+        }
+
+        float elapsed = now - st.start_time;
+        if (elapsed < 0.0f)
+        {
+            elapsed = 0.0f;
+        }
+
+        float t = (st.duration > 0.001f) ? (elapsed / st.duration) : 1.0f;
+        if (t >= 1.0f)
+        {
+            pos = st.target_pos;
+            st.active = false;
+            return;
+        }
+
+        const float blend = t * t * (3.0f - 2.0f * t); // 平滑步进，起止更柔和
+        pos = static_cast<int>(st.start_pos + (st.target_pos - st.start_pos) * blend);
+
+        if (pos > max_lim) pos = max_lim;
+        if (pos < min_lim) pos = min_lim;
+    };
+
+    update_axis(front_slow_, front_pos, _front_min_lim, _front_max_lim);
+    update_axis(back_slow_, back_pos, _back_min_lim, _back_max_lim);
+}
+
 void Lift_Leg::Update()
 {
     // 读取小黄
@@ -52,6 +88,9 @@ void Lift_Leg::Update()
     back_ir = detector[3].Read();
     
     if (!enabled_)  return;
+
+    // 慢速动作由这里逐帧推进，避免在应用内部阻塞等待
+    _UpdateSlowMove();
  
     // 进行位置限制
     PosLim();
@@ -123,51 +162,104 @@ void Lift_Leg::LegActRxCb(uint8_t task_id, const uint8_t* payload, uint8_t paylo
 }
 
 /********************************************  越野部分 ********************************************/
+namespace
+{
+    inline int16_t ClampInt16(int16_t value, int16_t min_v, int16_t max_v)
+    {
+        if (value < min_v) return min_v;
+        if (value > max_v) return max_v;
+        return value;
+    }
+}
+
 // 前腿回到零位
 void Lift_Leg::F_Origin()
 {
+    front_slow_.active = false;
     front_pos = -2;
 }
 
 // 后腿回到零位
 void Lift_Leg::B_Origin()
 {
+    back_slow_.active = false;
     back_pos = -2;
 }
 
 void Lift_Leg::F_AlmostOrigin()
 {
+    front_slow_.active = false;
     front_pos = -5;
 }
 
 // 后腿回到零位
 void Lift_Leg::B_AlmostOrigin()
 {
+    back_slow_.active = false;
     back_pos = -5;
 }
 
 // 前腿放低200
 void Lift_Leg::F_Down_200()
 {
+    front_slow_.active = false;
     front_pos = -207;
 }
 
 // 前腿放低400
 void Lift_Leg::F_Down_400()
 {
+    front_slow_.active = false;
     front_pos = -407;
 }
 
 // 后腿放低200
 void Lift_Leg::B_Down_200()
 {
+    back_slow_.active = false;
     back_pos = -207;
 }
 
 // 后腿放低400
 void Lift_Leg::B_Down_400()
 {
+    back_slow_.active = false;
     back_pos = -407;
+}
+
+/**
+ * @brief 慢慢移动前腿到目标位置
+ * 
+ * @param target_pos 
+ * @param use_sec 
+ */
+void Lift_Leg::SetFrontPosSlow(int16_t target_pos, float use_sec)
+{
+    target_pos = ClampInt16(target_pos, _front_min_lim, _front_max_lim);
+    if (use_sec < 0.12f)
+    {
+        use_sec = 0.12f;
+    }
+    front_slow_.active = true;
+    front_slow_.start_pos = static_cast<int16_t>(front_pos);
+    front_slow_.target_pos = target_pos;
+    front_slow_.start_time = DWT_GetTimeline_Sec();
+    front_slow_.duration = use_sec;
+}
+
+
+void Lift_Leg::SetBackPosSlow(int16_t target_pos, float use_sec)
+{
+    target_pos = ClampInt16(target_pos, _back_min_lim, _back_max_lim);
+    if (use_sec < 0.12f)
+    {
+        use_sec = 0.12f;
+    }
+    back_slow_.active = true;
+    back_slow_.start_pos = static_cast<int16_t>(back_pos);
+    back_slow_.target_pos = target_pos;
+    back_slow_.start_time = DWT_GetTimeline_Sec();
+    back_slow_.duration = use_sec;
 }
 
 void Wait_detected(InfraredDetector& xiaohuang_x)

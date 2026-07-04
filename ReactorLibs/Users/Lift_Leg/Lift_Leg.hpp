@@ -27,21 +27,25 @@ public:
 
     void ChangeFrontPos(int16_t delta_pos)
     {
+        front_slow_.active = false;
         front_pos += delta_pos;
     }
 
     void ChangeBackPos(int16_t delta_pos)
     {
+        back_slow_.active = false;
         back_pos += delta_pos;
     }
 
     void SetFrontPos(int16_t target_pos)
     {
+        front_slow_.active = false;
         front_pos = target_pos;
     }
 
     void SetBackPos(int16_t target_pos)
     {
+        back_slow_.active = false;
         back_pos = target_pos;
     }
 
@@ -57,6 +61,10 @@ public:
 
     void Enable();
     void Disable();
+    
+    void SetFrontPosSlow(int16_t target_pos, float use_sec);
+    void SetBackPosSlow(int16_t target_pos, float use_sec);
+
     void F_AlmostOrigin(); // 前腿回到近零位
     void B_AlmostOrigin(); // 后腿回到近零位
     void F_Origin(); // 前腿回到零位
@@ -71,7 +79,20 @@ public:
 private:
     /// @brief 位置限幅用的
     inline void PosLim();
+    void _UpdateSlowMove();
     void _SendLegPos(int16_t fpos, int16_t bpos);
+
+    struct SlowMoveState
+    {
+        bool active = false;
+        int16_t start_pos = 0;
+        int16_t target_pos = 0;
+        float start_time = 0.0f;
+        float duration = 0.0f;
+    };
+
+    SlowMoveState front_slow_;
+    SlowMoveState back_slow_;
 
     bool enabled_ = false;
     bool is_debug = false; // 用于调试
