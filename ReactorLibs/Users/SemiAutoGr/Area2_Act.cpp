@@ -160,6 +160,8 @@ void MeiLinArray::ChaseCurrentGrid()
   APP::monit.LogInfo("[MeiLin] ChaseGrid: id=%d center(%.2f,%.2f)",
     id, center.x, center.y);
 
+  APP::monit.LogInfo("[MeiLin] Current Pos: (%.2f,%.2f)", System.position.x, System.position.y);
+
   APP::path_chaser.ChaseGes(Vec3(center.x, center.y, target_yaw));
 
   while (!APP::path_chaser.IsFinished())
@@ -855,7 +857,7 @@ static void MoveBackAndDecend()
   Seq::Wait(0.5);
 
   // 先后退
-  APP::chas.Move(Vec2(-0.1f, 0.0f), 0.5);
+  APP::chas.Move(Vec2(-0.25f, 0.0f), 7.0);
   Seq::Wait(0.5);
 
   // 再根据当前梅林 ID 位置闭环
@@ -879,6 +881,26 @@ void MeiLinArray::ExecuteSequence()
   {
     Seq::Wait(0.01f);
   }
+
+  switch (_seq[1])
+  {
+    case 0x80:
+      Area2::block_pos.GetIn(0);
+    break;
+
+    case 0x81:
+      Area2::block_pos.GetIn(1);
+    break;
+
+    case 0x82:
+      Area2::block_pos.GetIn(2);
+    break;
+
+    default:
+      APP::monit.LogError("Error EnterCode: 0x%x02", _seq[1]);
+    break;
+  }
+  
 
   APP::monit.LogInfo("[MeiLin] Sequence received, %d actions.", _seq_len);
 
