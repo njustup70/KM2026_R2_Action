@@ -31,6 +31,7 @@ private:
         Running,
         Expand,
         Blink,
+        ProgBar,
     };
 
     uint32_t PwmMaxValue = 0;       // PWM最大值
@@ -52,6 +53,9 @@ private:
     float effect_width_ = 0.2f;
     uint8_t effect_blink_times_ = 1;
     bool blink_state_on_ = false;
+    Color prog_bar_color_;
+    float* prog_bar_value_ = nullptr;
+    float prog_bar_last_value_ = -1.0f;
 
     // 灯带的写入缓冲区，每颗灯24bit，颜色顺序是GRB，末尾补一段低电平用于锁存
     uint32_t WS2812buf2send[MaxLedNumsT * kBitsPerLed + kResetSlots] = {0};
@@ -103,6 +107,7 @@ public:
     void _ApplyRunningFrame();
     void _ApplyExpandFrame();
     void _ApplyBlinkFrame();
+    void _ApplyProgBarFrame();
     void _ResetEffectRuntime();
     void _ActivateStaticMode();
     void _SetColorRaw(int8_t Led_id, uint8_t R, uint8_t G, uint8_t B);
@@ -121,6 +126,7 @@ public:
     void Blink(Color color, uint8_t times, float period);
     void Lit(Color color); // 供外部调用的Fill，省算力
     void Expand(Color color_0, float period);
+    void ProgBar(Color color, float* progress);
 
     static void _PulseFinishedCb(BSP::TIM::TimID tim, BSP::TIM::Channel channel, void* user_ctx);
 };
@@ -381,6 +387,39 @@ void LedWs2812<MaxLedNumsT>::_ApplyBlinkFrame()
 }
 
 template <size_t MaxLedNumsT>
+void LedWs2812<MaxLedNumsT>::_ApplyProgBarFrame()
+{
+    if (LedNums == 0 || prog_bar_value_ == nullptr) return;
+
+    float progress = *prog_bar_value_;
+    if (!(progress >= 0.0f)) progress = 0.0f;
+    if (progress > 1.0f) progress = 1.0f;
+
+    if (prog_bar_last_value_ >= 0.0f && fabsf(progress - prog_bar_last_value_) < 1e-5f)
+    {
+        return;
+    }
+
+    prog_bar_last_value_ = progress;
+
+    Color color = prog_bar_color_ * BiasFactor;
+    float lit_position = progress * LedNums;
+
+    for (int i = 0; i < LedNums; i++)
+    {
+        float intensity = _Clamp01(lit_position - static_cast<float>(i));
+        if (intensity <= 0.0f)
+        {
+            _SetColorRaw(i, 0, 0, 0);
+            continue;
+        }
+
+        Color color_targ = color * intensity;
+        _SetColorRaw(i, color_targ.r, color_targ.g, color_targ.b);
+    }
+}
+
+template <size_t MaxLedNumsT>
 void LedWs2812<MaxLedNumsT>::Fill(uint8_t R, uint8_t G, uint8_t B)
 {
     _ActivateStaticMode();
@@ -482,6 +521,23 @@ void LedWs2812<MaxLedNumsT>::Expand(Color color_0, float period)
 }
 
 template <size_t MaxLedNumsT>
+void LedWs2812<MaxLedNumsT>::ProgBar(Color color, float* progress)
+{
+    if (progress == nullptr)
+    {
+        BspLog_LogError("[WS2812]: ProgBar at null progress pointer!\r\n");
+        return;
+    }
+
+    prog_bar_color_ = color;
+    prog_bar_value_ = progress;
+    prog_bar_last_value_ = -1.0f;
+    current_mode_ = EffectMode::ProgBar;
+
+    _ApplyProgBarFrame();
+}
+
+template <size_t MaxLedNumsT>
 void LedWs2812<MaxLedNumsT>::SetHandlePrescaler(uint8_t prescaler)
 {
     handle_prescaler_ = (prescaler == 0) ? 1 : prescaler;
@@ -515,6 +571,9 @@ void LedWs2812<MaxLedNumsT>::Handle()
             break;
         case EffectMode::Blink:
             _ApplyBlinkFrame();
+            break;
+        case EffectMode::ProgBar:
+            _ApplyProgBarFrame();
             break;
         default:
             return;

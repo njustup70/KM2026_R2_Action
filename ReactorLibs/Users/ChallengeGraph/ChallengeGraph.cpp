@@ -32,20 +32,17 @@ static uint8_t need_spear_id = 0;
 static bool fetch_again = false;    // 是否需要再次取矛头
 static bool move_to_area2 = false;  // 是否可以移动到二区了
 
-
 // 自动状态机
 StateGraph R2_Challenge_Graph("R2_Challenge");
 static void Waiting_for_Start(StateCore *core);
 static void Walk_Fetch(StateCore *core);
 static void Walk_To_Dock(StateCore *core);
-void Dock_Fetch_And_Back(StateCore *core);
+static void Dock_Fetch_And_Back(StateCore *core);
 static void Goto_Area2(StateCore *core);
 static void Area2_HostAction(StateCore *core);
 static void Area2End_BackOrigin(StateCore *core);
 
-
 static void Walk_into_Area2(StateCore *core);
-static void Walk_into_Area3(StateCore *core);
 
 void Config_R2_Challenge_StateGraph()
 {
@@ -196,18 +193,21 @@ void Walk_To_Dock(StateCore *core)
     }
   }
 
-  // 灯带：闪烁
-  APP::main_loop.test_led.Blink(Color::Up_Purpor, 2, 0.2f);
+  // 灯带：进度条
+  float wait_progress = 0.0f;
+  APP::main_loop.test_led.ProgBar(Color::Up_Yellow, &wait_progress);
 
   // 打开夹爪，给R1时间拿回兵器
   APP::jaw.OpenClaw();    // 依旧OpenClaw
-  Seq::Wait(2.0f);
 
-  APP::main_loop.test_led.Blink(Color::Up_Purpor, 2, 0.1f);
-  Seq::Wait(2.0f);
-
-  APP::main_loop.test_led.Blink(Color::Up_Purpor, 2, 0.05f);
-  Seq::Wait(2.0f);
+  // 等待 6 秒
+  float wait_time_s = 0.0f;
+  while (wait_time_s < 6.0f)
+  {
+    wait_time_s += 0.05f;
+    wait_progress = wait_time_s / 6.0f;
+    Seq::Wait(0.05f);
+  }
 
   while(MOD::farcon.button_second_half[0] != 1)
   {
@@ -265,15 +265,21 @@ void Dock_Fetch_And_Back(StateCore *core)
     }
   }
 
+  // 灯带：进度条
+  float wait_progress = 0.0f;
+  APP::main_loop.test_led.ProgBar(Color::Up_Yellow, &wait_progress);
+
   // 打开夹爪，给R1时间拿回兵器
   APP::jaw.OpenClaw();    // 依旧OpenClaw
-  Seq::Wait(2.0f);
 
-  APP::main_loop.test_led.Blink(Color::Up_Purpor, 2, 0.1f);
-  Seq::Wait(2.0f);
-
-  APP::main_loop.test_led.Blink(Color::Up_Purpor, 2, 0.05f);
-  Seq::Wait(2.0f);
+  // 等待 6 秒
+  float wait_time_s = 0.0f;
+  while (wait_time_s < 6.0f)
+  {
+    wait_time_s += 0.05f;
+    wait_progress = wait_time_s / 6.0f;
+    Seq::Wait(0.05f);
+  }
 
   while(MOD::farcon.button_second_half[0] != 1)
   {
@@ -418,65 +424,8 @@ void Area2End_BackOrigin(StateCore *core)
 
 /*******************************************************************************/
 
-/**
- * @brief 
- * 
- * @param core 
- */
-void Walk_into_Area3(StateCore *core)
-{
-  APP::monit.LogInfo("Now, Go to Area3 -- ARENA");
-  
-  // 跑到Arena九宫格跟前
-  APP::leg.SetFrontPos(-40);
-  APP::leg.SetBackPos(-40);
-
-  // 一步一步跑，先测跑点
-  MOVE::MoveToTargGes(Vec3(8.65f, 0.77f, 0.0f));
-
-  // 等待遥控器指令，然后才进入下一步
-  while(MOD::farcon.button_second_half[0] != 1)
-  {
-    Response_Button();
-    Seq::Wait(0.01f);
-  }
-
-  // 等待下一个指令
-  MOVE::MoveToTargGes(Vec3(11.45f, 0.77f, 0.0f));
-
-  // 等待遥控器指令，然后才进入下一步
-  while(MOD::farcon.button_second_half[0] != 1)
-  {
-    Response_Button();
-    Seq::Wait(0.01f);
-  }
-
-  // 等待下一个指令
-  MOVE::MoveToTargGes(Vec3(10.75f, 5.4f, 1.57f));
-
-  // 等待遥控器指令，然后才进入下一步
-  while(MOD::farcon.button_second_half[0] != 1)
-  {
-    Response_Button();
-    Seq::Wait(0.01f);
-  }
-
-  // 抬腿但是（还不知道该抬多高）
-  APP::leg.B_Down_400();
-  APP::leg.F_Down_400();
-
-  // 等待遥控器指令，然后才进入下一步
-  while(MOD::farcon.button_second_half[0] != 1)
-  {
-    Response_Button();
-    Seq::Wait(0.01f);
-  }
-
-  APP::get_block.Put();
-}
-
-/*******************************************************************************/
-
+const static float max_farcon_alpha = 1.8f; // 最大加速度 m/s^2
+const static float max_farcon_beta = 1.8f; // 最大角加速度 rad/s^2
 void Response_Button()
 {
     static float max_velo = 1.5f;
@@ -502,6 +451,26 @@ void Response_Button()
     vel.x = -map_axis(MOD::farcon.jys_value[3]) * max_velo; // 最大速度0.5m/s
     vel.y = -map_axis(MOD::farcon.jys_value[2]) * max_velo; // 最大速度0.5m/s
     vel.z = -map_axis(MOD::farcon.jys_value[0]) * max_velo; // 最大角速度1.0rad/s
+
+    // 简单加速度限制：避免遥控器输入突变导致底盘速度跳变
+    static Vec3 last_vel(0, 0, 0);
+    static float last_accel_time = DWT_GetTimeline_Sec();
+    float now = DWT_GetTimeline_Sec();
+    float dt = now - last_accel_time;
+    if (dt > 0.05f) dt = 0.05f;
+    if (dt < 0.0f) dt = 0.0f;
+    last_accel_time = now;
+
+    auto limit_delta = [](float delta, float max_delta) -> float {
+      if (delta > max_delta) return max_delta;
+      if (delta < -max_delta) return -max_delta;
+      return delta;
+    };
+
+    vel.x = last_vel.x + limit_delta(vel.x - last_vel.x, max_farcon_alpha * dt);
+    vel.y = last_vel.y + limit_delta(vel.y - last_vel.y, max_farcon_alpha * dt);
+    vel.z = last_vel.z + limit_delta(vel.z - last_vel.z, max_farcon_beta * dt);
+    last_vel = vel;
 
     if (vel.Length() > 0.03f)
     {
@@ -542,6 +511,33 @@ void Response_Button()
     {
       // 放下达妙
       APP::get_block.motor_dm_lift.SetPosVel(0.0f, 15.0f);
+    }
+
+    /**************   均为左半硬件  *************/
+    // 抬腿
+    if (MOD::farcon.button_first_half[0] == 1)
+    {
+      APP::leg.SetFrontPosSlow(-390.0f, 5.0f);
+      APP::leg.SetBackPosSlow(-390.0f, 5.0f);
+    }
+
+    // 收回前腿
+    if (MOD::farcon.button_first_half[1] == 1)
+    {
+      APP::leg.SetFrontPosSlow(-4, 5.0f);
+    }
+
+    // 收回后腿
+    if (MOD::farcon.button_first_half[2] == 1)
+    {
+      APP::leg.SetBackPosSlow(-4, 5.0f);
+    }
+
+    // 一起收回
+    if (MOD::farcon.button_first_half[3] == 1)
+    {
+      APP::leg.SetFrontPosSlow(-4, 5.0f);
+      APP::leg.SetBackPosSlow(-4, 5.0f);
     }
 }
 
