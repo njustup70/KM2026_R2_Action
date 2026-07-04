@@ -193,18 +193,21 @@ void Walk_To_Dock(StateCore *core)
     }
   }
 
-  // 灯带：闪烁
-  APP::main_loop.test_led.Blink(Color::Up_Purpor, 2, 0.2f);
+  // 灯带：进度条
+  float wait_progress = 0.0f;
+  APP::main_loop.test_led.ProgBar(Color::Up_Yellow, &wait_progress);
 
   // 打开夹爪，给R1时间拿回兵器
   APP::jaw.OpenClaw();    // 依旧OpenClaw
-  Seq::Wait(2.0f);
 
-  APP::main_loop.test_led.Blink(Color::Up_Purpor, 2, 0.1f);
-  Seq::Wait(2.0f);
-
-  APP::main_loop.test_led.Blink(Color::Up_Purpor, 2, 0.05f);
-  Seq::Wait(2.0f);
+  // 等待 6 秒
+  float wait_time_s = 0.0f;
+  while (wait_time_s < 6.0f)
+  {
+    wait_time_s += 0.05f;
+    wait_progress = wait_time_s / 6.0f;
+    Seq::Wait(0.05f);
+  }
 
   while(MOD::farcon.button_second_half[0] != 1)
   {
@@ -262,15 +265,21 @@ void Dock_Fetch_And_Back(StateCore *core)
     }
   }
 
+  // 灯带：进度条
+  float wait_progress = 0.0f;
+  APP::main_loop.test_led.ProgBar(Color::Up_Yellow, &wait_progress);
+
   // 打开夹爪，给R1时间拿回兵器
   APP::jaw.OpenClaw();    // 依旧OpenClaw
-  Seq::Wait(2.0f);
 
-  APP::main_loop.test_led.Blink(Color::Up_Purpor, 2, 0.1f);
-  Seq::Wait(2.0f);
-
-  APP::main_loop.test_led.Blink(Color::Up_Purpor, 2, 0.05f);
-  Seq::Wait(2.0f);
+  // 等待 6 秒
+  float wait_time_s = 0.0f;
+  while (wait_time_s < 6.0f)
+  {
+    wait_time_s += 0.05f;
+    wait_progress = wait_time_s / 6.0f;
+    Seq::Wait(0.05f);
+  }
 
   while(MOD::farcon.button_second_half[0] != 1)
   {
