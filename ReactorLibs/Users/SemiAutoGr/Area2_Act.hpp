@@ -53,6 +53,9 @@ public:
   /// @brief 判断是否有进入梅林前的动作
   bool need_extra_foreml_act = false;
 
+  /// @brief 取下200的块后之后如果要进行转向，则要先收回前腿
+  bool is_f_origin_before_turn = false; 
+
   void Init(); // 初始化，注册回调函数
 
   /// @brief 手动设置动作序列（调试用），最后一条需为 AREA_DONE
