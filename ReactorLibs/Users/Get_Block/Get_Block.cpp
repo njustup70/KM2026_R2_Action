@@ -83,11 +83,18 @@ void GetBlock::Start()
 
     _fsm = FSM::IDLE;
     _fsm_busy = false;
+
+    // 初始化本地计时器
+    DWT_GetDeltaTime(&_local_cyccnt);
+    _local_tick = 0.0f;
 }
 
 // ==================== Update ====================
 void GetBlock::Update()
 {
+    // 累积本地独立计时器（方案C：不依赖全局 System.runtime_tick）
+    _local_tick += DWT_GetDeltaTime(&_local_cyccnt);
+
     if (System.out_from_debugmode)
     {
         _StopBelt();
@@ -125,7 +132,8 @@ void GetBlock::_ReadSensors()
 // ==================== 辅助 ====================
 bool GetBlock::_IsTimeout(float sec) const
 {
-    return (System.runtime_tick - _action_tick) > sec;
+    // return (System.runtime_tick - _action_tick) > sec;  // old
+    return (_local_tick - _action_tick) > sec;
 }
 
 void GetBlock::_StartBelt()
@@ -148,7 +156,8 @@ void GetBlock::Store()
     {
         _fsm = FSM::STORE_BELT_IN;
         _storing_b2 = true;
-        _action_tick = System.runtime_tick;
+        // _action_tick = System.runtime_tick;  // old
+        _action_tick = _local_tick;
         APP::monit.LogInfo("[GetBlock] Store #2: belt in");
         return;
     }
@@ -190,7 +199,8 @@ void GetBlock::Store()
     }
 
     _fsm_busy = true;
-    _action_tick = System.runtime_tick;
+    // _action_tick = System.runtime_tick;  // old
+    _action_tick = _local_tick;
 }
 
 // ==================== 放块 ====================
@@ -202,7 +212,8 @@ void GetBlock::Put()
         if (_fsm == FSM::STORE_HOLD_PUT)
         {
             _fsm = FSM::PUT_FEED_PUSH;
-            _action_tick = System.runtime_tick;
+            // _action_tick = System.runtime_tick;  // old
+            _action_tick = _local_tick;
             APP::monit.LogInfo("[GetBlock] Put during store hold: push block1");
             return;
         }
@@ -212,7 +223,8 @@ void GetBlock::Put()
         {
             _fsm = FSM::PUT_FEED_PUSH;
             _storing_b2 = false;
-            _action_tick = System.runtime_tick;
+            // _action_tick = System.runtime_tick;  // old
+            _action_tick = _local_tick;
             APP::monit.LogInfo("[GetBlock] Put during wait second: push block1, cancel block2");
             return;
         }
@@ -236,7 +248,8 @@ void GetBlock::Put()
         _fsm = FSM::PUT_LIFT_UP;
 
     _fsm_busy = true;
-    _action_tick = System.runtime_tick;
+    // _action_tick = System.runtime_tick;  // old
+    _action_tick = _local_tick;
     APP::monit.LogInfo("[GetBlock] Put begin, upper=%d lower=%d", _upper, _lower);
 }
 
@@ -309,14 +322,16 @@ void GetBlock::_UpdateFSM()
             {
                 // 块2已到抬升平台，但挡片还托着上仓的块1→不能降
                 // 保持上位，等Put()先推出块1
-                _action_tick = System.runtime_tick;
+                // _action_tick = System.runtime_tick;  // old
+                _action_tick = _local_tick;
                 _fsm = FSM::STORE_HOLD_PUT;
                 APP::monit.LogInfo("[GetBlock] Block2 at lower, waiting for Put()");
             }
             else if (_IsTimeout(T_LIFT))
             {
                 // 块1已到且抬升已到高位 → 降下来接块
-                _action_tick = System.runtime_tick;
+                // _action_tick = System.runtime_tick;  // old
+                _action_tick = _local_tick;
                 _fsm = FSM::STORE_LIFT_DOWN_TO_PICK;
                 APP::monit.LogInfo("[GetBlock] Block1 at lower & lift at top, descending to pick");
             }
@@ -347,7 +362,8 @@ void GetBlock::_UpdateFSM()
         {
             _StopBelt();
             _lower = true;
-            _action_tick = System.runtime_tick;
+            // _action_tick = System.runtime_tick;  // old
+            _action_tick = _local_tick;
             _fsm = FSM::STORE_LIFT_DOWN_TO_PICK;
             APP::monit.LogInfo("[GetBlock] Block1 at lower & lift at top, descending to pick");
         }
@@ -367,7 +383,8 @@ void GetBlock::_UpdateFSM()
 
         if (_IsTimeout(T_LIFT))
         {
-            _action_tick = System.runtime_tick;
+            // _action_tick = System.runtime_tick;  // old
+            _action_tick = _local_tick;
             _fsm = FSM::STORE_LIFT_UP;
             APP::monit.LogInfo("[GetBlock] Lift at bottom (timeout), block on flap, lift up");
         }
@@ -384,7 +401,8 @@ void GetBlock::_UpdateFSM()
         {
             _upper = true;
             _lower = false;
-            _action_tick = System.runtime_tick;
+            // _action_tick = System.runtime_tick;  // old
+            _action_tick = _local_tick;
             APP::monit.LogInfo("[GetBlock] Block entered upper chamber, continuing to target");
         }
 
@@ -440,7 +458,8 @@ void GetBlock::_UpdateFSM()
         // 上仓传感器不再检测到块（块已随挡片下移离开），或超时兜底
         if (!_grid[1] && _IsTimeout(T_LIFT))
         {
-            _action_tick = System.runtime_tick;
+            // _action_tick = System.runtime_tick;  // old
+            _action_tick = _local_tick;
             _fsm = FSM::STORE_LIFT_BOTTOM;
             APP::monit.LogInfo("[GetBlock] Lift at bottom, flap closed below block2");
         }
@@ -484,7 +503,8 @@ void GetBlock::_UpdateFSM()
         if (_FeedNear(-_feed_pos_extend))  // 送块到达头即认为成功
         {
             _upper = false;
-            _action_tick = System.runtime_tick;
+            // _action_tick = System.runtime_tick;  // old
+            _action_tick = _local_tick;
             _fsm = FSM::PUT_FEED_RETRACT;
             APP::monit.LogInfo("[GetBlock] Block ejected, feed retract");
         }
@@ -519,7 +539,8 @@ void GetBlock::_UpdateFSM()
             {
                 _fsm = FSM::COMPLETE;
             }
-            _action_tick = System.runtime_tick;
+            // _action_tick = System.runtime_tick;  // old
+            _action_tick = _local_tick;
         }
         else if (_IsTimeout(T_FEED))
         {
@@ -543,7 +564,8 @@ void GetBlock::_UpdateFSM()
         {
             _upper = true;
             _lower = false;
-            _action_tick = System.runtime_tick;
+            // _action_tick = System.runtime_tick;  // old
+            _action_tick = _local_tick;
             APP::monit.LogInfo("[GetBlock] Block entered upper, continuing to top for ejection");
         }
 
@@ -568,7 +590,8 @@ void GetBlock::_UpdateFSM()
 
         if (_IsTimeout(T_LIFT))
         {
-            _action_tick = System.runtime_tick;
+            // _action_tick = System.runtime_tick;  // old
+            _action_tick = _local_tick;
             if (_lower)
             {
                 _fsm = FSM::PUT_LIFT_UP;
