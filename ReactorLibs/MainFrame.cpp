@@ -219,9 +219,11 @@ void MainFrameCpp()
   APP::vac_claw.Enable();
   // System.RegistApp(APP::sick_pc);
 
+  Area2::mei_lin_array.Init();
+
   // Config_AutoStateGraph();
   // Config_SemiAutoStateGraph();
-  Config_R2_Challenge_StateGraph();
+  // Config_R2_Challenge_StateGraph();
 
   /*简并模式测试*/
   // graph.Degenerate(Action_of_Dege_Fetch_UP200);
