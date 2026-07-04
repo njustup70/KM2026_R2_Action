@@ -48,6 +48,7 @@ class DataForwarder:
         self.server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.client_socket = None
         self.running = True
+        self.vofa_notice_printed = False
 
     def start_server(self):
         """启动 TCP 服务器等待 VOFA+ 连接"""
@@ -67,6 +68,7 @@ class DataForwarder:
                 client, addr = self.server_socket.accept()
                 print(f"{Fore.GREEN}[System] VOFA+ Connected from {addr}")
                 self.client_socket = client
+                self.vofa_notice_printed = False
 
                 # 保持连接直到断开
                 while self.running:
@@ -102,6 +104,12 @@ class DataForwarder:
 
         if self.client_socket:
             try:
+                if not self.vofa_notice_printed:
+                    print(
+                        f"{Fore.BLUE}{Style.DIM}[vofa] 正在转发Track数据到端口127.0.0.1 {TCP_PORT}{Fore.RESET}",
+                        flush=True,
+                    )
+                    self.vofa_notice_printed = True
                 self.client_socket.sendall(data_bytes)
             except:
                 # 发送失败通常意味着连接断开了，主循环会处理
@@ -181,14 +189,17 @@ def main():
         last_reopen_time = 0.0
         last_rx_time = time.time()
         # 预先将所有的前缀转换为 bytes，以优化判断速度
+        # 注意：这里只能做“完整前缀”匹配，不能只看首字节 '['。
+        # VOFA+ 的 JustFloat 帧也以 '[' 开头，若放宽成首字节命中，就会被误判成日志。
         prefixes_bytes = [p.encode("utf-8") for p in LOG_STYLES.keys()]
 
         def could_be_log(buf):
             # 判断 buf 是否可能是一条彩色日志的开头
+            # 只有“完整前缀”命中才认为是日志；否则继续按 VOFA+ 数据流解析。
             for p in prefixes_bytes:
-                # 只要 buf 和 p 在可比较的长度内完全一致，就有可能是日志
-                match_len = min(len(p), len(buf))
-                if p[:match_len] == buf[:match_len]:
+                if len(buf) < len(p):
+                    continue
+                if buf[:len(p)] == p:
                     return True
             return False
 
