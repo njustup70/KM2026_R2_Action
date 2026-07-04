@@ -314,6 +314,7 @@ void Goto_Area2(StateCore *core)
   });
 
   APP::main_loop.test_led.Lit(Color::White);
+  APP::monit.LogInfo("entercode:%x", Area2::mei_lin_array.enter_code);
 
   // 首先，根据工控机的要求，走到相应的块的面前
   switch (Area2::mei_lin_array.enter_code)
@@ -334,6 +335,13 @@ void Goto_Area2(StateCore *core)
   }
 
   APP::monit.LogInfo("I'm Ahead of MeiLin.");
+
+  APP::comm_center.SlamCorrection();
+
+  // 防止纠正的时候抬腿了
+  Seq::Wait(1.0f);
+
+  APP::monit.LogInfo("Pos Corrected : %.2f, %.2f, %.2f",System.position.x, System.position.y, System.position.z);
 
   while(MOD::farcon.button_second_half[0] != 1)
   {
