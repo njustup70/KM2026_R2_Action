@@ -403,9 +403,9 @@ void Area2End_BackOrigin(StateCore *core)
   APP::monit.LogInfo("Back to Origin...");
 
   // 走到原点
-  MOVE::MoveToTargGes(Vec3(8.7f, 5.45f, 0.0f));
-  MOVE::MoveToTargGes(Vec3(2.45f, 5.45f, 0.0f));
-  MOVE::MoveToTargGes(Vec3(0.5f, 4.61f, 0.0f));
+  MOVE::MoveToTargGes(Vec3(8.7f, 0.55f, 0.0f));
+  MOVE::MoveToTargGes(Vec3(2.45f, 0.55f, 0.0f));
+  MOVE::MoveToTargGes(Vec3(0.5f, 1.39f, 0.0f));
 
   // 成功回到原点
   APP::monit.LogOK("All Process Done. Congratulations!");
