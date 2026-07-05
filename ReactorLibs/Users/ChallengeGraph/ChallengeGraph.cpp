@@ -98,6 +98,9 @@ int Config_R2_Challenge_StateGraph()
  */
 void Waiting_for_Start(StateCore *core)
 {
+  
+  Area2::mei_lin_array.is_blue = false; // 设置为红场
+
   APP::jaw.CloseClaw();
   APP::monit.LogInfo("Waiting for start...");
   APP::main_loop.test_led.Breath(Color::White, 2.0f);
@@ -205,20 +208,20 @@ void Walk_To_Dock(StateCore *core)
   // 打开夹爪，给R1时间拿回兵器
   APP::jaw.OpenClaw();    // 依旧OpenClaw
 
-  // 等待 6 秒
+  // 等待 12 秒
   float wait_time_s = 0.0f;
-  while (wait_time_s < 6.0f)
+  while (wait_time_s < 12.0f)
   {
     wait_time_s += 0.05f;
-    wait_progress = wait_time_s / 6.0f;
+    wait_progress = wait_time_s / 12.0f;
     Seq::Wait(0.05f);
   }
 
-  while(MOD::farcon.button_second_half[0] != 1)
-  {
-    Response_Button();
-    Seq::Wait(0.01f);
-  }
+  // while(MOD::farcon.button_second_half[0] != 1)
+  // {
+  //   Response_Button();
+  //   Seq::Wait(0.01f);
+  // }
   
   APP::jaw.SetTrackMode(false);
 
@@ -277,20 +280,20 @@ void Dock_Fetch_And_Back(StateCore *core)
   // 打开夹爪，给R1时间拿回兵器
   APP::jaw.OpenClaw();    // 依旧OpenClaw
 
-  // 等待 6 秒
+  // 等待 12 秒
   float wait_time_s = 0.0f;
-  while (wait_time_s < 6.0f)
+  while (wait_time_s < 12.0f)
   {
     wait_time_s += 0.05f;
-    wait_progress = wait_time_s / 6.0f;
+    wait_progress = wait_time_s / 12.0f;
     Seq::Wait(0.05f);
   }
 
-  while(MOD::farcon.button_second_half[0] != 1)
-  {
-    Response_Button();
-    Seq::Wait(0.01f);
-  }
+  // while(MOD::farcon.button_second_half[0] != 1)
+  // {
+  //   Response_Button();
+  //   Seq::Wait(0.01f);
+  // }
 
   APP::jaw.CloseClaw();
   APP::jaw.SetTrackMode(false);
@@ -350,15 +353,15 @@ void Goto_Area2(StateCore *core)
   APP::comm_center.SlamCorrection();
 
   // 防止纠正的时候抬腿了
-  Seq::Wait(1.0f);
+  Seq::Wait(2.0f);
 
   APP::monit.LogInfo("Pos Corrected : %.2f, %.2f, %.2f",System.position.x, System.position.y, System.position.z);
 
-  while(MOD::farcon.button_second_half[0] != 1)
-  {
-    Response_Button();
-    Seq::Wait(0.01f);
-  }
+  // while(MOD::farcon.button_second_half[0] != 1)
+  // {
+  //   Response_Button();
+  //   Seq::Wait(0.01f);
+  // }
   
   core->GetCurState().Complete = true;
 }

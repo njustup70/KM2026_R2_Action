@@ -51,9 +51,6 @@ static void Walk_into_Area2(StateCore *core);
 
 int Config_R2_Challenge_Blue_StateGraph()
 {
-
-  Area2::mei_lin_array.is_blue = true; // 设置为蓝场
-
   StateBlock& s_wait = R2_Challenge_Blue_Graph.AddState("wait");
   StateBlock& s_area1_f1 = R2_Challenge_Blue_Graph.AddState("area1_f1");       // fetch our first spear
   StateBlock& s_area1_td = R2_Challenge_Blue_Graph.AddState("area1_td");       // to dock
@@ -104,6 +101,9 @@ int Config_R2_Challenge_Blue_StateGraph()
  */
 void Waiting_for_Start(StateCore *core)
 {
+  
+  Area2::mei_lin_array.is_blue = true; // 设置为蓝场
+
   APP::jaw.CloseClaw();
   APP::monit.LogInfo("Waiting for start...");
   APP::main_loop.test_led.Breath(Color::White, 2.0f);
