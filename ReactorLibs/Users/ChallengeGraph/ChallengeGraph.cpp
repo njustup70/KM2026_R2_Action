@@ -245,6 +245,9 @@ void Walk_To_Dock(StateCore *core)
  */
 void Dock_Fetch_And_Back(StateCore *core)
 {
+  // 记录是否放弃对接（每次进入都默认为false）
+  bool giveup_dock = false;
+
   fetch_again = false;
 
   APP::main_loop.test_led.Running(Color::Up_Yellow, 0.4f, 1.2f);
@@ -267,8 +270,22 @@ void Dock_Fetch_And_Back(StateCore *core)
     Response_Button();
     Seq::Wait(0.01f);
 
+    // 对接完成
     if (APP::comm_center.IsDocked())
     {
+      // 打开夹爪，给R1时间拿回兵器
+      APP::jaw.OpenClaw();    // 依旧OpenClaw
+      break;
+    }
+
+    if (APP::comm_center.IsDockGiveUp())
+    {
+      // 离开对接模式
+      APP::jaw.SetTrackMode(false);
+      // 清除标志位
+      APP::comm_center.ClearDockFlag();
+      // 跳出等待，准备进入二区
+      giveup_dock = true;
       break;
     }
   }
@@ -276,9 +293,6 @@ void Dock_Fetch_And_Back(StateCore *core)
   // 灯带：进度条
   float wait_progress = 0.0f;
   APP::main_loop.test_led.ProgBar(Color::Up_Yellow, &wait_progress);
-
-  // 打开夹爪，给R1时间拿回兵器
-  APP::jaw.OpenClaw();    // 依旧OpenClaw
 
   // 等待 12 秒
   float wait_time_s = 0.0f;
@@ -298,12 +312,17 @@ void Dock_Fetch_And_Back(StateCore *core)
   APP::jaw.CloseClaw();
   APP::jaw.SetTrackMode(false);
 
-  APP::jaw.SetPosCode(APP::jaw._hori_origin_code - JawConst::_hori_max_travel_code / 2 - 100000, 
-    APP::jaw._vert_origin_code - 226000);
+  // 只有没有放弃对接时，才将矛头回中。否则害怕损坏机构
+  if (!giveup_dock)
+  {
+    APP::jaw.SetPosCode(APP::jaw._hori_origin_code - JawConst::_hori_max_travel_code / 2 - 100000, 
+      APP::jaw._vert_origin_code - 226000);
+  }
 
   APP::monit.LogInfo("Go to Climb.");
 
-  if (need_spear_id < 2)
+  // 只有 "没取够头" / "不希望放弃对接" 时，才会再次取矛头。否则就直接进入二区
+  if (need_spear_id < 2 && !giveup_dock)
   {
     need_spear_id++;
     APP::comm_center.ClearDockFlag();  // 清除对接标志，避免下次误触发
@@ -311,6 +330,7 @@ void Dock_Fetch_And_Back(StateCore *core)
   }
   else
   {
+    APP::comm_center.ClearDockFlag();  // 清除对接标志，避免下次误触发
     fetch_again = false;
     move_to_area2 = true;
   }
