@@ -32,7 +32,7 @@
 static void Response_Button();
 
 /// @brief 当前需要取的矛头编号
-static uint8_t need_spear_id = 0;
+static uint8_t need_spear_id = 3;
 
 static bool fetch_again = false;    // 是否需要再次取矛头
 static bool move_to_area2 = false;  // 是否可以移动到二区了
@@ -301,7 +301,7 @@ void Dock_Fetch_And_Back(StateCore *core)
 
   APP::monit.LogInfo("Go to Climb.");
 
-  if (need_spear_id < 2)
+  if (need_spear_id < 5)
   {
     need_spear_id++;
     APP::comm_center.ClearDockFlag();  // 清除对接标志，避免下次误触发

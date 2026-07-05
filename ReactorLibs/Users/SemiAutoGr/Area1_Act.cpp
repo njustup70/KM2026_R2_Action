@@ -363,7 +363,7 @@ void FetchBlue()
   while(!APP::main_loop.spear_detector.Read())
   {
     // 小黄没看到，那说明还不够靠前，缓慢向前走。
-    Vec2 targ_world_vec_xy = Vec2(0.0f, 0.07f);
+    Vec2 targ_world_vec_xy = Vec2(0.0f, -0.07f);
     // 转为局部坐标
     Vec2 targ_body_vec_xy = targ_world_vec_xy.Rotate(-System.position.z);
 

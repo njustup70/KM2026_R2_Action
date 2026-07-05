@@ -20,6 +20,7 @@
 #include "VacuumClaw.hpp"
 #include "SemiAutoGr.hpp"
 #include "ChallengeGraph.hpp"
+#include "ChallengeGraphBlue.hpp"
 
 #include "MainLoop.hpp"
 #include "Area2_Act.hpp"
@@ -227,11 +228,12 @@ void MainFrameCpp()
   // Config_AutoStateGraph();
   // Config_SemiAutoStateGraph();
   // Config_R2_Challenge_StateGraph();
+  Config_R2_Challenge_Blue_StateGraph();
 
   /*简并模式测试*/
-  graph.Degenerate(Action_of_Dege_Fetch_UP200);
-  APP::state_core.RegistGraph(graph);
-  APP::state_core.Enable(0); // 启动状态机核心，指定初始状态图为0号图
+  // graph.Degenerate(Action_of_Dege_Fetch_UP200);
+  // APP::state_core.RegistGraph(graph);
+  // APP::state_core.Enable(0); // 启动状态机核心，指定初始状态图为0号图
 
 }
 
