@@ -1118,11 +1118,13 @@ void MeiLinArray::ExecuteSequence()
         APP::monit.LogWarning("[MeiLin] Unknown action 0x%02X, skip.", cmd);
         break;
     }
-    while(MOD::farcon.button_second_half[0] != 1)
-    {
-      Response_Button_main();
-      Seq::Wait(0.01f);
-    }
+
+    Seq::Wait(1.0f);
+    // while(MOD::farcon.button_second_half[0] != 1)
+    // {
+    //   Response_Button_main();
+    //   Seq::Wait(0.01f);
+    // }
   }
 
   _seq_len = 0;
