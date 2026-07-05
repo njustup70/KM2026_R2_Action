@@ -24,7 +24,7 @@
 
 #include "a23_2.hpp"
 
-void Response_Button();
+static void Response_Button();
 
 /// @brief 当前需要取的矛头编号
 static uint8_t need_spear_id = 0;
@@ -418,7 +418,7 @@ void Area2End_BackOrigin(StateCore *core)
 
 const static float max_farcon_alpha = 1.8f; // 最大加速度 m/s^2
 const static float max_farcon_beta = 1.8f; // 最大角加速度 rad/s^2
-void Response_Button()
+static void Response_Button()
 {
     static float max_velo = 1.5f;
     if(MOD::farcon.toggle[2] == 0)
