@@ -354,6 +354,37 @@ void Fetch()
   Seq::Wait(0.15);
 }
 
+/********************************************************************************/
+
+void FetchBlue()
+{
+  APP::monit.LogInfo("Is IR got?%.2f,%.2f,%.2f", System.position.x, System.position.y, System.position.z);
+  // 检查小黄是否读取到
+  while(!APP::main_loop.spear_detector.Read())
+  {
+    // 小黄没看到，那说明还不够靠前，缓慢向前走。
+    Vec2 targ_world_vec_xy = Vec2(0.0f, 0.07f);
+    // 转为局部坐标
+    Vec2 targ_body_vec_xy = targ_world_vec_xy.Rotate(-System.position.z);
+
+    // 锁定yaw角为 1.5707 rad 锁着yaw角度，不用太强
+    float yaw_err = 1.5707f - System.position.z;
+    Vec3 targ_body_vec = targ_body_vec_xy.ToVec3();
+    targ_body_vec.z = yaw_err * 0.8f;
+
+    // APP::monit.LogInfo("ir:%d", APP::main_loop.spear_detector.Read() ? 1 : 0);
+
+    // 向前走，直到小黄看到为止
+    APP::chas.Move(targ_body_vec, 0.006f);
+    Seq::Wait(0.005f); // 200hz更新频率
+  }
+
+  APP::monit.LogInfo("IR got, Catch.%.2f,%.2f,%.2f", System.position.x, System.position.y, System.position.z);
+  // 距离安全，夹住
+  APP::jaw.CloseClaw();
+  Seq::Wait(0.15);
+}
+
 /**************************************************************/
 
 /**
@@ -521,7 +552,7 @@ void FetchSpear_FromDock_Blue(uint8_t spear_id)
   APP::monit.LogInfo("Finished Aim.");
 
   // Aim_And_Fetch(spear_id);
-  Fetch();
+  FetchBlue();
 
   // 记录抓取位置，以及西克数据
   APP::monit.LogInfo("Catch At:(%.3f,%.3f), sick:%.3f", APP::comm_center.slam_pos.x,
@@ -561,7 +592,7 @@ void FetchSpear_FromOrigin_Blue(uint8_t spear_id)
 
   Seq::Wait(1.0f);
 
-  Fetch();
+  FetchBlue();
 
   // 记录抓取位置，以及西克数据
   APP::monit.LogSpec("Catch At:(%.3f,%.3f), sick:%.3f", APP::comm_center.slam_pos.x,
