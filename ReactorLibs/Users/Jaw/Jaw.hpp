@@ -73,6 +73,7 @@ private:
     bool _in_track_mode = false;
 
     Vec2 _arcuo_bias_mm = {8, 8};
+    Vec2 _optic_dock_bias_mm = {0, 0};
 
     // code 到 mm 互转方法（静态）
     static float _HoriCodeToMM(int code);
@@ -101,6 +102,9 @@ public:
      * @param enable 
      */
     void SetTrackMode(bool enable) { _in_track_mode = enable; }
+    void AddOpticDockBias(float delta_x_mm, float delta_y_mm);
+    void ClearOpticDockBias() { _optic_dock_bias_mm = Vec2(0, 0); }
+    Vec2 GetOpticDockBias() const { return _optic_dock_bias_mm; }
 
     /**
      * @brief 设置 **相对于中心的** 取矛头位置。向上和向右为正。

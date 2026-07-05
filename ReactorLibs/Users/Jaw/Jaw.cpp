@@ -170,8 +170,8 @@ void Jaw::_Track_Head()
     // 获得串口读取到的位置
     Vec2 err_mm = {-_spear_left_err_mm, -_spear_up_err_mm};
     
-    // 加上 偏置值
-    Vec2 target_mm = err_mm + _arcuo_bias_mm;
+    // 加上固定偏置和R1光通信动态偏置
+    Vec2 target_mm = err_mm + _arcuo_bias_mm + _optic_dock_bias_mm;
 
     // 转换为 code形式 位置 （注意，原点在右上，正方向为左下，所以都要取反）
     int target_hori_code = -_HoriMMToCode(target_mm.x) + _hori_origin_code;
@@ -358,6 +358,12 @@ void Jaw::SetXPos(float x_mm)
     if (target_hori < hori_min) target_hori = hori_min;
 
     _x_pos = target_hori;
+}
+
+void Jaw::AddOpticDockBias(float delta_x_mm, float delta_y_mm)
+{
+    _optic_dock_bias_mm.x += delta_x_mm;
+    _optic_dock_bias_mm.y += delta_y_mm;
 }
 
 void Jaw::ChangePos(float delta_x_mm, float delta_y_mm)

@@ -27,6 +27,7 @@ private:
     bool _send_kfs; // 是否发送KFS给上位机
     bool _is_send_sick_correction; // 是否发送SICK纠正指令
     bool _dock_ok = false;  // 是否完成对接
+    bool _dock_give_up = false; // 是否放弃当前对接
     Area3ActCode _area3_act_code; // 三区光通信，接收到的指令码
 
     // float _sick_ch0_data; // sick测距值（ch0）
@@ -39,7 +40,8 @@ public:
     float sick_data_m[4]; // sick测距值（ch0 - ch3），单位m
 
     bool IsDocked() const { return _dock_ok; }
-    void ClearDockFlag() { _dock_ok = false; }
+    bool IsDockGiveUp() const { return _dock_give_up; }
+    void ClearDockFlag();
     void SlamCorrection(); // 触发Sick纠正
     static void SlamRxCallback(uint8_t func_code, const uint8_t *payload, uint8_t payload_len, void *user_ctx);
     static void OpticalRxCallback(uint8_t func_code, const uint8_t* payload, uint8_t payload_len, void* user_ctx);
