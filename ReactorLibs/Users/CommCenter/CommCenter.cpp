@@ -2,12 +2,44 @@
 #include "HostPC.hpp"   
 #include "Sick.hpp"
 #include "optical_comm.hpp"
+#include "Jaw.hpp"
 #include "string.h"
 
 CommCenter& APP::comm_center = CommCenter::GetInstance();
 
-void SlamRxCallback(uint8_t func_code, const uint8_t *payload, uint8_t payload_len, void *user_ctx);
-void OpticalRxCallback(uint8_t *data, uint8_t len);
+// 代替static修饰符，这些作用域都局域化
+namespace
+{
+// 一次光通信触发按 2mm 计算修正
+constexpr float kOpticDockBiasStepMm = 2.0f;
+
+// 对接时的 光通信命令码定义
+enum DockOpticPayload : uint8_t
+{
+    DockCodeA_DockOK = 0x01,    // 完成对接
+    DockCodeA_Vert = 0x02,      // 垂直方向矛头移动
+    DockCodeA_Hori = 0x03,      // 水平方向矛头移动
+    DockCodeA_GiveUp = 0x04,    // 放弃对接
+
+    DockCodeB_DockOK = 0x02,
+    DockCodeB_SpearUp = 0x10,
+    DockCodeB_SpearDown = 0x11,
+    DockCodeB_SpearLeft = 0x12,
+    DockCodeB_SpearRight = 0x13,
+    DockCodeB_GiveUp = 0x14,
+};
+
+// 检验payload的第三位是否满足验证要求
+bool IsValidDockPayload(const uint8_t* payload, uint8_t payload_len)
+{
+    if (payload == nullptr || payload_len < 3)
+    {
+        return false;
+    }
+
+    return static_cast<uint8_t>(payload[0] + payload[1]) == payload[2];
+}
+}
 
 void CommCenter::Start()
 {
@@ -58,6 +90,13 @@ void CommCenter::Update()
 void CommCenter::SlamCorrection()
 {
     _is_send_sick_correction = true;
+}
+
+void CommCenter::ClearDockFlag()
+{
+    _dock_ok = false;
+    _dock_give_up = false;
+    APP::jaw.ClearOpticDockBias();
 }
 
 /**
@@ -112,57 +151,70 @@ void CommCenter::OpticalRxCallback(uint8_t func_code, const uint8_t* payload, ui
             MOD::host_pc.SendKFSData(comm_center.kfs_values, len);
             break;
         }
-        // case 0xC3:  // 完成对接信号
-        // {
-        //     // 验证payload是否符合预期（这里充当校验位作用）。
-        //     uint8_t expected_payload[6] = {1, 1, 4, 5, 1, 4};
-        //     bool is_valid = true;
-        //     for (uint8_t i = 0; i < 6; i++)
-        //     {
-        //         if (payload[i] != expected_payload[i]) 
-        //         {
-        //             is_valid = false;
-        //             break;
-        //         }
-        //     }
-
-        //     if (is_valid)
-        //     {
-        //         // 确认对接完成
-        //         APP::monit.LogRespond("[Optic] Docking complete.");
-
-        //         // 对接标志位——置位
-        //         APP::comm_center._dock_ok = true;
-        //     }
-        // }
     }
-
-    
 }
 
 void CommCenter::DockRxCallback(uint8_t func_code, const uint8_t* payload, uint8_t payload_len, void* user_ctx)
 {
+    (void)user_ctx;
+
     if(func_code == 0xC3)
     {
-        // 验证payload是否符合预期（这里充当校验位作用）。
-        uint8_t expected_payload[6] = {1, 1, 4, 5, 1, 4};
-        bool is_valid = true;
-        for (uint8_t i = 0; i < 6; i++)
+        // 验证，至少要有东西传过来，长度符合实际，并且满足相加校验
+        if (!IsValidDockPayload(payload, payload_len))
         {
-            if (payload[i] != expected_payload[i]) 
-            {
-                is_valid = false;
-                break;
-            }
+            APP::monit.LogError("[Optic] Invalid dock payload.");
+            return;
         }
 
-        if (is_valid)
+        // 解析payload，对接这里使用两位 内容码
+        const uint8_t code_a = payload[0];
+        const uint8_t code_b = payload[1];
+
+        // 0x01, 0x02: 对接完成
+        if (code_a == DockCodeA_DockOK && code_b == DockCodeB_DockOK)
         {
-            // 确认对接完成
             APP::monit.LogRespond("[Optic] Docking complete.");
-
-            // 对接标志位——置位
             APP::comm_center._dock_ok = true;
+            return;
         }
+
+        // 0x02, 0x10: 垂直方向上矛头上移
+        if (code_a == DockCodeA_Vert && code_b == DockCodeB_SpearUp)
+        {
+            APP::jaw.AddOpticDockBias(0.0f, kOpticDockBiasStepMm);
+        }
+        // 0x02, 0x11: 垂直方向上矛头下移
+        else if (code_a == DockCodeA_Vert && code_b == DockCodeB_SpearDown)
+        {
+            APP::jaw.AddOpticDockBias(0.0f, -kOpticDockBiasStepMm);
+        }
+        // 0x03, 0x12: 水平方向上矛头左移
+        else if (code_a == DockCodeA_Hori && code_b == DockCodeB_SpearLeft)
+        {
+            APP::jaw.AddOpticDockBias(-kOpticDockBiasStepMm, 0.0f);
+        }
+        // 0x03, 0x13: 水平方向上矛头
+        else if (code_a == DockCodeA_Hori && code_b == DockCodeB_SpearRight)
+        {
+            APP::jaw.AddOpticDockBias(kOpticDockBiasStepMm, 0.0f);
+        }
+        // 0x04, 0x14: 对接放弃
+        else if (code_a == DockCodeA_GiveUp && code_b == DockCodeB_GiveUp)
+        {
+            APP::monit.LogRespond("[Optic] GiveUp Docking...");
+            // 标志位置位
+            APP::comm_center._dock_give_up = true;
+            APP::comm_center._dock_ok = true;
+            return;
+        }
+        else
+        {
+            APP::monit.LogError("[Optic] Unknown dock cmd: 0x%02X 0x%02X", code_a, code_b);
+            return;
+        }
+
+        Vec2 bias = APP::jaw.GetOpticDockBias();
+        APP::monit.LogRespond("[Optic] Dock bias: x=%.1fmm y=%.1fmm", bias.x, bias.y);
     }
 }
