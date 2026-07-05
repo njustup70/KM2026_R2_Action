@@ -24,14 +24,32 @@
 #include "sttr5.hpp"
 #include "sttr6.hpp"
 
+#include "sttrb1.hpp"
+#include "sttrb2.hpp"
+#include "sttrb3.hpp"
+#include "sttrb4.hpp"
+#include "sttrb5.hpp"
+#include "sttrb6.hpp"
+
 #include "dtt_1.hpp"
 #include "dtt_2.hpp"
 #include "dtt_3.hpp"
+
+#include "dtt_b_4.hpp"
+#include "dtt_b_5.hpp"
+#include "dtt_b_6.hpp"
 
 #include "ttd_1.hpp"
 #include "ttd_2.hpp"
 #include "ttd_3.hpp"
 #include "ttd_4.hpp"
+
+#include "ttd_b1.hpp"
+#include "ttd_b2.hpp"
+#include "ttd_b3.hpp"
+#include "ttd_b4.hpp"
+#include "ttd_b5.hpp"
+#include "ttd_b6.hpp"
 
 #include "a12_2.hpp"
 #include "a23_2.hpp"
@@ -59,7 +77,7 @@ void StartSpearChase(const Path<N> &path, Vec3 tolerance)
   }
 }
 
-void StartSpearChaseById(uint8_t spear_id, Vec3 tolerance)
+void SpearChase(uint8_t spear_id, Vec3 tolerance)
 {
   switch (spear_id)
   {
@@ -85,6 +103,33 @@ void StartSpearChaseById(uint8_t spear_id, Vec3 tolerance)
       break;
   }
 }
+
+void SpearChase_Blue(uint8_t spear_id, Vec3 tolerance)
+{
+  switch (spear_id)
+  {
+    case 0:
+      StartSpearChase(sttr_b1, tolerance);
+      break;
+    case 1:
+      StartSpearChase(sttr_b2, tolerance);
+      break;
+    case 2:
+      StartSpearChase(sttr_b3, tolerance);
+      break;
+    case 3:
+      StartSpearChase(sttr_b4, tolerance);
+      break;
+    case 4:
+      StartSpearChase(sttr_b5, tolerance);
+      break;
+    case 5:
+      StartSpearChase(sttr_b6, tolerance);
+      break;
+    default:
+      break;
+  }
+}
 }
 /********************************************************************************/
 namespace DockTo // 从对接位置出发的
@@ -100,7 +145,7 @@ void StartSpearChase(const Path<N> &path, Vec3 tolerance)
   }
 }
 
-void StartSpearChaseById(uint8_t spear_id, Vec3 tolerance)
+void DockSpearChase(uint8_t spear_id, Vec3 tolerance)
 {
   switch (spear_id)
   {
@@ -114,6 +159,31 @@ void StartSpearChaseById(uint8_t spear_id, Vec3 tolerance)
       StartSpearChase(DTT_3, tolerance);
       break;
     default:
+    {
+      APP::monit.LogError("[A1Act] Red Area Only Can Fetch 0 to 2 !");
+      Seq::Wait(3600.0f);
+      break;
+    }
+      
+  }
+}
+
+void DockSpearChase_Blue(uint8_t spear_id, Vec3 tolerance)
+{
+  switch (spear_id)
+  {
+    case 3:
+      StartSpearChase(DTT_B4, tolerance);
+      break;
+    case 4:
+      StartSpearChase(DTT_B5, tolerance);
+      break;
+    case 5:
+      StartSpearChase(DTT_B6, tolerance);
+      break;
+    default:
+      APP::monit.LogError("[A1Act] Blue Area Only Can Fetch 3 to 5 !");
+      Seq::Wait(3600.0f);
       break;
   }
 }
@@ -153,6 +223,33 @@ void LetsGo(uint8_t spear_id, Vec3 tolerance)
       break;
     case 5:
       APP::path_chaser.ChaseGes(Vec3(1.3f, 5.00f, 1.57f));
+      break;
+    default:
+      break;
+  }
+}
+
+void LetsGo_Blue(uint8_t spear_id, Vec3 tolerance)
+{
+  switch (spear_id)
+  {
+    case 0:
+      StartChase(TTD_B1, tolerance);
+      break;
+    case 1:
+      StartChase(TTD_B2, tolerance);
+      break;
+    case 2:
+      StartChase(TTD_B3, tolerance);
+      break;
+    case 3:
+      StartChase(TTD_B4, tolerance);
+      break;
+    case 4:
+      StartChase(TTD_B5, tolerance);
+      break;
+    case 5:
+      StartChase(TTD_B6, tolerance);
       break;
     default:
       break;
@@ -268,7 +365,7 @@ void FetchSpear_FromOrigin(uint8_t spear_id)
   APP::jaw.PitchDown();
   APP::jaw.OpenClaw();
 
-  OriginTo::StartSpearChaseById(spear_id, Vec3(0.02f, 0.02f, 0.02f));
+  OriginTo::SpearChase(spear_id, Vec3(0.02f, 0.02f, 0.02f));
 
   // 追逐路径，直到完成
   while (!APP::path_chaser.IsFinished())
@@ -311,7 +408,7 @@ void FetchSpear_FromDock(uint8_t spear_id)
   APP::jaw.OpenClaw();
 
   // 根据矛头编号，选择对应的路径（技能挑战赛）
-  DockTo::StartSpearChaseById(spear_id, Vec3(0.015f, 0.015f, 0.02f));
+  DockTo::DockSpearChase(spear_id, Vec3(0.015f, 0.015f, 0.02f));
 
   uint32_t log_tick = 0;
 
@@ -348,6 +445,11 @@ void FetchSpear_FromDock(uint8_t spear_id)
 
 /********************************************************************************/
 
+/**
+ * @brief 原版——红区的版本
+ * 
+ * @param spear_id 
+ */
 void GotoDock(uint8_t spear_id)
 {
   ToDock::LetsGo(spear_id, Vec3(0.035f, 0.05f, 0.02f));
@@ -364,3 +466,111 @@ void GotoDock(uint8_t spear_id)
 }
 
 /********************************************************************************/
+
+/**
+ * @brief 蓝区的版本
+ * 
+ * @param spear_id 
+ */
+void GotoDock_Blue(uint8_t spear_id)
+{
+  ToDock::LetsGo_Blue(spear_id, Vec3(0.025f, 0.05f, 0.02f));
+
+  while (!APP::path_chaser.IsFinished())
+  {
+    Vec3 speed_vec = APP::path_chaser.GetCmdBody();
+    APP::chas.Move(speed_vec, 0.01f);
+
+    Seq::Wait(0.005f); // 200hz更新频率
+  }
+
+  APP::monit.LogInfo("Move to target position.");
+}
+
+/********************************************************************************/
+
+/**
+ * @brief 从对接的位置出发，取矛头（蓝区版本）
+ *
+ * @param spear_id 对于蓝方来说，只能取后三个 (3~5)
+ */
+void FetchSpear_FromDock_Blue(uint8_t spear_id)
+{
+  APP::jaw.PitchDown();
+  APP::jaw.OpenClaw();
+
+  // 根据矛头编号，选择对应的路径（技能挑战赛）
+  DockTo::DockSpearChase_Blue(spear_id, Vec3(0.015f, 0.015f, 0.02f));
+
+  uint32_t log_tick = 0;
+
+  // 追逐路径，直到完成
+  while (!APP::path_chaser.IsFinished())
+  {
+    Vec3 speed_vec = APP::path_chaser.GetCmdBody();
+
+    APP::chas.Move(speed_vec, 0.01f);
+
+    if (++log_tick >= 20)
+    {
+      log_tick = 0;
+    }
+    Seq::Wait(0.005f); // 200hz更新频率
+  }
+
+  APP::monit.LogInfo("Finished Aim.");
+
+  // Aim_And_Fetch(spear_id);
+  Fetch();
+
+  // 记录抓取位置，以及西克数据
+  APP::monit.LogInfo("Catch At:(%.3f,%.3f), sick:%.3f", APP::comm_center.slam_pos.x,
+                     APP::comm_center.slam_pos.y, APP::comm_center.sick_data_m[1]);
+
+  // 先往上抬 1.5cm
+  APP::jaw.ChangePos(0, 20);
+  Seq::Wait(0.25);
+
+  // 然后抬起 Pitch爪子
+  APP::jaw.PitchUp();
+}
+
+/********************************************************************************/
+
+/**
+ * @brief 从原点出发取矛头
+ * @param 要取第几个头 0~5
+ */
+void FetchSpear_FromOrigin_Blue(uint8_t spear_id)
+{
+  APP::jaw.PitchDown();
+  APP::jaw.OpenClaw();
+
+  OriginTo::SpearChase_Blue(spear_id, Vec3(0.02f, 0.02f, 0.02f));
+
+  // 追逐路径，直到完成
+  while (!APP::path_chaser.IsFinished())
+  {
+    Vec3 speed_vec = APP::path_chaser.GetCmdBody();
+    APP::chas.Move(speed_vec, 0.01f);
+
+    Seq::Wait(0.005f); // 200hz更新频率
+  }
+
+  APP::monit.LogInfo("Finished Run.");
+
+  Seq::Wait(1.0f);
+
+  Fetch();
+
+  // 记录抓取位置，以及西克数据
+  APP::monit.LogSpec("Catch At:(%.3f,%.3f), sick:%.3f", APP::comm_center.slam_pos.x,
+                     APP::comm_center.slam_pos.y, APP::comm_center.sick_data_m[1]);
+
+  // 先往上抬 1.5cm
+  APP::jaw.ChangePos(0, 20);
+  Seq::Wait(0.25);
+
+  // 然后抬起 Pitch爪子
+  APP::jaw.PitchUp();
+}
