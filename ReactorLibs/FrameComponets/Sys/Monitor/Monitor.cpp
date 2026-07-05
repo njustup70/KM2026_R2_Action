@@ -11,15 +11,40 @@ const static uint8_t LogPort = 0x01;    // 日志使用的端口号
 const static uint8_t WatchPort = 0x02;  // 监视使用的端口号
 const static uint8_t TrackPort = 0x03;  // 跟踪使用的端口号
 
+const static uint8_t track_firewater_head[3] = {'[', 'v', ']'};
+const static uint8_t track_justfloat_head[3] = {'[', 'j', ']'};
 const static uint8_t justfloat_tail[4] = {0x00, 0x00, 0x80, 0x7f};  // VOFA+ JustFloat 协议的帧尾 (Little Endian: 00 00 80 7f)
 
 
 template<typename T>
-static void ConcatToBuf(byte* buf, size_t& used_bytes, void* value)
+static void ConcatToBuf(byte* buf, size_t& used_bytes, size_t capacity, void* value)
 {
+    if (used_bytes >= capacity)
+    {
+        return;
+    }
+
     T targ_var = *(T*)value;
-    size_t char_use = snprintf((char*)buf + used_bytes, 63 - used_bytes, "%d", (int)targ_var);
-    used_bytes += char_use;
+    size_t avail = capacity - used_bytes;
+    if (avail <= 1)
+    {
+        return;
+    }
+
+    int char_use = snprintf((char*)buf + used_bytes, avail, "%d", (int)targ_var);
+    if (char_use < 0)
+    {
+        return;
+    }
+
+    size_t written = static_cast<size_t>(char_use);
+    if (written >= avail)
+    {
+        used_bytes = capacity - 1;
+        return;
+    }
+
+    used_bytes += written;
 }
 
 static byte track_send_buf[64];
@@ -32,8 +57,9 @@ void Monitor::TrackLog()
     if (track_count < 1)   return; // 没有跟踪变量，直接返回
 
     memset(track_send_buf, 0, 64);
-    // track_send_buf[0] = '[';
-    size_t used_bytes = 0;
+    memcpy(track_send_buf, track_firewater_head, sizeof(track_firewater_head));
+    size_t used_bytes = sizeof(track_firewater_head);
+    const size_t capacity = sizeof(track_send_buf);
 
     for(int i = 0; i < track_count; i++)
     {
@@ -41,61 +67,85 @@ void Monitor::TrackLog()
         {
             case track_uint8:
             {
-                ConcatToBuf<uint8_t>(track_send_buf, used_bytes, track_list[i]);
+                ConcatToBuf<uint8_t>(track_send_buf, used_bytes, capacity, track_list[i]);
                 break;
             }
             case track_int8:
             {
-                ConcatToBuf<int8_t>(track_send_buf, used_bytes, track_list[i]);
+                ConcatToBuf<int8_t>(track_send_buf, used_bytes, capacity, track_list[i]);
                 break;
             }
             case track_uint16:
             {
-                ConcatToBuf<uint16_t>(track_send_buf, used_bytes, track_list[i]);
+                ConcatToBuf<uint16_t>(track_send_buf, used_bytes, capacity, track_list[i]);
                 break;
             }
             case track_int16:
             {
-                ConcatToBuf<int16_t>(track_send_buf, used_bytes, track_list[i]);
+                ConcatToBuf<int16_t>(track_send_buf, used_bytes, capacity, track_list[i]);
                 break;
             }
             case track_uint32:
             {
-                ConcatToBuf<uint32_t>(track_send_buf, used_bytes, track_list[i]);
+                ConcatToBuf<uint32_t>(track_send_buf, used_bytes, capacity, track_list[i]);
                 break;
             }
             case track_int32:
             {
-                ConcatToBuf<int32_t>(track_send_buf, used_bytes, track_list[i]);
+                ConcatToBuf<int32_t>(track_send_buf, used_bytes, capacity, track_list[i]);
                 break;
             }
             case track_float:
             {
                 float var = *(float*)track_list[i];
-                uint8_t char_use = snprintf((char*)track_send_buf + used_bytes, 63 - used_bytes, "%.2f", var);
-                used_bytes += char_use;
+                if (used_bytes < capacity)
+                {
+                    size_t avail = capacity - used_bytes;
+                    if (avail > 1)
+                    {
+                        int char_use = snprintf((char*)track_send_buf + used_bytes, avail, "%.2f", var);
+                        if (char_use >= 0)
+                        {
+                            size_t written = static_cast<size_t>(char_use);
+                            if (written < avail)
+                            {
+                                used_bytes += written;
+                            }
+                            else
+                            {
+                                used_bytes = capacity - 1;
+                            }
+                        }
+                    }
+                }
                 break;
             }
         }
         // 添加逗号","
         if(i != track_count - 1)
         {
-            track_send_buf[used_bytes] = ',';
-            track_send_buf[used_bytes + 1] = '\0';
-            used_bytes += 1;
+            if (used_bytes + 1 < capacity)
+            {
+                track_send_buf[used_bytes] = ',';
+                track_send_buf[used_bytes + 1] = '\0';
+                used_bytes += 1;
+            }
         }
         else // 结束时添加换行符"\n"
         {
-            size_t len = strlen((char*)track_send_buf);
-            track_send_buf[len] = '\n';
-            track_send_buf[len + 1] = '\0';
+            if (used_bytes + 1 < capacity)
+            {
+                track_send_buf[used_bytes] = '\n';
+                track_send_buf[used_bytes + 1] = '\0';
+                used_bytes += 1;
+            }
         }
     }
 
     // 发送编码后的数据
     if (track_uart.IsValid())
     {
-        track_uart.Transmit(track_send_buf, strlen((char*)track_send_buf));
+        track_uart.Transmit(track_send_buf, used_bytes);
     }
 }
 
@@ -110,8 +160,9 @@ void Monitor::TrackLogJustFloat()
     // 你的 Monitor.hpp 里定义了 byte vofa_buf[64]，这里正好用上
     // 8个变量 * 4字节 + 4字节帧尾 = 36字节，64字节足够了
     memset(vofa_buf, 0, 64);
-    vofa_buf[0] = '[';
-    size_t used_bytes = 1;
+    memcpy(vofa_buf, track_justfloat_head, sizeof(track_justfloat_head));
+    size_t used_bytes = sizeof(track_justfloat_head);
+    const size_t capacity = sizeof(vofa_buf);
 
     for(int i = 0; i < track_count; i++)
     {
@@ -133,13 +184,19 @@ void Monitor::TrackLogJustFloat()
 
         // 内存拷贝 (4字节)
         // STM32 是小端序(Little Endian)，VOFA+ 也是小端序，直接拷贝即可
-        memcpy(&vofa_buf[used_bytes], &temp_val, 4);
-        used_bytes += 4;
+        if (used_bytes + 4 <= capacity)
+        {
+            memcpy(&vofa_buf[used_bytes], &temp_val, 4);
+            used_bytes += 4;
+        }
     }
 
     // 追加帧尾 (00 00 80 7f)
-    memcpy(&vofa_buf[used_bytes], justfloat_tail, 4);
-    used_bytes += 4;
+    if (used_bytes + 4 <= capacity)
+    {
+        memcpy(&vofa_buf[used_bytes], justfloat_tail, 4);
+        used_bytes += 4;
+    }
 
     // 发送原始二进制数据
     if (track_uart.IsValid())
