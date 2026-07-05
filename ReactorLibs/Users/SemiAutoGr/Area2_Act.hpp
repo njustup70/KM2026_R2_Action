@@ -21,8 +21,8 @@ enum Area2Code
   DOWN_200 = 0x65,
   UP_400 = 0x66,
   DOWN_400 = 0x67,
-  TURN_CW = 0x68,
-  TURN_CCW = 0x69,
+  TURN_CW = 0x69,
+  TURN_CCW = 0x68,
   FETCH_UP200 = 0x6A,
   FETCH_UP400 = 0x6B,
   FETCH_DOWN200 = 0x6C,
@@ -55,6 +55,8 @@ public:
 
   /// @brief 取下200的块后之后如果要进行转向，则要先收回前腿
   bool is_f_origin_before_turn = false; 
+
+  bool is_blue = false; // 区分红蓝半场，默认红场
 
   void Init(); // 初始化，注册回调函数
 
@@ -94,6 +96,8 @@ public:
 
   /// @brief 根据当前坐标判断在哪个梅林块上，并导航到该块中心
   void ChaseCurrentGrid();
+  void ChaseCurrentGrid_BLUE();
+
 
   static void Area2ActRxCallback(uint8_t func_code, const uint8_t *payload, uint8_t payload_len, void *user_ctx);
 
@@ -107,6 +111,7 @@ private:
   bool _skip_approach = false; // 是否跳过接近动作
 
   bool _is_enter_act = true; // 第一次接收0x80/0x81/0x82，进行对_seq[0]的判断，第二次进入就执行判断_seq[0]和_seq[1]是否相同的逻辑
+
 };
 
 class MeiLin_BlockPos

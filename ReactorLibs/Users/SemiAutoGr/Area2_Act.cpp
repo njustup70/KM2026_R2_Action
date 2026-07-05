@@ -160,7 +160,7 @@ void MeiLinArray::SetAction(const uint8_t *actions, int len)
 /// @param delta_rad 正值=逆时针，负值=顺时针
 void MeiLinArray::TurnRelative(float delta_rad)
 {
-    float target_yaw = APP::chas.chas_odom.pos.z + delta_rad;
+    float target_yaw = System.position.z + delta_rad;
     APP::path_chaser.ChaseYaw(target_yaw);
 
     while (!APP::path_chaser.IsFinished())
@@ -173,19 +173,33 @@ void MeiLinArray::TurnRelative(float delta_rad)
 void MeiLinArray::TurnLeft()
 {
   TurnRelative(PI / 2.0f);
-  Area2::block_pos.TurnLeft();
+  
 
-  Area2::mei_lin_array.ChaseCurrentGrid();
-
+  if(is_blue)
+  {
+    Area2::block_pos.TurnLeft_BLUE();
+    Area2::mei_lin_array.ChaseCurrentGrid_BLUE();
+  } 
+  else 
+  {
+    Area2::block_pos.TurnLeft();
+    Area2::mei_lin_array.ChaseCurrentGrid();
+  }
 }
 
 void MeiLinArray::TurnRight()
 {
   TurnRelative(-PI / 2.0f);
-  Area2::block_pos.TurnRight();
-
-  Area2::mei_lin_array.ChaseCurrentGrid();
-
+  if(is_blue)
+  {
+    Area2::block_pos.TurnRight_BLUE();
+    Area2::mei_lin_array.ChaseCurrentGrid_BLUE();
+  } 
+  else 
+  {
+    Area2::block_pos.TurnRight();
+    Area2::mei_lin_array.ChaseCurrentGrid();
+  }
 }
 
 /// @brief 根据当前坐标判断在哪个梅林块上，并导航到该块中心
@@ -196,6 +210,30 @@ void MeiLinArray::ChaseCurrentGrid()
 
   Vec2 center = MeiHuaForest_Pos[id];
    float target_yaw = Area2::block_pos.GetTargetYaw();
+
+  APP::monit.LogInfo("[MeiLin] ChaseGrid: id=%d center(%.2f,%.2f)",
+    id, center.x, center.y);
+
+  APP::monit.LogInfo("[MeiLin] Current Pos: (%.2f,%.2f)", System.position.x, System.position.y);
+
+  APP::path_chaser.ChaseGes(Vec3(center.x, center.y, target_yaw));
+
+  while (!APP::path_chaser.IsFinished())
+  {
+    APP::chas.Move(APP::path_chaser.GetCmdBody(), 0.01f);
+    Seq::Wait(0.005f);
+  }
+
+  APP::monit.LogInfo("[MeiLin] ChaseGrid arrived at id=%d", id);
+}
+
+void MeiLinArray::ChaseCurrentGrid_BLUE()
+{
+  uint8_t id = Area2::block_pos.GetCurId();
+  if (id >= 12) return;
+
+  Vec2 center = MeiHuaForest_Pos_BLUE[id];
+   float target_yaw = Area2::block_pos.GetTargetYaw_BLUE();
 
   APP::monit.LogInfo("[MeiLin] ChaseGrid: id=%d center(%.2f,%.2f)",
     id, center.x, center.y);
@@ -606,7 +644,11 @@ void MeiLinArray::Climb_Up200(bool need_chase)
 
   Area2::block_pos.Forward();
 
-  if (need_chase) Area2::mei_lin_array.ChaseCurrentGrid();
+  if (need_chase)
+  {
+    if(is_blue) Area2::mei_lin_array.ChaseCurrentGrid_BLUE();
+    else Area2::mei_lin_array.ChaseCurrentGrid();
+  }
 
   // 记录结束位置
   APP::monit.LogInfo("Climb200:EndPos:(%.2f,%.2f)",
@@ -623,17 +665,20 @@ void MeiLinArray::Climb_Up400(bool need_chase)
   APP::monit.LogInfo("Climb400:StartPos:(%.2f,%.2f)",
      APP::comm_center.slam_pos.x, APP::comm_center.slam_pos.y);
   
-  if(_skip_approach) _skip_approach = false;
-  else
+  if(_skip_approach) 
   {
     APP::monit.LogInfo("Leg out skip");
-
+    _skip_approach = false;
+  }
+  else
+  {
     // 登400时，先放低前后腿
     APP::leg.F_Down_400();
     APP::leg.B_Down_400();
 
-    // // 如果需要取块，那么爪子也要有所行动。要先伸出来
-    // if (APP::vac_claw.need_to_fetch) FetchBlock();
+    Seq::WaitUntil([]()-> bool {
+      return (APP::leg.real_front_pos_mm < -300.0f) && (APP::leg.real_back_pos_mm < -300.0f);
+    });
 
     // 往前缓慢移动，直到抵靠到前端
     APP::chas.Move(Vec2(0.35, 0), 3.0f);
@@ -646,10 +691,11 @@ void MeiLinArray::Climb_Up400(bool need_chase)
   // 等待小黄0号检测到可以抬前腿
   Seq::WaitUntil([&]()
   {
-    return APP::leg.detector[0].Read();
+    return IR_Read(APP::leg.detector[0]);
   });
+
   // 再走0.3秒，慢慢走，确保前端抵住
-  APP::chas.Move(Vec2(0.2, 0), 2.0f);
+  APP::chas.Move(Vec2(0.2, 0), 5.0f);
   Seq::Wait(0.3f);
 
   // // 如果需要取块，那么爪子也要有所行动。要先伸出来
@@ -679,7 +725,7 @@ void MeiLinArray::Climb_Up400(bool need_chase)
   // 等待小黄2号检测到可以抬后腿
   Seq::WaitUntil([&]()
   {
-    return APP::leg.detector[2].Read();
+    return IR_Read(APP::leg.detector[2]);
   });
 
   // 抬升后腿
@@ -693,7 +739,11 @@ void MeiLinArray::Climb_Up400(bool need_chase)
   // 更新当前梅林ID
   Area2::block_pos.Forward();
 
-  if (need_chase) Area2::mei_lin_array.ChaseCurrentGrid();
+  if (need_chase)
+  {
+    if(is_blue) Area2::mei_lin_array.ChaseCurrentGrid_BLUE();
+    else Area2::mei_lin_array.ChaseCurrentGrid();
+  }
 
   // 记录结束位置
   APP::monit.LogInfo("Climb400:EndPos:(%.2f,%.2f)",
@@ -773,7 +823,11 @@ void MeiLinArray::Decend_200(bool need_chase)
 
   Area2::block_pos.Forward();
 
-  if (need_chase) Area2::mei_lin_array.ChaseCurrentGrid();
+  if (need_chase)
+  {
+    if(is_blue) Area2::mei_lin_array.ChaseCurrentGrid_BLUE();
+    else Area2::mei_lin_array.ChaseCurrentGrid();
+  }
 
   // 记录结束位置
   APP::monit.LogInfo("Decend200:EndPos:(%.2f,%.2f)",
@@ -848,7 +902,11 @@ void MeiLinArray::Decend_400(bool need_chase)
 
   Area2::block_pos.Forward();
 
-  if (need_chase) Area2::mei_lin_array.ChaseCurrentGrid();
+  if (need_chase)
+  {
+    if(is_blue) Area2::mei_lin_array.ChaseCurrentGrid_BLUE();
+    else Area2::mei_lin_array.ChaseCurrentGrid();
+  }
 
   // 记录结束位置
   APP::monit.LogInfo("Decend400:EndPos:(%.2f,%.2f)",
@@ -906,16 +964,37 @@ void MeiLinArray::HandleClimbAct()
       switch(_seq[1])
       {
         case Area2Code::ENTER_0:
-          MoveBeforeClimb(MeiHuaForest_Pos_Export[0]);
-        break;
+          if(is_blue)
+          {
+            MoveBeforeClimb(MeiHuaForest_Pos_Export_BLUE[0]);
+          }
+          else
+          {
+            MoveBeforeClimb(MeiHuaForest_Pos_Export[0]);
+          }
+          break;
 
         case Area2Code::ENTER_1:
-          MoveBeforeClimb(MeiHuaForest_Pos_Export[1]);
-        break;
+          if(is_blue)
+          {
+            MoveBeforeClimb(MeiHuaForest_Pos_Export_BLUE[1]);
+          }
+          else
+          {
+            MoveBeforeClimb(MeiHuaForest_Pos_Export[1]);
+          }        
+          break;
 
         case Area2Code::ENTER_2:
-          MoveBeforeClimb(MeiHuaForest_Pos_Export[2]);
-        break;
+          if(is_blue)
+          {
+            MoveBeforeClimb(MeiHuaForest_Pos_Export_BLUE[2]);
+          }
+          else
+          {
+            MoveBeforeClimb(MeiHuaForest_Pos_Export[2]);
+          }
+          break;
 
         default:
           APP::monit.LogError("Area2 Second ActionCode: 0x%02X Error!",_seq[1]);
@@ -947,7 +1026,8 @@ static void MoveBackAndDecend()
   // }
 
   // 再根据当前梅林 ID 位置闭环
-  Area2::mei_lin_array.ChaseCurrentGrid();
+  if(Area2::mei_lin_array.is_blue) Area2::mei_lin_array.ChaseCurrentGrid_BLUE();
+  else Area2::mei_lin_array.ChaseCurrentGrid();
 
   Seq::Wait(1.0f);
 
@@ -1013,8 +1093,8 @@ void MeiLinArray::ExecuteSequence()
       case Area2Code::DOWN_200:      Decend_200(need_chase);                          break;
       case Area2Code::UP_400:        Climb_Up400(need_chase);                         break;
       case Area2Code::DOWN_400:      Decend_400(need_chase);                          break;
-      case Area2Code::TURN_CW:       TurnLeft();                    break;
-      case Area2Code::TURN_CCW:      TurnRight();                   break;
+      case Area2Code::TURN_CW:       TurnRight();                    break;
+      case Area2Code::TURN_CCW:      TurnLeft();                   break;
       case Area2Code::FETCH_UP200:
         FetchBlock(BlockHeight::UP200); 
         if (i + 1 < _seq_len && (_seq[i+1] == Area2Code::TURN_CW || _seq[i+1] == Area2Code::TURN_CCW))
