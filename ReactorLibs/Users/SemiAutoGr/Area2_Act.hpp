@@ -118,8 +118,12 @@ public:
   // void Backward(); // 应该不存在后退的情况
   void TurnLeft(); 
   void TurnRight();
-  uint8_t GetCurId(); // 获取当前梅林ID，供外部进行姿态校准
   float GetTargetYaw();
+  void TurnLeft_BLUE();
+  void TurnRight_BLUE();
+  float GetTargetYaw_BLUE();
+  uint8_t GetCurId(); // 获取当前梅林ID，供外部进行姿态校准
+
 
 private:
   bool IR_Read(InfraredDetector& ir);

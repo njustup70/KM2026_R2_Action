@@ -34,6 +34,17 @@ const Vec2 MeiHuaForest_Pos[12] = {
 const Vec2 MeiHuaForest_Pos_Export[3] = {
   Vec2(2.6, 1.8), Vec2(2.6,3.0), Vec2(2.6, 4.2),
 };
+/*********** 蓝场梅林中心坐标 ***********/
+const Vec2 MeiHuaForest_Pos_BLUE[12] = {
+  Vec2(3.8, 4.2), Vec2(3.8, 3), Vec2(3.8, 1.8),
+  Vec2(5.0, 4.2), Vec2(5.0, 3), Vec2(5.0, 1.8),
+  Vec2(6.2, 4.2), Vec2(6.2, 3), Vec2(6.2, 1.8),
+  Vec2(7.4, 4.2), Vec2(7.4, 3), Vec2(7.4, 1.8),
+};
+
+const Vec2 MeiHuaForest_Pos_Export_BLUE[3] = {
+  Vec2(2.6, 4.2), Vec2(2.6,3.0), Vec2(2.6, 1.8),
+};
 
 /// @brief 刚进入二区时，定下进入哪个ID
 /// @param block_id，由算法组发来
@@ -84,6 +95,7 @@ void MeiLin_BlockPos::TurnRight()
 {
   _forward = (_forward + 3) % 4;
 }
+
 float MeiLin_BlockPos::GetTargetYaw()
 {
   // _forward: 0=+x(yaw=0), 1=+y(yaw=PI/2), 2=-x(yaw=PI), 3=-y(yaw=-PI/2)
@@ -95,6 +107,31 @@ float MeiLin_BlockPos::GetTargetYaw()
     case 3:  return -PI / 2.0f;
     default: return 0.0f;
   }
+}
+
+/********************** 以下是蓝色半场的方法 ***********************/
+// 向左向右转的_forward要改，Forward里面的行列操作也要改
+
+void MeiLin_BlockPos::TurnLeft_BLUE()
+{
+  _forward = (_forward + 3) % 4;
+}
+
+void MeiLin_BlockPos::TurnRight_BLUE()
+{
+  _forward = (_forward + 1) % 4;
+}
+
+float MeiLin_BlockPos::GetTargetYaw_BLUE()
+{
+  switch (_forward)
+  {
+    case 0:  return 0.0f;
+    case 1:  return -PI / 2.0f;
+    case 2:  return PI;
+    case 3:  return PI / 2.0f;
+    default: return 0.0f;
+  }  
 }
 
 /************************* MeiLinArray 类 **************************/
