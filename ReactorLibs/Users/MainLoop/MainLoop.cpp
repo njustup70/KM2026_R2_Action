@@ -38,12 +38,14 @@ void MainLoop::Update()
     if (MOD::farcon.toggle[3] == 1 && targ_area == AREA_RED)
     {
         targ_area = AREA_BLUE;
+        MOD::host_pc.SendFieldChoice(HostPC::BLUE);
         APP::monit.LogRespond("Toggle Area: BLUE");
         test_led.Lit(Color::Blue);
     }
     else if (MOD::farcon.toggle[3] == 0 && targ_area == AREA_BLUE)
     {
         targ_area = AREA_RED;
+        MOD::host_pc.SendFieldChoice(HostPC::RED);
         APP::monit.LogRespond("Toggle Area: RED");
         test_led.Lit(Color::Red);
     }
