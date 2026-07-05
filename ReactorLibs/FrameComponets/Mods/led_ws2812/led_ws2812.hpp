@@ -45,6 +45,7 @@ private:
     bool dirty_ = false;
     uint8_t handle_prescaler_ = 6;
     uint8_t handle_div_cnt_ = 0;
+    uint8_t segment_count_ = 1;
 
     EffectMode current_mode_ = EffectMode::Static;
     Color effect_color_0_;
@@ -99,6 +100,19 @@ public:
      * @note 传入 0 时会按 1 处理
      */
     void SetHandlePrescaler(uint8_t prescaler);
+
+    /**
+     * @brief 把灯带划分为若干段，作为后续 SegLit() 的前置配置
+     * @note 段数会限制在 1 ~ LedNums 之间；非整除时末尾段自动吃掉余数
+     */
+    void Segment(uint8_t segment_count);
+
+    /**
+     * @brief 点亮指定分段
+     * @param seg_id 分段ID，从0开始，必须小于 Segment() 配置的段数
+     * @param color 分段颜色，会经过 BiasFactor 校正
+     */
+    void SegLit(uint8_t seg_id, Color color);
 
     private:
     /**--- 预设动画的内部持续调用，维护灯带颜色 ---**/
@@ -163,6 +177,7 @@ void LedWs2812<MaxLedNumsT>::Init(BSP::TIM::TimID tim, BSP::TIM::Channel Channel
     initialized_ = true;
     dirty_ = true;
     handle_div_cnt_ = 0;
+    segment_count_ = 1;
     _ActivateStaticMode();
     _ResetEffectRuntime();
 }
@@ -542,6 +557,46 @@ void LedWs2812<MaxLedNumsT>::SetHandlePrescaler(uint8_t prescaler)
 {
     handle_prescaler_ = (prescaler == 0) ? 1 : prescaler;
     handle_div_cnt_ = 0;
+}
+
+template <size_t MaxLedNumsT>
+void LedWs2812<MaxLedNumsT>::Segment(uint8_t segment_count)
+{
+    if (LedNums == 0)
+    {
+        segment_count_ = 1;
+        return;
+    }
+
+    if (segment_count == 0) segment_count = 1;
+    if (segment_count > LedNums) segment_count = LedNums;
+    segment_count_ = segment_count;
+}
+
+template <size_t MaxLedNumsT>
+void LedWs2812<MaxLedNumsT>::SegLit(uint8_t seg_id, Color color)
+{
+    if (LedNums == 0) return;
+
+    uint8_t segment_count = segment_count_;
+    if (segment_count == 0) segment_count = 1;
+    if (segment_count > LedNums) segment_count = LedNums;
+    if (seg_id >= segment_count)
+    {
+        BspLog_LogError("[WS2812]: SegLit at invalid segment id!\r\n");
+        return;
+    }
+
+    _ActivateStaticMode();
+    color = color * BiasFactor;
+
+    uint8_t start = static_cast<uint8_t>((static_cast<uint16_t>(seg_id) * LedNums) / segment_count);
+    uint8_t end = static_cast<uint8_t>((static_cast<uint16_t>(seg_id + 1) * LedNums) / segment_count);
+
+    for (uint8_t i = start; i < end; i++)
+    {
+        _SetColorRaw(i, color.r, color.g, color.b);
+    }
 }
 
 template <size_t MaxLedNumsT>
