@@ -238,16 +238,19 @@ void StateCore::CoreGraph(const StateGraph& graph)
 /**
  * @brief 注册状态图
  */
-void StateCore::RegistGraph(StateGraph& graph)
+int StateCore::RegistGraph(StateGraph& graph)
 {
-    if (graph_nums < 4)
+    if (graph_nums < 16)
     {
+        int graph_id = graph_nums;
         graphs[graph_nums] = &graph;
         graph_nums++;
+        return graph_id;
     }
     else
     {
         Monitor::GetInstance().LogWarning("StateCore: Too much state graph!");
+        return -1;
     }
 }
 

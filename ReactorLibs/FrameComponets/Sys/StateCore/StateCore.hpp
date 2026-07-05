@@ -130,7 +130,8 @@ class StateCore
     void Enable(uint8_t first_graph = 0);
     
     /// @brief 注册状态图
-    void RegistGraph(StateGraph& graph);
+    /// @return 注册成功返回图ID，失败返回-1
+    int RegistGraph(StateGraph& graph);
 
     /**
      * @brief 转移到目标状态图的指定状态
@@ -150,7 +151,7 @@ class StateCore
     StateBlock& GetCurState();
     
     /// @brief 所掌控的状态图
-    StateGraph* graphs[4];
+    StateGraph* graphs[16];
     /// @brief 当前所处状态图
     uint8_t at_graph_id;
     /// @brief 注册的状态图数量
