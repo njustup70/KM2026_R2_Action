@@ -519,7 +519,7 @@ void MeiLinArray::FetchBlock(BlockHeight height)
   // 此时爪还抓着物块，但是取下200块的时候，泵不开物块会掉下来，所以等爪子收回摩擦带能碰着物块再开夹爪、关泵
   Seq::WaitUntil([]()
   {
-    return fabs(APP::vac_claw.motor_stretch.driver.measure.total_angle - APP::vac_claw.stretch_pos) < 60;
+    return fabs(APP::vac_claw.motor_stretch.driver.measure.total_angle - APP::vac_claw.stretch_pos) < 150;
   });
 
   APP::vac_claw.OpenSnap();
@@ -580,7 +580,7 @@ void MeiLinArray::Climb_Up200(bool need_chase)
   APP::monit.LogInfo("Climb200:StartPos:(%.2f,%.2f)",
      APP::comm_center.slam_pos.x, APP::comm_center.slam_pos.y);
 
-  if(!_skip_approach) _skip_approach = false;
+  if(_skip_approach) _skip_approach = false;
   else
   {
     APP::monit.LogInfo("Leg out skip");
@@ -764,7 +764,7 @@ void MeiLinArray::Decend_200(bool need_chase)
   APP::monit.LogInfo("Decend200:StartPos:(%.2f,%.2f)",
      APP::comm_center.slam_pos.x, APP::comm_center.slam_pos.y);
   
-  if(!_skip_approach) _skip_approach = false;
+  if(_skip_approach) _skip_approach = false;
   else
   {
     APP::monit.LogInfo("Leg out skip");
@@ -848,20 +848,16 @@ void MeiLinArray::Decend_400(bool need_chase)
   APP::monit.LogInfo("Decend400:StartPos:(%.2f,%.2f)",
      APP::comm_center.slam_pos.x, APP::comm_center.slam_pos.y);
   
-  if(!_skip_approach) _skip_approach = false;
-  else
+  APP::monit.LogInfo("Leg out skip");
+  // 先缓慢向前走
+  APP::chas.Move(Vec2(0.25, 0), 6.0f);
+  Seq::Wait(0.25f);
+  
+  // 等待小黄0号检测不到后，减速
+  Seq::WaitUntil([&]()
   {
-    APP::monit.LogInfo("Leg out skip");
-    // 先缓慢向前走
-    APP::chas.Move(Vec2(0.25, 0), 6.0f);
-    Seq::Wait(0.25f);
-    
-    // 等待小黄0号检测不到后，减速
-    Seq::WaitUntil([&]()
-    {
-      return !APP::leg.detector[0].Read();
-    });
-  }
+    return !APP::leg.detector[0].Read();
+  });
 
   // 先缓慢向前走
   APP::chas.Move(Vec2(0.1, 0), 7.0f);
