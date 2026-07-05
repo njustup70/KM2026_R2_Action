@@ -184,7 +184,7 @@ void Walk_To_Dock(StateCore *core)
   // 进入对接模式
   APP::jaw.SetTrackMode(true);
 
-  APP::main_loop.test_led.Running(Color::Up_Yellow, 0.4f, 1.2f);
+  APP::main_loop.test_led.Running(Color::Up_Yellow, 0.4f, 0.8f);
 
   // 等待遥控器指令，然后才进入下一个状态
   while(MOD::farcon.button_second_half[0] != 1)
@@ -244,8 +244,9 @@ void Dock_Fetch_And_Back(StateCore *core)
 {
   fetch_again = false;
 
-  APP::main_loop.test_led.Running(Color::Up_Yellow, 0.4f, 1.2f);
-
+  // 灯带：渐变
+  APP::main_loop.test_led.GradientFlow(Color::Up_Purpor * 0.65f, Color::Up_Yellow * 0.65f, 1.0f);
+  // 从对接点出发取矛头
   FetchSpear_FromDock_Blue(need_spear_id);
 
   /**--------------     返回对接点    ---------------**/
@@ -256,7 +257,7 @@ void Dock_Fetch_And_Back(StateCore *core)
   // 进入对接模式
   APP::jaw.SetTrackMode(true);
 
-  APP::main_loop.test_led.Running(Color::Up_Yellow, 0.4f, 1.2f);
+  APP::main_loop.test_led.Running(Color::Up_Yellow, 0.4f, 0.8f);
 
   // 等待遥控器指令，然后才进入下一个状态
   while(MOD::farcon.button_second_half[0] != 1)
