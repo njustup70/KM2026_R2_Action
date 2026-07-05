@@ -17,6 +17,10 @@ class MainLoop : public Application
     InfraredDetector spear_detector;
     bool spear_detected = false;
 
+    /*--------------        切区逻辑        ----------------*/
+    /// @brief 所有切换红蓝区的逻辑，都封装在里边
+    void ToggleAreaLogics();
+
     // 所选的区域（分红区蓝区）
     const static uint8_t AREA_RED = 0;
     const static uint8_t AREA_BLUE = 1;

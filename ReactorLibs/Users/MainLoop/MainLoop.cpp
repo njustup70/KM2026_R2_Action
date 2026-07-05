@@ -33,19 +33,41 @@ void MainLoop::Update()
     }
 
     // 在此 处理状态机的启动逻辑。原因是：MainFrame 无法阻塞等待判断，只能在这里
+    ToggleAreaLogics();
+}
+
+
+void MainLoop::ToggleAreaLogics()
+{
+    // 根据当前的红蓝区，4Hz (50分频) 持续发送给工控机，确保工控机知道当前的区域选择
+    static int area_red_blue_cnt = 0;
+    // 如果已经确定了分区，可以不用继续发了
+    static bool confirmed_area = false;
+
+    // 发送红蓝区选择给工控机
+    if (area_red_blue_cnt++ >= 50 && !confirmed_area)
+    {
+        area_red_blue_cnt = 0;
+        if (targ_area == AREA_RED)
+        {
+            MOD::host_pc.SendFieldChoice(HostPC::RED);
+        }
+        else
+        {
+            MOD::host_pc.SendFieldChoice(HostPC::BLUE);
+        }
+    }
 
     // 从红切蓝
     if (MOD::farcon.toggle[3] == 1 && targ_area == AREA_RED)
     {
         targ_area = AREA_BLUE;
-        MOD::host_pc.SendFieldChoice(HostPC::BLUE);
         APP::monit.LogRespond("Toggle Area: BLUE");
         test_led.Lit(Color::Blue);
     }
     else if (MOD::farcon.toggle[3] == 0 && targ_area == AREA_BLUE)
     {
         targ_area = AREA_RED;
-        MOD::host_pc.SendFieldChoice(HostPC::RED);
         APP::monit.LogRespond("Toggle Area: RED");
         test_led.Lit(Color::Red);
     }
@@ -58,11 +80,13 @@ void MainLoop::Update()
         {
             APP::monit.LogRespond("Start Challenge Graph: RED");
             APP::state_core.Enable(Challenge_Explore_RedGr_id);
+            confirmed_area = true;
         }
         else
         {
             APP::monit.LogRespond("Start Challenge Graph: BLUE");
             APP::state_core.Enable(Challenge_Explore_BlueGr_id);
+            confirmed_area = true;
         }
     }
 }
