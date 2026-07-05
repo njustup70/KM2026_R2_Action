@@ -29,8 +29,8 @@ private:
     bool _dock_ok = false;  // 是否完成对接
     bool _dock_give_up = false; // 是否放弃当前对接
     Area3ActCode _area3_act_code; // 三区光通信，接收到的指令码
-
-    // float _sick_ch0_data; // sick测距值（ch0）
+    bool is_blue_field = false; // 是否是蓝场
+    bool at_first_area = true; // 是否在一三区的起始点
 
 
 public:
@@ -41,9 +41,18 @@ public:
 
     bool IsDocked() const { return _dock_ok; }
     bool IsDockGiveUp() const { return _dock_give_up; }
+
+    /// @brief 红蓝区判断
+    bool AtBlueField() const { return is_blue_field; }
+    bool AtRedField() const { return !is_blue_field; }
+    /// @brief 重试出发点判断
+    bool AtFirstArea() const { return at_first_area; }
+    bool AtThirdArea() const { return !at_first_area; }
+
     void ClearDockFlag();
     void SlamCorrection(); // 触发Sick纠正
     static void SlamRxCallback(uint8_t func_code, const uint8_t *payload, uint8_t payload_len, void *user_ctx);
+    static void FieldToggleRxCb(uint8_t func_code, const uint8_t *payload, uint8_t payload_len, void *user_ctx);
     static void OpticalRxCallback(uint8_t func_code, const uint8_t* payload, uint8_t payload_len, void* user_ctx);
     static void DockRxCallback(uint8_t func_code, const uint8_t* payload, uint8_t payload_len, void* user_ctx);
     

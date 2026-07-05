@@ -43,8 +43,10 @@ bool IsValidDockPayload(const uint8_t* payload, uint8_t payload_len)
 
 void CommCenter::Start()
 {
-    // 注册工控机接收SLAM的回调
+    // 注册工控机接收 SLAM的回调
     MOD::host_pc.Regist(HostPC::FuncCode::slam_pos, SlamRxCallback, nullptr);
+    // 注册工控机接收 分辨 红蓝半场 与 一三区 反馈的回调
+    MOD::host_pc.Regist(HostPC::FuncCode::field_area_feedback, FieldToggleRxCb, nullptr);
 
     // 注册sick串口
     MOD::sick.Init(Hardware::huart_sick, 0x03); // 使用通道0和1
@@ -107,27 +109,55 @@ void CommCenter::SlamRxCallback(uint8_t func_code, const uint8_t *payload, uint8
     using namespace APP;
     if (func_code == HostPC::FuncCode::slam_pos)
     {
-        // Vec3 slam_pos;
         comm_center.slam_pos.FromBytes(payload);
+    }
+}
 
-        // 车体坐标系->世界坐标系转换直接用偏移了
-        // Vec3 bias{0.39f, 4.610f, 0.0f};
+/**
+ * @brief 接收SLAM位置信息的回调函数
+ * @details payload[0] = 红蓝半场选择, payload[1] = 一三区重试选择
+ */
+void CommCenter::FieldToggleRxCb(uint8_t func_code, const uint8_t *payload, uint8_t payload_len, void *user_ctx)
+{
+    using namespace APP;
+    if (func_code == HostPC::FuncCode::field_area_feedback)
+    {
+        if (payload_len < 2)
+        {
+            APP::monit.LogError("[HostPC] FieldToggleRxCb: payload too short.");
+            return;
+        }
 
-        // comm_center.slam_pos.x += bias.x;
-        // comm_center.slam_pos.y += bias.y;
+        uint8_t field = payload[0];
+        uint8_t area_retry = payload[1];
 
-        // // 更新系统位姿
-        // System.position = comm_center.slam_pos;
+        // 首先，判断工控机当前认为的红蓝区
+        if (field == static_cast<uint8_t>(HostPC::Field::RED))
+        {
+            comm_center.is_blue_field = false;
+        }
+        else if (field == static_cast<uint8_t>(HostPC::Field::BLUE))
+        {
+            comm_center.is_blue_field = true;
+        }
+        else
+        {
+            APP::monit.LogError("[comm] Unknown field value: %d", field);
+        } 
 
-        // // 发送SLAM坐标数据转发给底盘
-        // uint8_t data[6];
-        // const float scale = 1000.0f;
-
-        // StdMath::PackFloatToInt16(&data[0], slam_pos.x, scale);
-        // StdMath::PackFloatToInt16(&data[2], slam_pos.y, scale);
-        // StdMath::PackFloatToInt16(&data[4], slam_pos.z, scale);
-
-        // MOD::board_can.SendTask(MOD::C_sub_ctrl_board_id, 0, data, 6, false);
+        // 接着，判断工控机当前认为的一三区重试选择
+        if (area_retry == static_cast<uint8_t>(HostPC::AreaRetry::FIRST))
+        {
+            comm_center.at_first_area = true;
+        }
+        else if (area_retry == static_cast<uint8_t>(HostPC::AreaRetry::THIRD))
+        {
+            comm_center.at_first_area = false;
+        }
+        else
+        {
+            APP::monit.LogError("[comm] Unknown area retry value: %d", area_retry);
+        }
     }
 }
 
