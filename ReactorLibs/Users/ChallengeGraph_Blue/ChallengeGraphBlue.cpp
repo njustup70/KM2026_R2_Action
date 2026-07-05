@@ -51,6 +51,9 @@ static void Walk_into_Area2(StateCore *core);
 
 void Config_R2_Challenge_Blue_StateGraph()
 {
+
+  Area2::mei_lin_array.is_blue = true; // 设置为蓝场
+
   StateBlock& s_wait = R2_Challenge_Blue_Graph.AddState("wait");
   StateBlock& s_area1_f1 = R2_Challenge_Blue_Graph.AddState("area1_f1");       // fetch our first spear
   StateBlock& s_area1_td = R2_Challenge_Blue_Graph.AddState("area1_td");       // to dock
@@ -344,6 +347,13 @@ void Goto_Area2(StateCore *core)
       Seq::Wait(3600.0f);
       break;
   }
+
+  APP::comm_center.SlamCorrection();
+
+  Seq::Wait(1.0f);
+
+  APP::monit.LogInfo("sick_pos:%.2f,%.2f,%.2f", APP::comm_center.slam_pos.x,
+  APP::comm_center.slam_pos.y, APP::comm_center.slam_pos.z);
 
   APP::monit.LogInfo("I'm Ahead of MeiLin.");
 
