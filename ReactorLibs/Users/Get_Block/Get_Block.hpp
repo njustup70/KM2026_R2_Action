@@ -106,7 +106,7 @@ private:
     // 向上为负 rad
     float _lift_pos_lower = 3.0f;   // 低位（下仓接料位），防卡
     float _lift_pos_upper = 757.0f;   // 高位（块通过单向门）TODO:标定
-    float _lift_vel       = 17.0f;   // 抬升速度 rad/s
+    float _lift_vel       = 18.0f;   // 抬升速度 rad/s
 
     // // ==================== DM电机目标值（Update中持续发送） ====================
     // float dm_fric_spd = 0.0f;   // 下摩擦带目标速度

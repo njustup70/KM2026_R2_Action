@@ -500,6 +500,8 @@ void MeiLinArray::FetchBlock(BlockHeight height)
     return fabs(APP::vac_claw.motor_snap.driver.measure.total_angle - APP::vac_claw.snap_pos) < 1000;
   });  
 
+  Seq::Wait(0.5f);
+
   // 等一会再小开爪
   // Seq::Wait(0.8f);
   // APP::vac_claw.OpenSnapMini();
@@ -517,7 +519,7 @@ void MeiLinArray::FetchBlock(BlockHeight height)
   // 此时爪还抓着物块，但是取下200块的时候，泵不开物块会掉下来，所以等爪子收回摩擦带能碰着物块再开夹爪、关泵
   Seq::WaitUntil([]()
   {
-    return fabs(APP::vac_claw.motor_stretch.driver.measure.total_angle - APP::vac_claw.stretch_pos) < 40;
+    return fabs(APP::vac_claw.motor_stretch.driver.measure.total_angle - APP::vac_claw.stretch_pos) < 60;
   });
 
   APP::vac_claw.OpenSnap();
