@@ -1,6 +1,7 @@
 #include "MainLoop.hpp"
 #include "HostPC.hpp"
 #include "farcon.hpp"
+#include "CommCenter.hpp"
 
 MainLoop& APP::main_loop = MainLoop::GetInstance();
 
@@ -15,7 +16,9 @@ void MainLoop::Start()
     
     // 初始化小黄
     spear_detector.Init(spear_ir);
-    
+
+    test_led.Lit(Color(0.0f, 0.0f, 0.0f));
+    test_led.Segment(2);
 }
 
 void MainLoop::Update()
@@ -37,12 +40,29 @@ void MainLoop::Update()
 }
 
 
+void MainLoop::RefreshFieldLed()
+{
+    test_led.SegLit(0, targ_area == AREA_BLUE ? Color::Blue : Color::Red);
+    test_led.SegLit(1, APP::comm_center.AtBlueField() ? Color::Blue : Color::Red);
+}
+
+
 void MainLoop::ToggleAreaLogics()
 {
     // 根据当前的红蓝区，4Hz (50分频) 持续发送给工控机，确保工控机知道当前的区域选择
     static int area_red_blue_cnt = 0;
     // 如果已经确定了分区，可以不用继续发了
     static bool confirmed_area = false;
+    // 防止一直触发灯带的标志位
+    static bool last_host_atblue = false;
+    static bool field_led_initialized = false;
+
+    if (!field_led_initialized)
+    {
+        RefreshFieldLed();
+        last_host_atblue = APP::comm_center.AtBlueField();
+        field_led_initialized = true;
+    }
 
     // 发送红蓝区选择给工控机
     if (area_red_blue_cnt++ >= 50 && !confirmed_area)
@@ -58,18 +78,32 @@ void MainLoop::ToggleAreaLogics()
         }
     }
 
-    // 从红切蓝
+    // 红蓝区逻辑（STM32 维护）
     if (MOD::farcon.toggle[3] == 1 && targ_area == AREA_RED)
     {
         targ_area = AREA_BLUE;
         APP::monit.LogRespond("Toggle Area: BLUE");
-        test_led.Lit(Color::Blue);
+        RefreshFieldLed();
     }
     else if (MOD::farcon.toggle[3] == 0 && targ_area == AREA_BLUE)
     {
         targ_area = AREA_RED;
         APP::monit.LogRespond("Toggle Area: RED");
-        test_led.Lit(Color::Red);
+        RefreshFieldLed();
+    }
+
+    // 红蓝区逻辑（工控机 维护）
+    // 如果工控机反馈当前在蓝区，而上一次反馈在红区，则说明切换到了蓝区
+    if (APP::comm_center.AtBlueField() && !last_host_atblue)
+    {
+        last_host_atblue = true;
+        RefreshFieldLed();
+    }
+    // 如果工控机反馈当前在红区，而上一次反馈在蓝区，则说明切换到了红区
+    else if (APP::comm_center.AtRedField() && last_host_atblue)
+    {
+        last_host_atblue = false;
+        RefreshFieldLed();
     }
 
     // 如果状态机尚未启动（还在选图），就根据选择的图，启动对应的状态图

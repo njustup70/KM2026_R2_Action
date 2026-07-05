@@ -20,6 +20,8 @@ class MainLoop : public Application
     /*--------------        切区逻辑        ----------------*/
     /// @brief 所有切换红蓝区的逻辑，都封装在里边
     void ToggleAreaLogics();
+    /// @brief 刷新灯带红蓝区显示：前半段为STM32选区，后半段为工控机回传选区
+    void RefreshFieldLed();
 
     // 所选的区域（分红区蓝区）
     const static uint8_t AREA_RED = 0;
