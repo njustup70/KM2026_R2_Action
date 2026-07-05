@@ -196,8 +196,6 @@ void MainFrameCpp()
 
   System.SetPositionSource(APP::comm_center.slam_pos);
 
-  APP::monit.Track(System.position.x);
-
   System.RegistApp(APP::main_loop);
 
   // 启动通信中心
