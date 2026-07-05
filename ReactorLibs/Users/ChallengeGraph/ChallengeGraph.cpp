@@ -44,7 +44,8 @@ static void Area2End_BackOrigin(StateCore *core);
 
 static void Walk_into_Area2(StateCore *core);
 
-void Config_R2_Challenge_StateGraph()
+
+int Config_R2_Challenge_StateGraph()
 {
   StateBlock& s_wait = R2_Challenge_Graph.AddState("wait");
   StateBlock& s_area1_f1 = R2_Challenge_Graph.AddState("area1_f1");       // fetch our first spear
@@ -84,8 +85,8 @@ void Config_R2_Challenge_StateGraph()
 
 
   /**----------     向状态机核心注册    ----------**/
-  APP::state_core.RegistGraph(R2_Challenge_Graph);
-  APP::state_core.Enable(0); // 启动状态机核心，指定初始状态图为0号图
+  return APP::state_core.RegistGraph(R2_Challenge_Graph);
+  // APP::state_core.Enable(0);     // 启动状态机核心，指定初始状态图为0号图
 }
 
 /*******************************************************************************/

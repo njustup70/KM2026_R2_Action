@@ -49,7 +49,7 @@ static void Area2End_BackOrigin(StateCore *core);
 
 static void Walk_into_Area2(StateCore *core);
 
-void Config_R2_Challenge_Blue_StateGraph()
+int Config_R2_Challenge_Blue_StateGraph()
 {
 
   Area2::mei_lin_array.is_blue = true; // 设置为蓝场
@@ -89,11 +89,10 @@ void Config_R2_Challenge_Blue_StateGraph()
   s_a2_hostact.LinkTo(&s_a2_hostact.Complete, s_a2end_backorigin);
   // 可以选择回到原点
   s_a2end_backorigin.LinkTo(&s_a2end_backorigin.Complete, s_wait);
-
-
+  
   /**----------     向状态机核心注册    ----------**/
-  APP::state_core.RegistGraph(R2_Challenge_Blue_Graph);
-  APP::state_core.Enable(0); // 启动状态机核心，指定初始状态图为0号图
+  return APP::state_core.RegistGraph(R2_Challenge_Blue_Graph);
+  // APP::state_core.Enable(0);     // 启动状态机核心，指定初始状态图为0号图
 }
 
 /*******************************************************************************/

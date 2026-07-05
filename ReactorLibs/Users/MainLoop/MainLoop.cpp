@@ -1,5 +1,6 @@
 #include "MainLoop.hpp"
 #include "HostPC.hpp"
+#include "farcon.hpp"
 
 MainLoop& APP::main_loop = MainLoop::GetInstance();
 
@@ -29,5 +30,37 @@ void MainLoop::Update()
         last_report_time = System.runtime_tick;
         debug_cnt = MOD::host_pc.GetRecentRxFreqHz();
         APP::monit.LogInfo("[HostPC] RX_freq: %.1f Hz, cnt:%d", MOD::host_pc.GetRecentRxFreqHz(), cnt);
+    }
+
+    // 在此 处理状态机的启动逻辑。原因是：MainFrame 无法阻塞等待判断，只能在这里
+
+    // 从红切蓝
+    if (MOD::farcon.toggle[3] == 1 && targ_area == AREA_RED)
+    {
+        targ_area = AREA_BLUE;
+        APP::monit.LogRespond("Toggle Area: BLUE");
+        test_led.Lit(Color::Blue);
+    }
+    else if (MOD::farcon.toggle[3] == 0 && targ_area == AREA_BLUE)
+    {
+        targ_area = AREA_RED;
+        APP::monit.LogRespond("Toggle Area: RED");
+        test_led.Lit(Color::Red);
+    }
+
+    // 如果状态机尚未启动（还在选图），就根据选择的图，启动对应的状态图
+    if (!graph_started && MOD::farcon.button_second_half[0] == 1)
+    {
+        graph_started = true;
+        if (targ_area == AREA_RED)
+        {
+            APP::monit.LogRespond("Start Challenge Graph: RED");
+            APP::state_core.Enable(Challenge_Explore_RedGr_id);
+        }
+        else
+        {
+            APP::monit.LogRespond("Start Challenge Graph: BLUE");
+            APP::state_core.Enable(Challenge_Explore_BlueGr_id);
+        }
     }
 }

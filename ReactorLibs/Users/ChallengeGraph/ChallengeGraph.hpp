@@ -4,5 +4,5 @@
 #include "Chassis.hpp"
 #include <cstdint>
 
-void Config_R2_Challenge_StateGraph();
+int Config_R2_Challenge_StateGraph();
 extern StateGraph R2_Challenge_Graph;

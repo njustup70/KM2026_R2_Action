@@ -225,15 +225,9 @@ void MainFrameCpp()
 
   Area2::mei_lin_array.Init();
 
-  // Config_AutoStateGraph();
-  // Config_SemiAutoStateGraph();
-  // Config_R2_Challenge_StateGraph();
-  Config_R2_Challenge_Blue_StateGraph();
-
-  /*简并模式测试*/
-  // graph.Degenerate(Action_of_Dege_Fetch_UP200);
-  // APP::state_core.RegistGraph(graph);
-  // APP::state_core.Enable(0); // 启动状态机核心，指定初始状态图为0号图
+  // 注册状态机（仅注册，不启动。启动在 Mainloop 中）
+  APP::main_loop.Challenge_Explore_RedGr_id = Config_R2_Challenge_StateGraph();
+  APP::main_loop.Challenge_Explore_BlueGr_id = Config_R2_Challenge_Blue_StateGraph();
 
 }
 

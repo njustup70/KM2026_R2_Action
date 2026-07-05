@@ -17,8 +17,24 @@ class MainLoop : public Application
     InfraredDetector spear_detector;
     bool spear_detected = false;
 
+    // 所选的区域（分红区蓝区）
+    const static uint8_t AREA_RED = 0;
+    const static uint8_t AREA_BLUE = 1;
+    uint8_t targ_area = AREA_RED;   // 默认红区
+    bool graph_started = false;     // 状态机是否已经启动
+
+    /****    常用的状态图   ****/
+    /// @brief "崇武探幽" 一二区技能赛
+    uint8_t Challenge_Explore_RedGr_id = 0;
+    uint8_t Challenge_Explore_BlueGr_id = 0;
     
-    
+    /// @brief "九宫藏宝" 三区技能赛
+    uint8_t Challenge_Treasure_RedGr_id = 0;
+    uint8_t Challenge_Treasure_BlueGr_id = 0;
+
+    /// @brief "武林探秘" 竞技赛正赛
+    uint8_t Compete_KM_RedGr_id = 0;
+    uint8_t Compete_KM_BlueGr_id = 0;
 
     int cnt = 0;
 };
