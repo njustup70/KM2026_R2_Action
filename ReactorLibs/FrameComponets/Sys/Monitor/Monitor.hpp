@@ -155,11 +155,13 @@ public:
     }
 
     /// @brief 发送跟踪信息
+    /// @note 普通 Track 使用 [v] 前缀，供脚本识别为 FireWater/ASCII 数据
     void TrackLog();
 
     /**
      * @brief 发送跟踪信息 (JustFloat格式，极快)
      * @note 无论由于Track的是什么类型，这里统统转为float发送
+     * @note 高性能模式使用 [j] 前缀，供脚本识别为 JustFloat 二进制数据
      * @note 协议帧尾: 00 00 80 7f
      */
     void TrackLogJustFloat();

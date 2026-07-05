@@ -17,8 +17,8 @@ FRAME_START_BYTE = ord("[")
 SERIAL_REOPEN_DELAY_SEC = 0.05
 SERIAL_REOPEN_COOLDOWN_SEC = 0.3
 JUSTFLOAT_TAIL = b"\x00\x00\x80\x7f"
-FIREWATER_MAX_FRAME_LEN = 64
-FIREWATER_IDLE_FLUSH_SEC = 0.02
+TRACK_FIREWATER_HEAD = b"[v]"
+TRACK_JUSTFLOAT_HEAD = b"[j]"
 
 # 是否显示每一行接收到的原始数据 (调试开关)，可通过终端动态配置
 DEBUG_SHOW_RAW_LINE = False
@@ -97,14 +97,14 @@ class DataForwarder:
                 if self.running:
                     print(f"{Fore.RED}[System] TCP Error: {e}")
 
-    def send_waveform(self, data_bytes):
+    def send_waveform(self, data_bytes, announce=False):
         """转发数据给 VOFA+"""
         if DEBUG_SHOW_RAW_LINE:
             print(f"[{Fore.BLUE}DEBUG-WAVE{Fore.RESET}] Forwarding: {repr(data_bytes)}")
 
         if self.client_socket:
             try:
-                if not self.vofa_notice_printed:
+                if announce and not self.vofa_notice_printed:
                     print(
                         f"{Fore.BLUE}{Style.DIM}[vofa] 正在转发Track数据到端口127.0.0.1 {TCP_PORT}{Fore.RESET}",
                         flush=True,
@@ -187,11 +187,11 @@ def main():
 
         buffer = bytearray()
         last_reopen_time = 0.0
-        last_rx_time = time.time()
         # 预先将所有的前缀转换为 bytes，以优化判断速度
         # 注意：这里只能做“完整前缀”匹配，不能只看首字节 '['。
         # VOFA+ 的 JustFloat 帧也以 '[' 开头，若放宽成首字节命中，就会被误判成日志。
         prefixes_bytes = [p.encode("utf-8") for p in LOG_STYLES.keys()]
+        shortest_log_prefix_len = min(len(p) for p in prefixes_bytes)
 
         def could_be_log(buf):
             # 判断 buf 是否可能是一条彩色日志的开头
@@ -244,23 +244,9 @@ def main():
             if not data:
                 continue
 
-            last_rx_time = time.time()
             buffer.extend(data)
 
             while buffer:
-                # 下位机重上电时可能出现帧错误/乱码；合法数据起始必须为 '['
-                if buffer[0] != FRAME_START_BYTE:
-                    next_start = buffer.find(b"[")
-                    if next_start == -1:
-                        garbled = bytes(buffer)
-                        buffer.clear()
-                    else:
-                        garbled = bytes(buffer[:next_start])
-                        del buffer[:next_start]
-                    drop_garbled_and_resync(garbled)
-                    quick_restart_serial()
-                    continue
-
                 if could_be_log(buffer):
                     # 如果匹配了日志的前缀特征，则尝试寻找 '\n' 来截取完整的一行
                     nl_idx = buffer.find(b"\n")
@@ -318,55 +304,92 @@ def main():
                         # 没有找到换行符，但前缀有可能合法，等待后续数据
                         # 避免异常长数据（如含前缀但无换行符的二进制）无限堆积内存，设个2048字节阈值
                         if len(buffer) > 2048:
-                            forwarder.send_waveform(bytes(buffer[:1]))
-                            del buffer[:1]
+                            garbled = bytes(buffer)
+                            buffer.clear()
+                            drop_garbled_and_resync(garbled)
+                            quick_restart_serial()
                         else:
                             break  # 跳出内层缓冲区处理，继续从串口读取新数据
-                else:
-                    # 非日志分支：优先按 JustFloat 帧尾解析；否则按 FireWater(ASCII) 解析
-                    tail_idx = buffer.find(JUSTFLOAT_TAIL, 1)
+                elif buffer.startswith(TRACK_FIREWATER_HEAD):
+                    # [v] + FireWater/ASCII Track 数据
+                    nl_idx = buffer.find(b"\n", len(TRACK_FIREWATER_HEAD))
+                    if nl_idx != -1:
+                        end_idx = nl_idx + 1
+                        extra_newlines = bytearray()
+                        while end_idx < len(buffer) and buffer[end_idx] in (10, 13):
+                            extra_newlines.append(buffer[end_idx])
+                            end_idx += 1
+
+                        line_bytes = bytes(buffer[:end_idx])
+                        del buffer[:end_idx]
+
+                        try:
+                            line_str = line_bytes.decode("utf-8", errors="ignore")
+                            if DEBUG_SHOW_RAW_LINE:
+                                print(
+                                    f"[{Fore.BLUE}DEBUG{Fore.RESET}] Got [v] line: {repr(line_str)}"
+                                )
+
+                            forwarder.send_waveform(
+                                line_bytes[len(TRACK_FIREWATER_HEAD):], announce=True
+                            )
+                            if extra_newlines:
+                                forwarder.send_waveform(bytes(extra_newlines))
+                        except Exception as e:
+                            print(f"{Fore.RED}[Error parsing]: {e}")
+                    else:
+                        if len(buffer) > 2048:
+                            garbled = bytes(buffer)
+                            buffer.clear()
+                            drop_garbled_and_resync(garbled)
+                            quick_restart_serial()
+                        else:
+                            break
+                elif buffer.startswith(TRACK_JUSTFLOAT_HEAD):
+                    # [j] + JustFloat Track 数据
+                    payload = buffer[len(TRACK_JUSTFLOAT_HEAD):]
+                    tail_idx = payload.find(JUSTFLOAT_TAIL, 1)
                     if tail_idx != -1:
                         frame_end = tail_idx + len(JUSTFLOAT_TAIL)
                         if frame_end > 1:
-                            # 去掉起始 '['，其余原样转发给 VOFA+
-                            forwarder.send_waveform(bytes(buffer[1:frame_end]))
-                        del buffer[:frame_end]
+                            if DEBUG_SHOW_RAW_LINE:
+                                print(
+                                    f"[{Fore.BLUE}DEBUG{Fore.RESET}] Got [j] frame: {frame_end} bytes"
+                                )
+                            forwarder.send_waveform(bytes(payload[:frame_end]), announce=True)
+                        del buffer[:len(TRACK_JUSTFLOAT_HEAD) + frame_end]
                         continue
 
-                    payload = buffer[1:]
-                    is_ascii_firewater = all(
-                        (32 <= b <= 126) or b in (9, 10, 13) for b in payload
-                    )
-
-                    if is_ascii_firewater:
-                        next_start = buffer.find(b"[", 1)
-                        if next_start != -1:
-                            if next_start > 1:
-                                forwarder.send_waveform(bytes(buffer[1:next_start]))
-                            del buffer[:next_start]
-                        elif len(buffer) > FIREWATER_MAX_FRAME_LEN:
-                            # FireWater 单帧由 64B 缓冲区构建，超过该长度仍无完整边界，判为异常
-                            garbled = bytes(buffer)
-                            buffer.clear()
-                            drop_garbled_and_resync(garbled)
-                            quick_restart_serial()
-                        elif time.time() - last_rx_time >= FIREWATER_IDLE_FLUSH_SEC:
-                            # 空闲间隙视为一帧结束，避免单帧长时间滞留
-                            if len(buffer) > 1:
-                                forwarder.send_waveform(bytes(buffer[1:]))
-                            buffer.clear()
-                        else:
-                            break
+                    if len(buffer) > 96:
+                        garbled = bytes(buffer)
+                        buffer.clear()
+                        drop_garbled_and_resync(garbled)
+                        quick_restart_serial()
                     else:
-                        # 非 ASCII 且暂未发现 JustFloat 尾，通常是 JustFloat 帧还没收全
-                        # 防止极端异常数据无限堆积
-                        if len(buffer) > 96:
+                        break
+                else:
+                    # 这里只保留真正的噪声处理：
+                    # 1) 不是 '[' 开头的字节，先跳到下一个 '['
+                    # 2) '[' 开头但不是已定义协议头，认为是乱码
+                    if buffer[0] != FRAME_START_BYTE:
+                        next_start = buffer.find(b"[")
+                        if next_start == -1:
                             garbled = bytes(buffer)
                             buffer.clear()
-                            drop_garbled_and_resync(garbled)
-                            quick_restart_serial()
                         else:
-                            break
+                            garbled = bytes(buffer[:next_start])
+                            del buffer[:next_start]
+                        drop_garbled_and_resync(garbled)
+                        quick_restart_serial()
+                        continue
+
+                    if len(buffer) < max(len(TRACK_JUSTFLOAT_HEAD), shortest_log_prefix_len):
+                        break
+
+                    garbled = bytes(buffer[:1])
+                    del buffer[:1]
+                    drop_garbled_and_resync(garbled)
+                    quick_restart_serial()
 
     except serial.SerialException as e:
         print(f"{Fore.RED}Serial Error: {e}")
