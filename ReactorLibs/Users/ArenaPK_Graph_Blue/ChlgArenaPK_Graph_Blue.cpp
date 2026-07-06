@@ -133,7 +133,7 @@ void Waiting_for_Start(StateCore *core)
 }
 
 /*******************************************************************************/
-void SafeFirstPut()
+void SafeFirstPut_Blue()
 {
   static int next_block = 0;
   // 检测里边有没有块，如果有，换另一个格子
@@ -176,6 +176,7 @@ void SafeFirstPut()
     Seq::Wait(0.005f);
   }
 }
+
 /**
  * @brief 这是“九宫藏宝”技能挑战赛，R2出发的第一个动作。先走到九宫格前，然后放块。如果块已经被放置，则换一个方格放块。
  * 
@@ -187,12 +188,12 @@ void Put_First_Block(StateCore *core)
   APP::main_loop.test_led.Running(Color::Up_Yellow * 0.75f, 0.5f, 1.0f);
   
   // 小抬一点腿
-  APP::leg.SetFrontPos(-10.0f);
-  APP::leg.SetBackPos(-10.0f);
+  APP::leg.SetFrontPos(-50.0f);
+  APP::leg.SetBackPos(-50.0f);
   Seq::Wait(0.3f);
 
   // 首先走上斜坡
-  MOVE::MoveToTargGes(Vec3(11.45f, 5.23f, 0.0f));
+  MOVE::MoveToTargGes(Vec3(11.45f, 5.13f, 0.0f));
 
   // 然后走到九宫格前
   MOVE::MoveToTargGes(Vec3(11.45f, 3.55f, 0.0f));
@@ -205,15 +206,15 @@ void Put_First_Block(StateCore *core)
   Seq::Wait(1.0f);
 
   // 抬起腿
-  APP::leg.F_Down_400();
-  APP::leg.B_Down_400();
+  APP::leg.SetFrontPos(-365);
+  APP::leg.SetFrontPos(-365);
 
   // 等腿抬好
   Seq::WaitUntil([]()-> bool {
     return (APP::leg.real_front_pos_mm < -400.0f) && (APP::leg.real_back_pos_mm < -400.0f);
   });
 
-  SafeFirstPut();
+  SafeFirstPut_Blue();
 
   // 等待稳定再放块
   Seq::Wait(1.0f);
@@ -407,7 +408,26 @@ static void Response_Button()
 
 static void FetchBlockOnTheGround()
 {
-  // 合上爪子
+
+
+  // 再抬起来一点
+  APP::leg.SetFrontPos(-100);
+  APP::leg.SetBackPos(-100);
+  Seq::WaitUntil([]()
+  {
+    return (fabs(APP::leg.real_back_pos_mm) > 95 && fabs(APP::leg.real_front_pos_mm) > 95);
+  });  
+
+  // 先把达妙抬起来
+  APP::get_block.dm_lift_pos = -757;  // _lift_vel = 18.0 rad/s
+
+  // 爪子翻转到竖直，合上爪子
+  APP::vac_claw.pitch_pos = 0.0f;
+  Seq::Wait(1.5f);
+
+  // 往前走去取物块
+  APP::chas.Move(Vec2(0.1, 0), 3.0);
+
   APP::vac_claw.CloseSnap();
 
   // 等爪子关上
@@ -417,20 +437,47 @@ static void FetchBlockOnTheGround()
   });  
 
   // 车往前移动一小段吸上物块
-  APP::chas.Move(Vec2(0.1, 0), 3.0);
+  APP::chas.Move(Vec2(0.05, 0), 7.0);
 
   // 开泵
   APP::get_block.OpenPump();
-  Seq::Wait(0.5f);
+  Seq::Wait(1.0f);
+  APP::chas.Move(Vec2(-0.15, 0), 3.0);
+  Seq::Wait(1.3f);
+  // 停下
+  APP::chas.Move(Vec2(0, 0), 3.0);
 
   // 开摩擦带
   APP::get_block._StartBelt();
 
-  // 翻转达妙
-  APP::vac_claw.pitch_pos = 1.6f;
+  APP::vac_claw.CloseSnap_Hard();
+  // 先翻转一点达妙
+  APP::vac_claw.pitch_pos = 1.7f;
+  Seq::Wait(1.5f);
+  // 再伸出一点
+  APP::vac_claw.stretch_pos = 93000;
 
-  // 等达妙翻转过来
+  // // 等爪子伸出
+  // Seq::Wait(0.7f);
+  Seq::WaitUntil([]()
+  {
+    return fabs(APP::vac_claw.motor_stretch.driver.measure.total_angle - APP::vac_claw.stretch_pos) < 100;
+  });  
+
+  // // 再翻转达妙
+  // APP::vac_claw.pitch_pos = 1.7;
+
+  // 再等一小会，达妙完全翻回来.这个值必须大一点，否则不知道为什么爪子会先于达妙运动
   Seq::Wait(2.0f);
+
+  // 收回
+  APP::vac_claw.stretch_pos = 600.0; // 防堵转，给个略大于0的值
+  // 等着完全收回
+  Seq::WaitUntil([]()
+  {
+    return fabs(APP::vac_claw.motor_stretch.driver.measure.total_angle - APP::vac_claw.stretch_pos) < 5000;
+  });  
+
 
   APP::vac_claw.OpenSnap();
   APP::get_block.ClosePump();
