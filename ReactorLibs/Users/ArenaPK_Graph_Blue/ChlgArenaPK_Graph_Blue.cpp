@@ -133,7 +133,49 @@ void Waiting_for_Start(StateCore *core)
 }
 
 /*******************************************************************************/
+void SafeFirstPut()
+{
+  static int next_block = 0;
+  // 检测里边有没有块，如果有，换另一个格子
+  while(APP::get_block.IsBlockPresent())
+  {
+    // 有块存在，执行相应操作
+    next_block++;
+    if(next_block > 2)
+    {
+      next_block = 0;
+    }
 
+    switch(next_block)
+    {
+      case 1: // 要放最右边的块
+        APP::monit.LogInfo("Middle Block exists, Move to right side");
+        APP::path_chaser.ChaseGes(Vec3(10.48f, 0.7f, -1.571f));
+        while (!APP::path_chaser.IsFinished())
+        {
+          APP::chas.Move(APP::path_chaser.GetCmdBody(), 0.01f);
+          Seq::Wait(0.005f);
+        }
+      break;
+
+      case 2: // 要放最左边的块
+        APP::monit.LogInfo("Middle Block exists, Move to left side");
+        APP::path_chaser.ChaseGes(Vec3(11.02f, 0.7f, -1.571f));
+        while (!APP::path_chaser.IsFinished())
+        {
+          APP::chas.Move(APP::path_chaser.GetCmdBody(), 0.01f);
+          Seq::Wait(0.005f);
+        }
+      break;
+
+      default: // 三个地方都有块，被打爆了
+        APP::monit.LogInfo("Son of bitch, we are loser");
+      break;
+    }
+
+    Seq::Wait(0.005f);
+  }
+}
 /**
  * @brief 这是“九宫藏宝”技能挑战赛，R2出发的第一个动作。先走到九宫格前，然后放块。如果块已经被放置，则换一个方格放块。
  * 
@@ -171,11 +213,10 @@ void Put_First_Block(StateCore *core)
     return (APP::leg.real_front_pos_mm < -400.0f) && (APP::leg.real_back_pos_mm < -400.0f);
   });
 
-  // 检测里边有没有块，如果有，换另一个格子
-  if (APP::get_block.IsBlockPresent())
-  {
-    // 块存在，执行相应操作
-  }
+  SafeFirstPut();
+
+  // 等待稳定再放块
+  Seq::Wait(1.0f);
 
   // 放块
   APP::get_block.Put();
@@ -184,7 +225,7 @@ void Put_First_Block(StateCore *core)
   Seq::Wait(1.0f);
 
   // 收回送块机构
-  APP::get_block.PushBack();
+  // APP::get_block.PushBack();
 
   // 走到等待点，等待R1命令
   core->GetCurState().Complete = true;
