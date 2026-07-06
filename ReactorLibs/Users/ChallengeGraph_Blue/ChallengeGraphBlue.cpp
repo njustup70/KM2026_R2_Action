@@ -12,12 +12,10 @@
 #include "CommCenter.hpp"
 #include "Get_Block.hpp"
 #include "MainLoop.hpp"
-#include "PathCenter/PathCenter.hpp"
 
 /// @brief 所有的路径文件
-#include "ttd_1.hpp"
-#include "ttd_2.hpp"
-#include "ttd_3.hpp"
+#include "PathCenter/PathCenter.hpp"
+
 
 static void Response_Button();
 

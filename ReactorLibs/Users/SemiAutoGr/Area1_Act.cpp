@@ -14,30 +14,6 @@
 #include "MainLoop.hpp"
 #include "PathCenter/PathCenter.hpp"
 
-/// @brief 所有的路径文件
-// #include "r2_area1_1.hpp"
-#include "ttd_3.hpp"
-
-#include "sttr1.hpp"
-#include "sttr2.hpp"
-#include "sttr3.hpp"
-#include "sttr4.hpp"
-#include "sttr5.hpp"
-#include "sttr6.hpp"
-
-#include "dtt_1.hpp"
-#include "dtt_2.hpp"
-#include "dtt_3.hpp"
-
-#include "dtt_b_4.hpp"
-#include "dtt_b_5.hpp"
-#include "dtt_b_6.hpp"
-
-#include "ttd_1.hpp"
-#include "ttd_2.hpp"
-#include "ttd_3.hpp"
-#include "ttd_4.hpp"
-
 static const float dist_sick_center = 0.34f;
 static const float spear_sick_value[6] =
     {0.115f,
@@ -66,22 +42,22 @@ void SpearChase(uint8_t spear_id, Vec3 tolerance)
   switch (spear_id)
   {
     case 0:
-      StartSpearChase(sttr1, tolerance);
+      StartSpearChase(PATH::sttr1(), tolerance);
       break;
     case 1:
-      StartSpearChase(sttr2, tolerance);
+      StartSpearChase(PATH::sttr2(), tolerance);
       break;
     case 2:
-      StartSpearChase(sttr3, tolerance);
+      StartSpearChase(PATH::sttr3(), tolerance);
       break;
     case 3:
-      StartSpearChase(sttr4, tolerance);
+      StartSpearChase(PATH::sttr4(), tolerance);
       break;
     case 4:
-      StartSpearChase(sttr5, tolerance);
+      StartSpearChase(PATH::sttr5(), tolerance);
       break;
     case 5:
-      StartSpearChase(sttr6, tolerance);
+      StartSpearChase(PATH::sttr6(), tolerance);
       break;
     default:
       break;
@@ -134,13 +110,13 @@ void DockSpearChase(uint8_t spear_id, Vec3 tolerance)
   switch (spear_id)
   {
     case 0:
-      StartSpearChase(DTT_1, tolerance);
+      StartSpearChase(PATH::DTT_1(), tolerance);
       break;
     case 1:
-      StartSpearChase(DTT_2, tolerance);
+      StartSpearChase(PATH::DTT_2(), tolerance);
       break;
     case 2:
-      StartSpearChase(DTT_3, tolerance);
+      StartSpearChase(PATH::DTT_3(), tolerance);
       break;
     default:
     {
@@ -157,13 +133,13 @@ void DockSpearChase_Blue(uint8_t spear_id, Vec3 tolerance)
   switch (spear_id)
   {
     case 3:
-      StartSpearChase(DTT_B4, tolerance);
+      StartSpearChase(PATH::DTT_B4(), tolerance);
       break;
     case 4:
-      StartSpearChase(DTT_B5, tolerance);
+      StartSpearChase(PATH::DTT_B5(), tolerance);
       break;
     case 5:
-      StartSpearChase(DTT_B6, tolerance);
+      StartSpearChase(PATH::DTT_B6(), tolerance);
       break;
     default:
       APP::monit.LogError("[A1Act] Blue Area Only Can Fetch 3 to 5 !");
@@ -191,16 +167,16 @@ void LetsGo(uint8_t spear_id, Vec3 tolerance)
   switch (spear_id)
   {
     case 0:
-      StartChase(TTD_1, tolerance);
+      StartChase(PATH::TTD_1(), tolerance);
       break;
     case 1:
-      StartChase(TTD_2, tolerance);
+      StartChase(PATH::TTD_2(), tolerance);
       break;
     case 2:
-      StartChase(TTD_3, tolerance);
+      StartChase(PATH::TTD_3(), tolerance);
       break;
     case 3:
-      StartChase(TTD_4, tolerance);
+      StartChase(PATH::TTD_4(), tolerance);
       break;
     case 4:
       APP::path_chaser.ChaseGes(Vec3(1.3f, 5.00f, 1.57f));

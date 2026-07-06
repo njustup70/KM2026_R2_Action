@@ -14,6 +14,26 @@
 #include "sttrb5.hpp"
 #include "sttrb6.hpp"
 
+#include "sttr1.hpp"
+#include "sttr2.hpp"
+#include "sttr3.hpp"
+#include "sttr4.hpp"
+#include "sttr5.hpp"
+#include "sttr6.hpp"
+
+#include "ttd_1.hpp"
+#include "ttd_2.hpp"
+#include "ttd_3.hpp"
+#include "ttd_4.hpp"
+
+#include "dtt_1.hpp"
+#include "dtt_2.hpp"
+#include "dtt_3.hpp"
+
+#include "dtt_b_4.hpp"
+#include "dtt_b_5.hpp"
+#include "dtt_b_6.hpp"
+
 #include "a12_1.hpp"
 #include "a12_2.hpp"
 #include "a12_3.hpp"
@@ -84,6 +104,86 @@ const Path<68>& sttr_b5()
 const Path<75>& sttr_b6()
 {
     return ::sttr_b6;
+}
+
+const Path<44>& sttr1()
+{
+    return ::sttr1;
+}
+
+const Path<47>& sttr2()
+{
+    return ::sttr2;
+}
+
+const Path<55>& sttr3()
+{
+    return ::sttr3;
+}
+
+const Path<66>& sttr4()
+{
+    return ::sttr4;
+}
+
+const Path<74>& sttr5()
+{
+    return ::sttr5;
+}
+
+const Path<82>& sttr6()
+{
+    return ::sttr6;
+}
+
+const Path<23>& TTD_1()
+{
+    return ::TTD_1;
+}
+
+const Path<19>& TTD_2()
+{
+    return ::TTD_2;
+}
+
+const Path<18>& TTD_3()
+{
+    return ::TTD_3;
+}
+
+const Path<16>& TTD_4()
+{
+    return ::TTD_4;
+}
+
+const Path<72>& DTT_1()
+{
+    return ::DTT_1;
+}
+
+const Path<71>& DTT_2()
+{
+    return ::DTT_2;
+}
+
+const Path<67>& DTT_3()
+{
+    return ::DTT_3;
+}
+
+const Path<54>& DTT_B4()
+{
+    return ::DTT_B4;
+}
+
+const Path<63>& DTT_B5()
+{
+    return ::DTT_B5;
+}
+
+const Path<64>& DTT_B6()
+{
+    return ::DTT_B6;
 }
 
 const Path<68>& A12_1()
