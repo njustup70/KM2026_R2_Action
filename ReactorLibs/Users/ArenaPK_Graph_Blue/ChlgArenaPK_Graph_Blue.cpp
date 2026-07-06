@@ -23,8 +23,6 @@ static void Response_Button();
 static void FetchBlockOnTheGround();
 StateGraph Arena_PK_Graph_Blue("Arena_PK");
 
-StateGraph Arena_PK_Graph_Blue("Arena_PK");
-
 // 状态定义
 static void Waiting_for_Start(StateCore *core);
 static void Put_First_Block(StateCore *core);
