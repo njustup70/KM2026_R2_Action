@@ -589,13 +589,14 @@ void MeiLinArray::Climb_Up200(bool need_chase)
     APP::leg.F_Down_200();
     APP::leg.B_Down_200();
     Seq::Wait(0.5f);
-
+  }
+  
     // 往前缓慢移动，直到抵靠到前端
     APP::chas.Move(Vec2(0.35, 0), 3.0f);
     Seq::Wait(0.35f);
     APP::chas.Move(Vec2(0.15, 0), 3.0f);
     Seq::Wait(0.15f);
-  }
+
   // _skip_approach = false; // 复位标志，下次正常执行上面的抵靠动作
 
 
@@ -681,14 +682,13 @@ void MeiLinArray::Climb_Up400(bool need_chase)
     Seq::WaitUntil([]()-> bool {
       return (APP::leg.real_front_pos_mm < -300.0f) && (APP::leg.real_back_pos_mm < -300.0f);
     });
+  }
 
     // 往前缓慢移动，直到抵靠到前端
     APP::chas.Move(Vec2(0.35, 0), 3.0f);
     Seq::Wait(0.35f);
     APP::chas.Move(Vec2(0.15, 0), 3.0f);
     Seq::Wait(0.15f);
-  }
-  
 
   // 等待小黄0号检测到可以抬前腿
   Seq::WaitUntil([&]()
@@ -959,9 +959,12 @@ void MeiLinArray::HandleClimbAct()
       APP::chas.Move(Vec2(0,0), 0.5f);
       
       // 再位置闭环一下，到-3，-2，-1的“梅林”中心上
+      // 并且，抬腿到对应高度
       switch(_seq[1])
       {
         case Area2Code::ENTER_0:
+          APP::leg.F_Down_400();
+          APP::leg.B_Down_400();
           if(is_blue)
           {
             MoveBeforeClimb(MeiHuaForest_Pos_Export_BLUE[0]);
@@ -973,6 +976,8 @@ void MeiLinArray::HandleClimbAct()
           break;
 
         case Area2Code::ENTER_1:
+          APP::leg.F_Down_200();
+          APP::leg.B_Down_200();
           if(is_blue)
           {
             MoveBeforeClimb(MeiHuaForest_Pos_Export_BLUE[1]);
@@ -984,6 +989,8 @@ void MeiLinArray::HandleClimbAct()
           break;
 
         case Area2Code::ENTER_2:
+          APP::leg.F_Down_400();
+          APP::leg.B_Down_400();
           if(is_blue)
           {
             MoveBeforeClimb(MeiHuaForest_Pos_Export_BLUE[2]);
