@@ -52,8 +52,8 @@ void GetBlock::Start()
         .ADRC_Physic(1.0e-4f, 0.18f)
         .ADRC_Limit(8.0f)
         .SpdLimit(8000.0f)
-        .ADRC_MaxPlannedVel(5000.0f)
-        .ADRC_SOTF(0.6f)
+        .ADRC_MaxPlannedVel(6800.0f)
+        .ADRC_SOTF(0.05f)
         .SetDt(0.002)
         .Apply();
     motor_2006_feed.driver.Enable();
@@ -119,7 +119,6 @@ void GetBlock::Update()
         motor_dm_lift.SetPosVel(dm_lift_pos, _lift_vel);
         damiao_cnt = 0;
     }
-    
     
     _UpdateFSM();
 }
@@ -357,6 +356,8 @@ void GetBlock::_UpdateFSM()
 
         if (_grid[0])  // 下仓检测到块
         {
+            APP::monit.LogInfo("[GetBlock] Block is inside");
+
             _StopBelt();
             _lower = true;
             ClosePRV();
