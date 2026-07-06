@@ -32,6 +32,16 @@ StateGraph Arena_PK_Graph("Arena_PK");
 static void Waiting_for_Start(StateCore *core);
 static void Put_First_Block(StateCore *core);
 static void Waiting_R1_Instru(StateCore *core);
+static void Fetch2_From_Mid(StateCore *core);
+
+/** **/
+
+
+
+
+Vec2 Arena_R2_KFS_FetchPos[2] = {
+  Vec2(11.1, 2.595), Vec2(11.1, 3.315)
+};
 
 /**
  * @brief 技能挑战赛：“九宫藏宝” 状态图初始化
@@ -53,10 +63,15 @@ void ChallengeArenaPK_Graph_Blue()
   StateBlock& s_combine = Arena_PK_Graph.AddState("combine");  // 二区由工控机控制的动作序列
   // （4）放三层块——仅在合体后有效
   StateBlock& s_put_L3_block = Arena_PK_Graph.AddState("put_L3_block");  // 二区结束后，回到原点
+  // （5）从九宫格中点出发取两个块
+  StateBlock& s_fetch2_from_mid = Arena_PK_Graph.AddState("fetch2_mid");  // 用于初始放完块后的自动取块逻辑
 
   /**----------     配置状态行为函数    ----------**/
   s_wait.StateAction = Waiting_for_Start;
   s_put_first_block.StateAction = Put_First_Block;
+  s_fetch2_from_mid.StateAction = Fetch2_From_Mid;
+
+
   s_waiting_R1_instru.StateAction = Waiting_R1_Instru;
 
   /**----------     进行状态间链接    ----------**/
@@ -141,11 +156,11 @@ void Put_First_Block(StateCore *core)
   Seq::Wait(0.3f);
 
   // 首先走上斜坡
-  MOVE::MoveToTargGes(Vec3(11.45f, 5.77f, 0.0f));
+  MOVE::MoveToTargGes(Vec3(11.45f, 5.23f, 0.0f));
 
   // 然后走到九宫格前
-  MOVE::MoveToTargGes(Vec3(11.45f, 2.45f, 0.0f));
-  MOVE::MoveToTargGes(Vec3(10.75f, 0.6f, -1.571f));
+  MOVE::MoveToTargGes(Vec3(11.45f, 3.55f, 0.0f));
+  MOVE::MoveToTargGes(Vec3(10.75f, 0.7f, -1.571f));
 
   // 同时把预装的物块抬到顶上准备放块
   APP::get_block.LiftUp();
@@ -233,9 +248,48 @@ void Waiting_R1_Instru(StateCore *core)
 
 /*******************************************************************************/
 
+/**
+ * @brief 假设R2从九宫格中点出发，返回取两个块的逻辑
+ * @details 还需要给R1让路
+ * @param core 
+ */
+static void Fetch2_From_Mid(StateCore *core)
+{
+  // 运行路径跟踪程序
+  // APP::path_chaser.ChasePath(PTF);
 
+  // 走到块跟前了
+  APP::monit.LogInfo("[Arena] I'm at the block.");
 
+  // 取第一个块
+  // APP::get_block.FetchBlockOnTheGround();
 
+  // 等待取块完成
+  // Seq::Wait(1.0f);
+
+  // 移动到第二个块面前
+  MOVE::MoveToTargGes(Vec3(11.1f, 3.315f, 0.0f));
+  // APP::path_chaser.ChaseGes();
+
+  // 等待到达
+  APP::monit.LogInfo("[Arena] I'm at the second block.");
+
+  // 取第二个块
+  // APP::get_block.FetchBlockOnTheGround();
+
+  // 等待取块完成
+  // Seq::Wait(1.0f);
+
+  // 返回等待点（光通信朝向 R1）
+  // MOVE::MoveToTargGes(Vec3(10.75f, 0.7f, -1.571f));
+
+  // 至此：完成所有R2的全自动逻辑，进入R1的指令等待状态
+  core->GetCurState().Complete = true;
+}
+
+/*******************************************************************************/
+
+// void 
 
 
 
