@@ -190,12 +190,22 @@ void CommCenter::DockRxCallback(uint8_t func_code, const uint8_t* payload, uint8
 
     if(func_code == 0xC3)
     {
+        // 0.5s内最多处理一次，避免对接偏置被过快重复触发
+        static float last_trigger_time = -0.5f;
+        const float now = DWT_GetTimeline_Sec();
+        if (now - last_trigger_time < 0.5f)
+        {
+            return;
+        }
+
         // 验证，至少要有东西传过来，长度符合实际，并且满足相加校验
         if (!IsValidDockPayload(payload, payload_len))
         {
             APP::monit.LogError("[Optic] Invalid dock payload.");
             return;
         }
+
+        last_trigger_time = now;
 
         // 解析payload，对接这里使用两位 内容码
         const uint8_t code_a = payload[0];
