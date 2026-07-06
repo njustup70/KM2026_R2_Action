@@ -77,7 +77,7 @@ public:
     void OpenSnapMini();
 
     void CloseSnap();
-    
+    void CloseSnap_Hard();
     /**
      * @brief 
      * 

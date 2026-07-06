@@ -234,6 +234,15 @@ void VacuumClaw::CloseSnap()
         APP::monit.LogWarning("Unorigined snapclaw!");
 }
 
+// 更激进的关爪子
+void VacuumClaw::CloseSnap_Hard()
+{
+    if (_snap_origined)
+        snap_pos = _snap_origin_code - 102000 + 272040; // 可以刚好定心但不会带动物块
+    else
+        APP::monit.LogWarning("Unorigined snapclaw!");
+}
+
 void VacuumClaw::_GetClawOrigin()
 {
     static uint32_t runed_tick = 0;  
