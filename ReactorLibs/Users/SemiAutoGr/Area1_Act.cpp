@@ -12,6 +12,7 @@
 #include "CommCenter.hpp"
 #include "Get_Block.hpp"
 #include "MainLoop.hpp"
+#include "PathCenter/PathCenter.hpp"
 
 /// @brief 所有的路径文件
 // #include "r2_area1_1.hpp"
@@ -23,13 +24,6 @@
 #include "sttr4.hpp"
 #include "sttr5.hpp"
 #include "sttr6.hpp"
-
-#include "sttrb1.hpp"
-#include "sttrb2.hpp"
-#include "sttrb3.hpp"
-#include "sttrb4.hpp"
-#include "sttrb5.hpp"
-#include "sttrb6.hpp"
 
 #include "dtt_1.hpp"
 #include "dtt_2.hpp"
@@ -43,16 +37,6 @@
 #include "ttd_2.hpp"
 #include "ttd_3.hpp"
 #include "ttd_4.hpp"
-
-#include "ttd_b1.hpp"
-#include "ttd_b2.hpp"
-#include "ttd_b3.hpp"
-#include "ttd_b4.hpp"
-#include "ttd_b5.hpp"
-#include "ttd_b6.hpp"
-
-#include "a12_2.hpp"
-#include "a23_2.hpp"
 
 static const float dist_sick_center = 0.34f;
 static const float spear_sick_value[6] =
@@ -109,22 +93,22 @@ void SpearChase_Blue(uint8_t spear_id, Vec3 tolerance)
   switch (spear_id)
   {
     case 0:
-      StartSpearChase(sttr_b1, tolerance);
+      StartSpearChase(PATH::sttr_b1(), tolerance);
       break;
     case 1:
-      StartSpearChase(sttr_b2, tolerance);
+      StartSpearChase(PATH::sttr_b2(), tolerance);
       break;
     case 2:
-      StartSpearChase(sttr_b3, tolerance);
+      StartSpearChase(PATH::sttr_b3(), tolerance);
       break;
     case 3:
-      StartSpearChase(sttr_b4, tolerance);
+      StartSpearChase(PATH::sttr_b4(), tolerance);
       break;
     case 4:
-      StartSpearChase(sttr_b5, tolerance);
+      StartSpearChase(PATH::sttr_b5(), tolerance);
       break;
     case 5:
-      StartSpearChase(sttr_b6, tolerance);
+      StartSpearChase(PATH::sttr_b6(), tolerance);
       break;
     default:
       break;
@@ -234,22 +218,22 @@ void LetsGo_Blue(uint8_t spear_id, Vec3 tolerance)
   switch (spear_id)
   {
     case 0:
-      StartChase(TTD_B1, tolerance);
+      StartChase(PATH::TTD_B1(), tolerance);
       break;
     case 1:
-      StartChase(TTD_B2, tolerance);
+      StartChase(PATH::TTD_B2(), tolerance);
       break;
     case 2:
-      StartChase(TTD_B3, tolerance);
+      StartChase(PATH::TTD_B3(), tolerance);
       break;
     case 3:
-      StartChase(TTD_B4, tolerance);
+      StartChase(PATH::TTD_B4(), tolerance);
       break;
     case 4:
-      StartChase(TTD_B5, tolerance);
+      StartChase(PATH::TTD_B5(), tolerance);
       break;
     case 5:
-      StartChase(TTD_B6, tolerance);
+      StartChase(PATH::TTD_B6(), tolerance);
       break;
     default:
       break;

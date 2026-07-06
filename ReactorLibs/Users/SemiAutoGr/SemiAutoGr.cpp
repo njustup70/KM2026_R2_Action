@@ -12,16 +12,13 @@
 #include "CommCenter.hpp"
 #include "Get_Block.hpp"
 #include "MainLoop.hpp"
+#include "PathCenter/PathCenter.hpp"
 
 /// @brief 所有的路径文件
 // #include "r2_area1_1.hpp"
 #include "ttd_3.hpp"
 
 #include "a12_1.hpp"
-#include "a12_2.hpp"
-#include "a12_3.hpp"
-
-#include "a23_2.hpp"
 
 static void Response_Button();
 
@@ -244,7 +241,7 @@ void Walk_into_Area2(StateCore *core)
 
 static void Walk_into_Area2_Host(StateCore *core)
 {
-  if (!MOVE::MoveToTargPos(A12_2))
+  if (!MOVE::MoveToTargPos(PATH::A12_2()))
   {
     APP::monit.LogError("[SemiAuto] Walk_into_Area2_Host: path rejected.");
     Seq::Wait(3600.0f);

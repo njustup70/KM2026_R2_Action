@@ -1,0 +1,97 @@
+#include "PathCenter.hpp"
+
+#include "ttd_b1.hpp"
+#include "ttd_b2.hpp"
+#include "ttd_b3.hpp"
+#include "ttd_b4.hpp"
+#include "ttd_b5.hpp"
+#include "ttd_b6.hpp"
+
+#include "sttrb1.hpp"
+#include "sttrb2.hpp"
+#include "sttrb3.hpp"
+#include "sttrb4.hpp"
+#include "sttrb5.hpp"
+#include "sttrb6.hpp"
+
+#include "a12_2.hpp"
+#include "a12_3.hpp"
+#include "a23_2.hpp"
+
+namespace PATH
+{
+const Path<22>& TTD_B1()
+{
+    return ::TTD_B1;
+}
+
+const Path<21>& TTD_B2()
+{
+    return ::TTD_B2;
+}
+
+const Path<18>& TTD_B3()
+{
+    return ::TTD_B3;
+}
+
+const Path<16>& TTD_B4()
+{
+    return ::TTD_B4;
+}
+
+const Path<16>& TTD_B5()
+{
+    return ::TTD_B5;
+}
+
+const Path<16>& TTD_B6()
+{
+    return ::TTD_B6;
+}
+
+const Path<44>& sttr_b1()
+{
+    return ::sttr_b1;
+}
+
+const Path<47>& sttr_b2()
+{
+    return ::sttr_b2;
+}
+
+const Path<54>& sttr_b3()
+{
+    return ::sttr_b3;
+}
+
+const Path<60>& sttr_b4()
+{
+    return ::sttr_b4;
+}
+
+const Path<68>& sttr_b5()
+{
+    return ::sttr_b5;
+}
+
+const Path<75>& sttr_b6()
+{
+    return ::sttr_b6;
+}
+
+const Path<108>& A12_2()
+{
+    return ::A12_2;
+}
+
+const Path<147>& A12_3()
+{
+    return ::A12_3;
+}
+
+const Path<200>& A23_2_first()
+{
+    return ::A23_2_first;
+}
+}

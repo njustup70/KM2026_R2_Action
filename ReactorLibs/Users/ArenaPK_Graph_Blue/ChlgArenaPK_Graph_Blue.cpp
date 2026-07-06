@@ -19,14 +19,9 @@
 #include "ttd_3.hpp"
 
 #include "a12_1.hpp"
-#include "a12_2.hpp"
-#include "a12_3.hpp"
-
-#include "a23_2.hpp"
-
 static void Response_Button();
 
-StateGraph Arena_PK_Graph("Arena_PK");
+StateGraph Arena_PK_Graph_Blue("Arena_PK");
 
 // 状态定义
 static void Waiting_for_Start(StateCore *core);
@@ -49,22 +44,22 @@ Vec2 Arena_R2_KFS_FetchPos[2] = {
  */
 void ChallengeArenaPK_Graph_Blue()
 {
-  StateBlock& s_wait = Arena_PK_Graph.AddState("wait");         // 等待开始
+  StateBlock& s_wait = Arena_PK_Graph_Blue.AddState("wait");         // 等待开始
 
   // 从原点出发，走到九宫格擂台前，准备放块
-  StateBlock& s_put_first_block = Arena_PK_Graph.AddState("put_first_block");
+  StateBlock& s_put_first_block = Arena_PK_Graph_Blue.AddState("put_first_block");
   // 等待 R1 的指令
-  StateBlock& s_waiting_R1_instru = Arena_PK_Graph.AddState("waiting_R1");       // to dock
+  StateBlock& s_waiting_R1_instru = Arena_PK_Graph_Blue.AddState("waiting_R1");       // to dock
   // （1）放指定的二层块
-  StateBlock& s_put_L2_block = Arena_PK_Graph.AddState("put_L2_block");   // fetch and dock again
+  StateBlock& s_put_L2_block = Arena_PK_Graph_Blue.AddState("put_L2_block");   // fetch and dock again
   // （2）从 R1 身上拿块
-  StateBlock& s_fetch_on_R1 = Arena_PK_Graph.AddState("walk_a12");
+  StateBlock& s_fetch_on_R1 = Arena_PK_Graph_Blue.AddState("walk_a12");
   // （3）合体
-  StateBlock& s_combine = Arena_PK_Graph.AddState("combine");  // 二区由工控机控制的动作序列
+  StateBlock& s_combine = Arena_PK_Graph_Blue.AddState("combine");  // 二区由工控机控制的动作序列
   // （4）放三层块——仅在合体后有效
-  StateBlock& s_put_L3_block = Arena_PK_Graph.AddState("put_L3_block");  // 二区结束后，回到原点
+  StateBlock& s_put_L3_block = Arena_PK_Graph_Blue.AddState("put_L3_block");  // 二区结束后，回到原点
   // （5）从九宫格中点出发取两个块
-  StateBlock& s_fetch2_from_mid = Arena_PK_Graph.AddState("fetch2_mid");  // 用于初始放完块后的自动取块逻辑
+  StateBlock& s_fetch2_from_mid = Arena_PK_Graph_Blue.AddState("fetch2_mid");  // 用于初始放完块后的自动取块逻辑
 
   /**----------     配置状态行为函数    ----------**/
   s_wait.StateAction = Waiting_for_Start;
@@ -79,7 +74,7 @@ void ChallengeArenaPK_Graph_Blue()
   s_put_first_block.LinkTo(&(s_put_first_block.Complete), s_waiting_R1_instru);
 
   /**----------     向状态机核心注册    ----------**/
-  APP::state_core.RegistGraph(Arena_PK_Graph);
+  APP::state_core.RegistGraph(Arena_PK_Graph_Blue);
   APP::state_core.Enable(0); // 启动状态机核心，指定初始状态图为0号图
 }
 

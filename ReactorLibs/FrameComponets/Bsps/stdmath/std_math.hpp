@@ -28,7 +28,7 @@ private:
 public:
   float x, y;
   // 构造函数
-  Vec2(float x = 0, float y = 0) : x(x), y(y)
+  constexpr Vec2(float x = 0, float y = 0) : x(x), y(y)
   {
   }
 
@@ -103,10 +103,10 @@ private:
 public:
   float x, y, z;
   // 构造函数的实现直接放在类定义中
-  Vec3(float x, float y, float z) : x(x), y(y), z(z)
+  constexpr Vec3(float x, float y, float z) : x(x), y(y), z(z)
   {
   }
-  Vec3() : x(0), y(0), z(0)
+  constexpr Vec3() : x(0), y(0), z(0)
   {
   }
   Vec3 Norm() const;                   // 获取归一化向量

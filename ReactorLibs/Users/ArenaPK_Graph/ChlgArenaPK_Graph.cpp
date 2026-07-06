@@ -19,11 +19,6 @@
 #include "ttd_3.hpp"
 
 #include "a12_1.hpp"
-#include "a12_2.hpp"
-#include "a12_3.hpp"
-
-#include "a23_2.hpp"
-
 static void Response_Button();
 
 StateGraph Arena_PK_Graph("Arena_PK");

@@ -12,6 +12,7 @@
 #include "CommCenter.hpp"
 #include "Get_Block.hpp"
 #include "MainLoop.hpp"
+#include "PathCenter/PathCenter.hpp"
 
 /// @brief 所有的路径文件
 #include "ttd_1.hpp"
@@ -19,10 +20,6 @@
 #include "ttd_3.hpp"
 
 #include "a12_1.hpp"
-#include "a12_2.hpp"
-#include "a12_3.hpp"
-
-#include "a23_2.hpp"
 
 static void Response_Button();
 
@@ -354,10 +351,10 @@ void Goto_Area2(StateCore *core)
   switch (Area2::mei_lin_array.enter_code)
   {
     case Area2Code::ENTER_0:
-      MOVE::MoveToTargPos(A12_3);
+      MOVE::MoveToTargPos(PATH::A12_3());
       break;
     case Area2Code::ENTER_1:
-      MOVE::MoveToTargPos(A12_2);
+      MOVE::MoveToTargPos(PATH::A12_2());
       break;
     case Area2Code::ENTER_2:
       MOVE::MoveToTargPos(A12_1);
@@ -598,7 +595,7 @@ static void Response_Button()
  */
 void Walk_into_Area2(StateCore *core)
 {
-  if (!MOVE::MoveToTargPos(A12_2))
+  if (!MOVE::MoveToTargPos(PATH::A12_2()))
   {
     APP::monit.LogError("[SemiAuto] Walk_into_Area2: path rejected.");
     Seq::Wait(3600.0f);
