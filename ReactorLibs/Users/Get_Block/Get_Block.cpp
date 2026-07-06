@@ -5,7 +5,7 @@ GetBlock& APP::get_block = GetBlock::GetInstance();
 // ==================== 超时间隔 ====================
 static constexpr float T_BELT = 20.0f;
 static constexpr float T_LIFT = 3.2f; // 摩擦带上下的时间
-static constexpr float T_LIFT_SETTLE = 2.0f;    // 传感器触发后等待抬升到位的短超时
+static constexpr float T_LIFT_SETTLE = 3.0f;    // 传感器触发后等待抬升到位的短超时
 static constexpr float T_LIFT_BEFORE_BELT = 4.2f; // 取块1时抬升先走一段再转摩擦带
 static constexpr float T_FEED = 10.0f;
 static constexpr float BELT_RPM    = 17.0f;
