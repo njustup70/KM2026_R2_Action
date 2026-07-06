@@ -78,7 +78,7 @@ void Action_of_Dege(StateCore *core)
   APP::get_block.OpenPRV();
 
   APP::get_block.Store();
-
+  
   // Seq::WaitUntil([]()
   // {
   //   return APP::get_block._sensor[0].Read();

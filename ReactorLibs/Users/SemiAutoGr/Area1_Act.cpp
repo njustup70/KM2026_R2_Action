@@ -407,12 +407,17 @@ void FetchSpear_FromDock(uint8_t spear_id)
   while (!APP::path_chaser.IsFinished())
   {
     Vec3 speed_vec = APP::path_chaser.GetCmdBody();
+    Vec3 w_vec = APP::path_chaser.GetCmdWorld();
 
     APP::chas.Move(speed_vec, 0.01f);
 
     if (++log_tick >= 20)
     {
       log_tick = 0;
+      APP::monit.LogInfo("w:%.2f,%.2f,%.2f", 
+        System.position.x, System.position.y, System.position.z);
+      APP::monit.LogRespond("e:%.2f", APP::path_chaser.GetRemainDist());
+      APP::monit.LogSpec("v:%.2f,%.2f,%.2f", w_vec.x, w_vec.y, w_vec.z);
     }
     Seq::Wait(0.005f); // 200hz更新频率
   }

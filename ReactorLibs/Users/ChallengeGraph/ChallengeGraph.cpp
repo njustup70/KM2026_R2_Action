@@ -220,7 +220,7 @@ void Walk_To_Dock(StateCore *core)
   APP::jaw.SetPosCode(APP::jaw._hori_origin_code - JawConst::_hori_max_travel_code / 2 - 100000, 
     APP::jaw._vert_origin_code - 226000);
 
-  APP::monit.LogInfo("Go to Climb.");
+  APP::monit.LogInfo("Fetch and Dock again.");
 
   need_spear_id++;
   APP::comm_center.ClearDockFlag(); // 清除对接标志，避免下次误触发
