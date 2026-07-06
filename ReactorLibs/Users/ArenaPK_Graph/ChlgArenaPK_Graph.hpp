@@ -4,5 +4,5 @@
 #include "Chassis.hpp"
 #include <cstdint>
 
-void ChallengeArenaPK_Graph();
+int ChallengeArenaPK_Graph();
 extern StateGraph Arena_PK_Graph;

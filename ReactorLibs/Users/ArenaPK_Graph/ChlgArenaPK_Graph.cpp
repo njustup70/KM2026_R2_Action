@@ -32,7 +32,7 @@ static void Waiting_R1_Instru(StateCore *core);
  * @brief 技能挑战赛：“九宫藏宝” 状态图初始化
  * 
  */
-void ChallengeArenaPK_Graph()
+int ChallengeArenaPK_Graph()
 {
   StateBlock& s_wait = Arena_PK_Graph.AddState("wait");         // 等待开始
 
@@ -59,8 +59,7 @@ void ChallengeArenaPK_Graph()
   s_put_first_block.LinkTo(&(s_put_first_block.Complete), s_waiting_R1_instru);
 
   /**----------     向状态机核心注册    ----------**/
-  APP::state_core.RegistGraph(Arena_PK_Graph);
-  APP::state_core.Enable(0); // 启动状态机核心，指定初始状态图为0号图
+  return APP::state_core.RegistGraph(Arena_PK_Graph);
 }
 
 /*******************************************************************************/

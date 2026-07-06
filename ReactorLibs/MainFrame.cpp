@@ -19,8 +19,11 @@
 #include "optical_comm.hpp"
 #include "VacuumClaw.hpp"
 #include "SemiAutoGr.hpp"
+
 #include "ChallengeGraph.hpp"
 #include "ChallengeGraphBlue.hpp"
+#include "ChlgArenaPK_Graph.hpp"
+#include "ChlgArenaPK_Graph_Blue.hpp"
 
 #include "MainLoop.hpp"
 #include "Area2_Act.hpp"
@@ -228,6 +231,9 @@ void MainFrameCpp()
   APP::main_loop.Challenge_Explore_RedGr_id = Config_R2_Challenge_StateGraph();
   APP::main_loop.Challenge_Explore_BlueGr_id = Config_R2_Challenge_Blue_StateGraph();
 
+  // 注册三区挑战赛
+  APP::main_loop.Challenge_Treasure_BlueGr_id = ChallengeArenaPK_Graph_Blue();
+  APP::main_loop.Challenge_Treasure_RedGr_id = ChallengeArenaPK_Graph();
 }
 
 
