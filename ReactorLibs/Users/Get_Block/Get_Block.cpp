@@ -62,6 +62,9 @@ void GetBlock::Start()
     _sensor[0].Init(PIN_SENSOR_LOWER);
     _sensor[1].Init(PIN_SENSOR_UPPER);
 
+    /****  九宫格小黄  ****/
+    detector.Init(PIN_ARENA_DETECT);
+
     /****  负压泵 ****/
     pin_pump = PIN_PUMP;
     relay_pump.Init(pin_pump, Relay::HIGH_ON);
@@ -291,6 +294,26 @@ void GetBlock::OpenPRV()
 void GetBlock::ClosePRV()
 {
     relay_PRV.Off();
+}
+
+bool GetBlock::IsBlockPresent()
+{
+    // static int detect_cnt = 0;
+    // if(detector.Read())
+    // {
+    //     detect_cnt++;
+    //     if(detect_cnt > 5)
+    //     {
+    //         detect_cnt = 0;
+    //         return true;
+    //     }
+    // }
+    // else
+    // {
+    //     return false;
+    // }
+    // return false;
+    return detector.Read();
 }
 
 // ==================== 内部状态机 ====================

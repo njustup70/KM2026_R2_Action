@@ -169,6 +169,25 @@ void VacuumClaw::StretchOut_Second()
     snap_pos = _snap_origin_code - 102000 + 272040;
 }
 
+///@brief 三区取块的动作，只伸出15cm左右
+void VacuumClaw::StretchOut_Mini()
+{
+    // pitch 竖直
+    pitch_pos = 0.0f;
+
+    // stretch_pos = 252000;
+    constexpr float target_pos = 105000.0f;
+    constexpr float step_size  = 20800.0f;   // 每步增量
+    constexpr float step_dt    = 0.1f;       // 每步间隔
+
+    for (float pos = 0.0f + step_size; pos < target_pos; pos += step_size)
+    {
+        stretch_pos = pos;
+        Seq::Wait(step_dt);
+    }
+    stretch_pos = target_pos;
+}
+
 void VacuumClaw::StretchBack()
 {
     pitch_pos = 1.7; // 翻转物块

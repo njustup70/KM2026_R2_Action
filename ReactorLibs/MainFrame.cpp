@@ -111,8 +111,9 @@ void Action_of_Dege_Fetch_UP200(StateCore *core)
     Seq::Wait(0.01f);
   }  
   
-  Area2::mei_lin_array.FetchBlock(BlockHeight::DOWN200);
-  
+  // Area2::mei_lin_array.FetchBlock(BlockHeight::DOWN200);
+  APP::leg.SetFrontPosSlow(-200.0f, 5.0f);
+  APP::leg.SetBackPosSlow(-200.0f, 5.0f);
 
   // Area2::block_pos.GetIn(1);
   // Area2::mei_lin_array.Climb_Up200();
@@ -217,8 +218,8 @@ void MainFrameCpp()
 
   System.RegistApp(APP::get_block);
 
-  System.RegistApp(APP::vac_claw);
-  APP::vac_claw.Enable();
+  // System.RegistApp(APP::vac_claw);
+  // APP::vac_claw.Enable();
   // System.RegistApp(APP::sick_pc);
 
   Area2::mei_lin_array.Init();

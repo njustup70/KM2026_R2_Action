@@ -9,6 +9,7 @@
 #define PIN_SENSOR_LOWER  {'F', 1}   // 下仓：块在抬升平台上
 #define PIN_SENSOR_UPPER  {'E', 5}   // 上仓：有块（被抬升挡片托住触发）
 #define PIN_PRESSURE_RELIEF_VALVE  {'E', 4}   // 泄压阀（高电平打开）
+#define PIN_ARENA_DETECT  {'H', 12}   // 检测九宫格预放位置是否有块的小黄
 
 // ============ 负压泵的 GPIO ============
 #define PIN_PUMP  {'H', 2}   
@@ -32,6 +33,7 @@ public:
     void LiftDown();
     void Push(); // 推块送出
     void PushBack(); // 推块机构收回
+    bool IsBlockPresent(); // 检测九宫格预放位置
 
     bool IsUpperOccupied() const { return _upper; }
     bool IsLowerOccupied() const { return _lower; }
@@ -46,6 +48,9 @@ public:
     MotorDJI motor_3508_claw; // 取块爪机构 (3508, hcan_main ID 6)
 
     InfraredDetector _sensor[2];
+
+    // 三区检测九宫格有没有块的小黄
+    InfraredDetector detector;
 
     // ==================== DM电机目标值（Update中持续发送） ====================
     float dm_fric_spd = 0.0f;   // 下摩擦带目标速度

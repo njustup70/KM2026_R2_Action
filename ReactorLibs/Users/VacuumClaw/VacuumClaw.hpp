@@ -24,7 +24,7 @@ private:
     /***** 内部维护的状态值 *****/
     // float stretch_pos = 0.0f;   // 
     // float snap_pos = 0.0f;      // 
-    float pitch_pos = 1.6f;     // 
+    // float pitch_pos = 1.6f;     // 
     bool enabled = false;
 
     bool is_debug = false; // 用于快速debug
@@ -70,6 +70,8 @@ public:
     // 取块第二步，开泵了，继续伸出剩下部分
     void StretchOut_Second();
 
+    void StretchOut_Mini();
+
     void OpenSnap();
 
     void OpenSnapMini();
@@ -87,6 +89,7 @@ public:
     bool is_stretch_back; // 爪子是否伸回来了
     float stretch_pos = 0.0f; 
     float snap_pos = 0.0f;    
+    float pitch_pos = 1.6f;     // 
 };
 
 namespace APP

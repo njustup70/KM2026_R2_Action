@@ -20,6 +20,8 @@
 
 #include "a12_1.hpp"
 static void Response_Button();
+static void FetchBlockOnTheGround();
+StateGraph Arena_PK_Graph_Blue("Arena_PK");
 
 StateGraph Arena_PK_Graph_Blue("Arena_PK");
 
@@ -173,10 +175,10 @@ void Put_First_Block(StateCore *core)
   });
 
   // 检测里边有没有块，如果有，换另一个格子
-  // if (APP::get_block.IsBlockPresent())
-  // {
-  //   // 块存在，执行相应操作
-  // }
+  if (APP::get_block.IsBlockPresent())
+  {
+    // 块存在，执行相应操作
+  }
 
   // 放块
   APP::get_block.Put();
@@ -363,4 +365,38 @@ static void Response_Button()
       // 放下达妙
       APP::get_block.motor_dm_lift.SetPosVel(0.0f, 15.0f);
     }
+}
+
+static void FetchBlockOnTheGround()
+{
+  // 合上爪子
+  APP::vac_claw.CloseSnap();
+
+  // 等爪子关上
+  Seq::WaitUntil([]()
+  {
+    return fabs(APP::vac_claw.motor_snap.driver.measure.total_angle - APP::vac_claw.snap_pos) < 1000;
+  });  
+
+  // 车往前移动一小段吸上物块
+  APP::chas.Move(Vec2(0.1, 0), 3.0);
+
+  // 开泵
+  APP::get_block.OpenPump();
+  Seq::Wait(0.5f);
+
+  // 开摩擦带
+  APP::get_block._StartBelt();
+
+  // 翻转达妙
+  APP::vac_claw.pitch_pos = 1.6f;
+
+  // 等达妙翻转过来
+  Seq::Wait(2.0f);
+
+  APP::vac_claw.OpenSnap();
+  APP::get_block.ClosePump();
+  APP::get_block.OpenPRV();
+
+  APP::get_block.Store();
 }
