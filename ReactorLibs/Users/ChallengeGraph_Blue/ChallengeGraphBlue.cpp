@@ -19,12 +19,6 @@
 #include "ttd_2.hpp"
 #include "ttd_3.hpp"
 
-#include "a12_1.hpp"
-
-#include "a12_b1.hpp"
-#include "a12_b2.hpp"
-#include "a12_b3.hpp"
-
 static void Response_Button();
 
 /// @brief 当前需要取的矛头编号
@@ -348,13 +342,13 @@ void Goto_Area2(StateCore *core)
   switch (Area2::mei_lin_array.enter_code)
   {
     case Area2Code::ENTER_0:
-      MOVE::MoveToTargPos(A12_B3);
+      MOVE::MoveToTargPos(PATH::A12_B3());
       break;
     case Area2Code::ENTER_1:
-      MOVE::MoveToTargPos(A12_B2);
+      MOVE::MoveToTargPos(PATH::A12_B2());
       break;
     case Area2Code::ENTER_2:
-      MOVE::MoveToTargPos(A12_B1);
+      MOVE::MoveToTargPos(PATH::A12_B1());
       break;
     default:
       APP::monit.LogError("Invalid A2EnterCode!");

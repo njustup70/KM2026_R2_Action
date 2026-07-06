@@ -14,8 +14,14 @@
 #include "sttrb5.hpp"
 #include "sttrb6.hpp"
 
+#include "a12_1.hpp"
 #include "a12_2.hpp"
 #include "a12_3.hpp"
+
+#include "a12_b1.hpp"
+#include "a12_b2.hpp"
+#include "a12_b3.hpp"
+
 #include "a23_2.hpp"
 
 namespace PATH
@@ -80,6 +86,11 @@ const Path<75>& sttr_b6()
     return ::sttr_b6;
 }
 
+const Path<68>& A12_1()
+{
+    return ::A12_1;
+}
+
 const Path<108>& A12_2()
 {
     return ::A12_2;
@@ -88,6 +99,21 @@ const Path<108>& A12_2()
 const Path<147>& A12_3()
 {
     return ::A12_3;
+}
+
+const Path<67>& A12_B1()
+{
+    return ::A12_B1;
+}
+
+const Path<108>& A12_B2()
+{
+    return ::A12_B2;
+}
+
+const Path<147>& A12_B3()
+{
+    return ::A12_B3;
 }
 
 const Path<200>& A23_2_first()

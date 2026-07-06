@@ -21,7 +21,13 @@ const Path<68>& sttr_b5();
 const Path<75>& sttr_b6();
 
 /// @brief 跨区域路径
+const Path<68>& A12_1();
 const Path<108>& A12_2();
 const Path<147>& A12_3();
+// 蓝区
+const Path<67>& A12_B1();
+const Path<108>& A12_B2();
+const Path<147>& A12_B3();
+
 const Path<200>& A23_2_first();
 }

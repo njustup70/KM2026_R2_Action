@@ -19,8 +19,6 @@
 #include "ttd_2.hpp"
 #include "ttd_3.hpp"
 
-#include "a12_1.hpp"
-
 static void Response_Button();
 
 /// @brief 当前需要取的矛头编号
@@ -357,7 +355,7 @@ void Goto_Area2(StateCore *core)
       MOVE::MoveToTargPos(PATH::A12_2());
       break;
     case Area2Code::ENTER_2:
-      MOVE::MoveToTargPos(A12_1);
+      MOVE::MoveToTargPos(PATH::A12_1());
       break;
     default:
       APP::monit.LogError("Invalid A2EnterCode!");
