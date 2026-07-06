@@ -148,6 +148,26 @@ void GetBlock::_StopBelt()
     dm_fric_spd = 0.0f;
 }
 
+void GetBlock::LiftUp()
+{
+    dm_lift_pos = -_lift_pos_upper;
+}
+
+void GetBlock::LiftDown()
+{
+    dm_lift_pos = -_lift_pos_lower;
+}
+
+void GetBlock::Push()
+{
+    motor_2006_feed.SetPos(-_feed_pos_extend);
+}
+
+void GetBlock::PushBack()
+{
+    motor_2006_feed.SetPos(_feed_pos_retract);
+}
+
 // ==================== 存块 ====================
 void GetBlock::Store()
 {

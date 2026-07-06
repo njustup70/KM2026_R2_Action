@@ -28,6 +28,10 @@ public:
     void ClosePRV();
     void _StartBelt();
     void _StopBelt();
+    void LiftUp(); // 抬升达妙
+    void LiftDown();
+    void Push(); // 推块送出
+    void PushBack(); // 推块机构收回
 
     bool IsUpperOccupied() const { return _upper; }
     bool IsLowerOccupied() const { return _lower; }
