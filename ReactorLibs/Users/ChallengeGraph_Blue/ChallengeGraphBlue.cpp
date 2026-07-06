@@ -277,6 +277,8 @@ void Dock_Fetch_And_Back(StateCore *core)
     }
   }
 
+  if (MOD::farcon.button_second_half[0] == 1) APP::jaw.OpenClaw();
+
   // 灯带：进度条
   float wait_progress = 0.0f;
   APP::main_loop.test_led.ProgBar(Color::Up_Yellow, &wait_progress);
