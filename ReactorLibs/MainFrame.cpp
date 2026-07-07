@@ -234,6 +234,10 @@ void MainFrameCpp()
   // 注册三区挑战赛
   APP::main_loop.Challenge_Treasure_BlueGr_id = ChallengeArenaPK_Graph_Blue();
   APP::main_loop.Challenge_Treasure_RedGr_id = ChallengeArenaPK_Graph();
+
+  // APP::state_core.RegistGraph(graph);
+  // graph.Degenerate(Action_of_Dege_Fetch_UP200);
+  // APP::state_core.Enable(0);
 }
 
 
