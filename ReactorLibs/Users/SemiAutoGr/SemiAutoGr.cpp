@@ -478,12 +478,12 @@ void Response_Button_main()
       static bool is_lift_up = false;
       if(!is_lift_up)
       {
-        APP::get_block.motor_dm_lift.SetPosVel(-760, 15);
+        APP::get_block.dm_lift_pos = -755;
         is_lift_up = true;
       }
       else
       {
-        APP::get_block.motor_dm_lift.SetPosVel(-10, 15);
+        APP::get_block.dm_lift_pos = -3;
         is_lift_up = false;
       }
       last_lift_time = DWT_GetTimeline_Sec();
@@ -497,13 +497,13 @@ void Response_Button_main()
       if(!is_belt_on)
       {
         APP::get_block.motor_2006_fric.SetSpd(15.0f * MotorDJIConst::redu_M2006 * 60.0f / (2 * PI));
-        APP::get_block.motor_s2325.SetVel(15.0f);
+        APP::get_block.dm_fric_spd = 15.0f;
         is_belt_on = true;
       }
       else
       {
         APP::get_block.motor_2006_fric.SetSpd(0);
-        APP::get_block.motor_s2325.SetVel(0);
+        APP::get_block.dm_fric_spd = 0.0f;
         is_belt_on = false;
       }
       last_belt_time = DWT_GetTimeline_Sec();
