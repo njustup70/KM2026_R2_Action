@@ -31,13 +31,17 @@ private:
     bool is_out_debug = false; // 调试伸爪子
     bool is_back_debug = false;
     bool set_damiao_zero = true; // 第一次 update 调零一次
+    bool _origined = false;
 
     // 调零
     bool _snap_origined = false; // snap电机是否完成零位校准
     int _snap_origin_code = 0; // snap电机零位的编码器值
+    bool _pitch_origined = false; // pitch 电机是否完成零位校准
+    int _pitch_origin_code = 0;
 
     void _GetClawOrigin();
-
+    void _GetPitchOrigin();
+    void _Update_GetOrigin();
 public:
 
     /// @brief 用于将水平夹爪伸出的电机
@@ -47,7 +51,8 @@ public:
     MotorDJI motor_snap;
 
     /// @brief 用于翻转物块的电机
-    MotorDM motor_pitch;
+    // MotorDM motor_pitch;
+    MotorDJI motor_pitch;
 
     // 调零的小黄
     InfraredDetector clawzero_detector;
@@ -89,7 +94,8 @@ public:
     bool is_stretch_back; // 爪子是否伸回来了
     float stretch_pos = 0.0f; 
     float snap_pos = 0.0f;    
-    float pitch_pos = 1.6f;     // 
+    float pitch_pos = 0.0f;     // 
+    float pitch_origined_pos = 0.0f; //调零后的位置
 };
 
 namespace APP
