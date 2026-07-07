@@ -31,9 +31,14 @@ void MainLoop::Start()
     button_2.Init(button_2_pin);
     button_3.Init(button_3_pin);
 
-
     test_led.Lit(Color(0.0f, 0.0f, 0.0f));
-    test_led.Segment(2);
+    test_led.Segment(4);
+
+    // 牢记修改：最大重试类型ID
+    max_retry_id = 3;
+
+    RefreshFieldLed();
+    RefreshRetryLed();
 }
 
 void MainLoop::Update()
@@ -59,6 +64,9 @@ void MainLoop::Update()
 
     // 在此 处理状态机的启动逻辑。原因是：MainFrame 无法阻塞等待判断，只能在这里
     ToggleAreaLogics();
+
+    // 处理重试逻辑
+    if (!graph_started) JudgeRetryFlags();
 }
 
 
@@ -66,6 +74,30 @@ void MainLoop::RefreshFieldLed()
 {
     test_led.SegLit(0, targ_area == AREA_BLUE ? Color::Blue : Color::Red);
     test_led.SegLit(1, APP::comm_center.AtBlueField() ? Color::Blue : Color::Red);
+}
+
+
+void MainLoop::RefreshRetryLed()
+{
+    Color retry_color = Color::White;
+
+    switch (retry_id)
+    {
+    case 1:
+        retry_color = Color::Orange;
+        break;
+    case 2:
+        retry_color = Color::Yellow;
+        break;
+    case 3:
+        retry_color = Color::Green;
+        break;
+    default:
+        retry_color = Color::White;
+        break;
+    }
+
+    test_led.SegLit(3, retry_color);
 }
 
 
@@ -101,13 +133,13 @@ void MainLoop::ToggleAreaLogics()
     }
 
     // 红蓝区逻辑（STM32 维护）
-    if (MOD::farcon.toggle[3] == 1 && targ_area == AREA_RED)
+    if ((MOD::farcon.toggle[3] == 1 || button_pressed[0] == 1) && targ_area == AREA_RED)
     {
         targ_area = AREA_BLUE;
         APP::monit.LogRespond("Toggle Area: BLUE");
         RefreshFieldLed();
     }
-    else if (MOD::farcon.toggle[3] == 0 && targ_area == AREA_BLUE)
+    else if ((MOD::farcon.toggle[3] == 0 || button_pressed[0] == 0) && targ_area == AREA_BLUE)
     {
         targ_area = AREA_RED;
         APP::monit.LogRespond("Toggle Area: RED");
@@ -129,7 +161,7 @@ void MainLoop::ToggleAreaLogics()
     }
 
     // 如果状态机尚未启动（还在选图），就根据选择的图，启动对应的状态图
-    if (!graph_started && MOD::farcon.button_second_half[0] == 1)
+    if (!graph_started && (MOD::farcon.button_second_half[0] == 1 || button_pressed[3] == 1))
     {
         graph_started = true;
         if (targ_area == AREA_RED)
@@ -143,6 +175,30 @@ void MainLoop::ToggleAreaLogics()
             APP::monit.LogRespond("Start Challenge Graph: BLUE");
             APP::state_core.Enable(Challenge_Explore_BlueGr_id);
             confirmed_area = true;
+        }
+    }
+}
+
+void MainLoop::JudgeRetryFlags()
+{
+    static bool last_retry_button_pressed = false;
+    static float retry_cnt = DWT_GetTimeline_Sec();
+
+    // 处理重试的逻辑
+    if (!last_retry_button_pressed && button_pressed[2] == 1)
+    {
+        // 每0.5s只触发一次
+        if (DWT_GetTimeline_Sec() - retry_cnt > 0.5f)
+        {
+            retry_cnt = DWT_GetTimeline_Sec();
+            // 上升沿时，切换到下一种重试模式
+            retry_id++;
+            if (retry_id > max_retry_id)
+            {
+                retry_id = 0;
+            }
+
+            RefreshRetryLed();
         }
     }
 }

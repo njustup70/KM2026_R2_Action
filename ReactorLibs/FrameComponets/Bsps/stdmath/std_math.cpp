@@ -170,6 +170,9 @@ Color Color::Red = Color(255.0f, 0.0f, 0.0f);   // 红色（r=1, g=0, b=0）
 Color Color::Green = Color(0.0f, 255.0f, 0.0f); // 绿色（r=0, g=1, b=0）
 Color Color::Blue = Color(0.0f, 0.0f, 255.0f);  // 蓝色（r=0, g=0, b=1）
 Color Color::White = Color(255.0f, 255.0f, 255.0f);  // 白色（r=1, g=1, b=1）
+Color Color::Pink = Color(241.0f, 158.0f, 184.0f);  
+Color Color::Orange = Color(255.0f, 100.0f, 0.0f);
+Color Color::Yellow = Color(255.0f, 255.0f, 0.0f);
 Color Color::Up_Yellow = Color(214,223,53);  // 队伍用黄色
 Color Color::Up_Purpor = Color(105,23,150);  // 队伍用紫色
 
