@@ -156,7 +156,7 @@ void Jaw::_Update_GetOrigin()
         _origined = true;
         
         // pitch 正式回到近原点处
-        _pitch_pos = _pitch_origin_code - 500;
+        _pitch_pos = _pitch_origin_code + 500;
 
         _hori_tracklim_max = _hori_origin_code - _HoriMMToCode(4);
         _hori_tracklim_min = _hori_origin_code - (JawConst::_hori_max_travel_code - _HoriMMToCode(4));
@@ -293,12 +293,12 @@ void Jaw::CloseClaw()
 void Jaw::PitchUp()
 {
     // 减的这 500 是防堵转
-    _pitch_pos = _pitch_origin_code - 500;
+    _pitch_pos = _pitch_origin_code + 500;
 }
 
 void Jaw::PitchDown()
 {
-    _pitch_pos = _pitch_origin_code - (JawConst::_pitch_max_travel_code / 2 - 5000);
+    _pitch_pos = _pitch_origin_code + (JawConst::_pitch_max_travel_code / 2);
 }
 
 void Jaw::SetPos(float x_mm, float y_mm)
@@ -414,7 +414,7 @@ void Jaw::_GetHoriOrigin()
             // 记录中点偏移
             _hori_origin_code = motor_3508_hori.driver.measure.total_angle;
             // 往回走到中点
-            _x_pos = _hori_origin_code - JawConst::_hori_max_travel_code / 2 - 100000;
+            _x_pos = _hori_origin_code - JawConst::_hori_max_travel_code / 2;
             motor_3508_hori.SetPos(_x_pos);
         }
     }
@@ -450,7 +450,7 @@ void Jaw::_GetVertOrigin()
             // 记录中点偏移
             _vert_origin_code = motor_3508_vert.driver.measure.total_angle;
             // 往回走到三分之一
-            _y_pos = _vert_origin_code - 226000; //后面加的是夹到矛头最好的位置偏移
+            _y_pos = _vert_origin_code - 236000; //后面加的是夹到矛头最好的位置偏移
             motor_3508_vert.SetPos(_y_pos);
         }
     }
@@ -468,7 +468,7 @@ void Jaw::_GetVertOrigin()
 void Jaw::_GetPitchOrigin()
 {
     static uint32_t runed_tick = 0;  
-    static uint32_t pitch_probe_code = 0;
+    static int32_t pitch_probe_code = 0;
     static uint8_t pitch_probe_cnt = 0;
     runed_tick++;
 
@@ -476,7 +476,7 @@ void Jaw::_GetPitchOrigin()
     motor_2006.SetPos(pitch_probe_code);
 
     // 如果撞到限位了（用eso的扰动观测来确定），连续5个Tick，就停止
-    if (fabs(motor_2006.motor_adrc.eso.z3) > 2000 && runed_tick > 30)
+    if (fabs(motor_2006.motor_adrc.eso.z3) > 2800 && runed_tick > 30)
     {
         pitch_probe_cnt++;
         if (pitch_probe_cnt >= 10)
@@ -486,7 +486,7 @@ void Jaw::_GetPitchOrigin()
             // 记录中点偏移
             _pitch_origin_code = motor_2006.driver.measure.total_angle;
             // 往回一点点，防止卡住影响其他轴
-            _pitch_pos = _pitch_origin_code - 10000;
+            _pitch_pos = _pitch_origin_code + 10000;
             motor_2006.SetPos(_pitch_pos);
         }
     }
@@ -494,9 +494,9 @@ void Jaw::_GetPitchOrigin()
     {
         pitch_probe_cnt = 0;
         // 每周期（5ms）加 20 Code，每秒加 4000 Code
-        if (runed_tick > 30)    pitch_probe_code += 80;
+        if (runed_tick > 30)    pitch_probe_code -= 80;
         // 但是最开始缓慢前进，目的是破除静态库伦摩擦力
-        else                    pitch_probe_code += 15;
+        else                    pitch_probe_code -= 15;
     }   
 }
 
@@ -517,7 +517,7 @@ static float M2006GravityComp(const FeedforwardInfo& info)
     float code_diff = current_code - origin_code;
 
     // 映射到杆的实际角度（0 -> 竖直，-143000 -> 水平(PI/2)）
-    float rod_angle = code_diff / -143000.0f * (3.14159265f / 2.0f);
+    float rod_angle = code_diff / 143000.0f * (3.14159265f / 2.0f);
     
     // 当 z3 = 1000 时，系统所需的抵消电流 i = - (1000 / b0) = -0.3778 A
     constexpr float kMaxCompCurrent = -0.3f * 0.9f; 

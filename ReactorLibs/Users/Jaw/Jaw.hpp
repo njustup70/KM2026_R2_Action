@@ -6,9 +6,9 @@
 namespace JawConst 
 {
     /// @brief 各方向上的最大行程
-    static const int _hori_max_travel_code = 327000;
-    static const int _vert_max_travel_code = 276000;
-    static const int _pitch_max_travel_code = 300000;
+    static const int _hori_max_travel_code = 400000; // 俯视电机，逆时针为正
+    static const int _vert_max_travel_code = 253500; // 向上为正
+    static const int _pitch_max_travel_code = 300000; 
 }
 
 class Jaw : public Application
