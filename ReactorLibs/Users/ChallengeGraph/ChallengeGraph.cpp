@@ -297,13 +297,13 @@ void Dock_Fetch_And_Back(StateCore *core)
   APP::main_loop.test_led.Running(Color::Up_Yellow, 0.4f, 1.2f);
 
   // 等待遥控器指令，然后才进入下一个状态
-  while(MOD::farcon.button_second_half[0] != 1)
+  while(true)
   {
     Response_Button();
     Seq::Wait(0.01f);
 
     // 对接完成
-    if (APP::comm_center.IsDocked())
+    if (APP::comm_center.IsDocked() || MOD::farcon.button_second_half[0] == 1)
     {
       // 打开夹爪，给R1时间拿回兵器
       APP::jaw.OpenClaw();    // 依旧OpenClaw
@@ -321,8 +321,6 @@ void Dock_Fetch_And_Back(StateCore *core)
       break;
     }
   }
-
-  if (MOD::farcon.button_second_half[0] == 1) APP::jaw.OpenClaw();
 
   // 灯带：进度条
   float wait_progress = 0.0f;
