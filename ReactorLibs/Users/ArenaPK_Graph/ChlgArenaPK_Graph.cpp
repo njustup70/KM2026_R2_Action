@@ -27,6 +27,11 @@ StateGraph Arena_PK_Graph("Arena_PK");
 static void Waiting_for_Start(StateCore *core);
 static void Put_First_Block(StateCore *core);
 static void Waiting_R1_Instru(StateCore *core);
+static void Fetch_0_1_Block(StateCore *core);
+
+Vec2 Arena_R2_KFS_FetchPos[2] = {
+  Vec2(11.1, 3.405), Vec2(11.1, 2.685)
+}; // 块之间间隔：0.175 + 0.175 + 0.37 = 0.72 m
 
 /**
  * @brief 技能挑战赛：“九宫藏宝” 状态图初始化
@@ -48,11 +53,15 @@ int ChallengeArenaPK_Graph()
   StateBlock& s_combine = Arena_PK_Graph.AddState("combine");  // 二区由工控机控制的动作序列
   // （4）放三层块——仅在合体后有效
   StateBlock& s_put_L3_block = Arena_PK_Graph.AddState("put_L3_block");  // 二区结束后，回到原点
+  // 回去取 0 1 号块
+  StateBlock& s_fetch_0_1_block = Arena_PK_Graph.AddState("fetch_0_1_block");
+
 
   /**----------     配置状态行为函数    ----------**/
   s_wait.StateAction = Waiting_for_Start;
   s_put_first_block.StateAction = Put_First_Block;
   s_waiting_R1_instru.StateAction = Waiting_R1_Instru;
+  s_fetch_0_1_block.StateAction = Fetch_0_1_Block;
 
   /**----------     进行状态间链接    ----------**/
   s_wait.LinkTo(&(s_wait.Complete), s_put_first_block);
@@ -237,6 +246,7 @@ void Put_First_Block(StateCore *core)
   core->GetCurState().Complete = true;
 }
 
+
 /*******************************************************************************/
 
 /**
@@ -287,6 +297,11 @@ void Waiting_R1_Instru(StateCore *core)
   }
 }
 
+static void Fetch_0_1_Block(StateCore *core)
+{
+
+
+}
 /*******************************************************************************/
 
 
@@ -616,3 +631,4 @@ static void FetchBlockOnTheGround()
 
   APP::get_block.Store();
 }
+

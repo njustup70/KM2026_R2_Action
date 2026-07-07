@@ -34,7 +34,7 @@ static void Fetch2_From_Mid(StateCore *core);
 
 
 
-Vec2 Arena_R2_KFS_FetchPos[2] = {
+Vec2 Arena_R2_KFS_FetchPos_Blue[2] = {
   Vec2(11.1, 2.595), Vec2(11.1, 3.315)
 };
 
@@ -232,6 +232,12 @@ void Put_First_Block(StateCore *core)
   core->GetCurState().Complete = true;
 }
 
+void Fetch_0_1_Block(StateCore *core)
+{
+
+
+}
+
 /*******************************************************************************/
 
 /**
@@ -298,10 +304,10 @@ static void Fetch2_From_Mid(StateCore *core)
   APP::monit.LogInfo("[Arena] I'm at the block.");
 
   // 取第一个块
-  // APP::get_block.FetchBlockOnTheGround();
+  FetchBlockOnTheGround();
 
   // 等待取块完成
-  // Seq::Wait(1.0f);
+  Seq::Wait(1.0f);
 
   // 移动到第二个块面前
   MOVE::MoveToTargGes(Vec3(11.1f, 3.315f, 0.0f));
