@@ -26,8 +26,11 @@ class CommCenter : public Application
 private:
     bool _send_kfs; // 是否发送KFS给上位机
     bool _is_send_sick_correction; // 是否发送SICK纠正指令
+
     bool _dock_ok = false;  // 是否完成对接
     bool _dock_give_up = false; // 是否放弃当前对接
+    bool _kfs_seq_recved = false; // 是否收到 R1 的KFS序列
+
     Area3ActCode _area3_act_code; // 三区光通信，接收到的指令码
     bool is_blue_field = false; // 是否是蓝场
     bool at_first_area = true; // 是否在一三区的起始点
@@ -41,6 +44,7 @@ public:
 
     bool IsDocked() const { return _dock_ok; }
     bool IsDockGiveUp() const { return _dock_give_up; }
+    bool IsKFSSeqRecved() const { return _kfs_seq_recved; }
 
     /// @brief 红蓝区判断
     bool AtBlueField() const { return is_blue_field; }

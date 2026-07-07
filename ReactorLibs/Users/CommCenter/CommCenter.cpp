@@ -179,6 +179,7 @@ void CommCenter::OpticalRxCallback(uint8_t func_code, const uint8_t* payload, ui
 
             // 发送给上位机
             MOD::host_pc.SendKFSData(comm_center.kfs_values, len);
+            comm_center._kfs_seq_recved = true; // 标志位，表示已经收到KFS序列
             break;
         }
     }

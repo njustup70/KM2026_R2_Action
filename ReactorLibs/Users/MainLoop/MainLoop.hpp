@@ -29,6 +29,8 @@ class MainLoop : public Application
     void ToggleAreaLogics();
     /// @brief 刷新灯带红蓝区显示：前半段为STM32选区，后半段为工控机回传选区
     void RefreshFieldLed();
+    /// @brief 刷新灯带第 3 段显示重试类型
+    void RefreshRetryLed();
 
     // 所选的区域（分红区蓝区）
     const static uint8_t AREA_RED = 0;
@@ -48,6 +50,11 @@ class MainLoop : public Application
     /// @brief "武林探秘" 竞技赛正赛
     uint8_t Compete_KM_RedGr_id = 0;
     uint8_t Compete_KM_BlueGr_id = 0;
+
+    /*******        重试标志位      *******/
+    void JudgeRetryFlags();
+    uint8_t retry_id = 0; // 区分重试类型
+    uint8_t max_retry_id = 3; // 最大重试类型编号
 
     int cnt = 0;
 };

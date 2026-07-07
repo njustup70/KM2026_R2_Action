@@ -21,8 +21,12 @@ static void Response_Button();
 /// @brief 当前需要取的矛头编号
 static uint8_t need_spear_id = 0;
 
+/*********    额外的状态转移Flag    *********/
 static bool fetch_again = false;    // 是否需要再次取矛头
 static bool move_to_area2 = false;  // 是否可以移动到二区了
+
+static bool retry_dir_area2 = false; // 重试：是否需要直接进入二区
+static bool retry_comm_err = false; // 重试：是否需要重新请求工控机发送动作序
 
 // 自动状态机
 StateGraph R2_Challenge_Graph("R2_Challenge");
@@ -33,6 +37,10 @@ static void Dock_Fetch_And_Back(StateCore *core);
 static void Goto_Area2(StateCore *core);
 static void Area2_HostAction(StateCore *core);
 static void Area2End_BackOrigin(StateCore *core);
+
+// 两种重试
+static void Retry_Direct_ToArea2(StateCore *core);
+static void Retry_Comm_Error(StateCore *core);
 
 static void Walk_into_Area2(StateCore *core);
 
@@ -48,7 +56,13 @@ int Config_R2_Challenge_StateGraph()
   StateBlock& s_a2_hostact = R2_Challenge_Graph.AddState("area2_hostact");  // 二区由工控机控制的动作序列
   StateBlock& s_a2end_backorigin = R2_Challenge_Graph.AddState("a2end_backor");  // 二区结束后，回到原点
 
+  StateBlock& s_retry_dirctA2 = R2_Challenge_Graph.AddState("retry_dircA2");    // 出发后，直接进二区
+  StateBlock& s_retry_comm_err = R2_Challenge_Graph.AddState("retry_comm_err");    // 光通信信号发错了，重新请求
+
   s_wait.StateAction = Waiting_for_Start;
+  // 重试的状态
+  s_retry_dirctA2.StateAction = Retry_Direct_ToArea2;
+  s_retry_comm_err.StateAction = Retry_Comm_Error;
 
   /**   一区的状态**/
   s_area1_f1.StateAction = Walk_Fetch;
@@ -62,6 +76,10 @@ int Config_R2_Challenge_StateGraph()
 
   /**----------     状态转移链接    ----------**/
   s_wait.LinkTo(&s_wait.Complete, s_area1_f1);
+  // 等待状态——重试部分
+  s_wait.LinkTo(&retry_dir_area2, s_retry_dirctA2);
+  s_wait.LinkTo(&retry_comm_err, s_retry_comm_err);
+
   s_area1_f1.LinkTo(&s_area1_f1.Complete, s_area1_td);
   s_area1_td.LinkTo(&s_area1_td.Complete, s_dock_fetch);
 
@@ -74,6 +92,10 @@ int Config_R2_Challenge_StateGraph()
   s_a2_hostact.LinkTo(&s_a2_hostact.Complete, s_a2end_backorigin);
   // 可以选择回到原点
   s_a2end_backorigin.LinkTo(&s_a2end_backorigin.Complete, s_wait);
+
+  // 重试状态的链接
+  s_retry_dirctA2.LinkTo(&s_retry_dirctA2.Complete, s_walk_from_a1_to_a2);
+  s_retry_comm_err.LinkTo(&s_retry_comm_err.Complete, s_walk_from_a1_to_a2);
 
 
   /**----------     向状态机核心注册    ----------**/
@@ -95,7 +117,15 @@ void Waiting_for_Start(StateCore *core)
 
   APP::jaw.CloseClaw();
   APP::monit.LogInfo("Waiting for start...");
-  APP::main_loop.test_led.Breath(Color::White, 2.0f);
+  if (APP::main_loop.retry_id == 0)
+  {
+    APP::main_loop.test_led.Breath(Color::White, 2.0f);
+  }
+  else    // 方便确认是否确实进入了重试模式
+  {
+    APP::main_loop.test_led.Breath(Color::Yellow, 1.0f);
+  }
+  
 
   APP::leg.F_AlmostOrigin();
   APP::leg.B_AlmostOrigin();
@@ -136,6 +166,20 @@ void Waiting_for_Start(StateCore *core)
     Seq::Wait(0.01f);
   }
 
+  /***    重试    ***/
+  if (APP::main_loop.retry_id == 1)
+  {
+    APP::monit.LogRespond("Retry: Direct to Area2.");
+    retry_dir_area2 = true;
+    return;
+  }
+  else if (APP::main_loop.retry_id == 2)
+  {
+    APP::monit.LogRespond("Retry: Comm Error.");
+    retry_comm_err = true;
+    return;
+  }
+
   core->GetCurState().Complete = true; // 设置状态完成标志，触发状态转移
 }
 
@@ -148,12 +192,8 @@ void Waiting_for_Start(StateCore *core)
  */
 void Walk_Fetch(StateCore *core)
 {
-  // Area2::mei_lin_array.FetchBlock(BlockHeight::UP400);
-
-  // Seq::Wait(3600.0f);
-
-  APP::leg.SetFrontPos(-10);
-  APP::leg.SetBackPos(-10);
+  APP::leg.SetFrontPos(-5);
+  APP::leg.SetBackPos(-5);
 
   // 灯带：渐变
   APP::main_loop.test_led.GradientFlow(Color::Up_Purpor * 0.65f, Color::Up_Yellow * 0.65f, 1.0f);
@@ -257,13 +297,13 @@ void Dock_Fetch_And_Back(StateCore *core)
   APP::main_loop.test_led.Running(Color::Up_Yellow, 0.4f, 1.2f);
 
   // 等待遥控器指令，然后才进入下一个状态
-  while(MOD::farcon.button_second_half[0] != 1)
+  while(true)
   {
     Response_Button();
     Seq::Wait(0.01f);
 
     // 对接完成
-    if (APP::comm_center.IsDocked())
+    if (APP::comm_center.IsDocked() || MOD::farcon.button_second_half[0] == 1)
     {
       // 打开夹爪，给R1时间拿回兵器
       APP::jaw.OpenClaw();    // 依旧OpenClaw
@@ -281,8 +321,6 @@ void Dock_Fetch_And_Back(StateCore *core)
       break;
     }
   }
-
-  if (MOD::farcon.button_second_half[0] == 1) APP::jaw.OpenClaw();
 
   // 灯带：进度条
   float wait_progress = 0.0f;
@@ -331,10 +369,58 @@ void Dock_Fetch_And_Back(StateCore *core)
 }
 
 /*******************************************************************************/
+/**
+ * @brief 直接走到二区的状态
+ * 
+ * @param core
+ */
+void Retry_Direct_ToArea2(StateCore *core)
+{
+  // 先走到对接点，然后接上 Goto_Area2 （需要工控机重发动作序列）
+  MOVE::MoveToTargGes(Vec3(1.3f, 5.0f, 0.0f));
+  
+  // 直接进入 Goto_Area2
+  core->GetCurState().Complete = true;
+}
+
+/*******************************************************************************/
+/**
+ * @brief 光通信信号发错了，重新请求
+ * 
+ * @param core 
+ */
+void Retry_Comm_Error(StateCore *core)
+{
+  // 走到对接点
+  MOVE::MoveToTargGes(Vec3(1.3f, 5.0f, 0.0f));
+
+  // 等待光通信信号
+  Seq::WaitUntil([](){
+    return APP::comm_center.IsKFSSeqRecved();
+  });
+
+  // 灯带：进度条
+  float wait_progress = 0.0f;
+  APP::main_loop.test_led.ProgBar(Color::Up_Yellow, &wait_progress);
+
+  // 等待 6 秒
+  float wait_time_s = 0.0f;
+  while (wait_time_s < 6.0f)
+  {
+    wait_time_s += 0.05f;
+    wait_progress = wait_time_s / 6.0f;
+    Seq::Wait(0.05f);
+  }
+
+  // 恢复正常流程，进入二区（GotoArea2）
+  core->GetCurState().Complete = true;
+}
+
+/*******************************************************************************/
 
 void Goto_Area2(StateCore *core)
 {
-  APP::main_loop.test_led.Lit(Color::Red);
+  APP::main_loop.test_led.Blink(Color::Pink, 2, 0.5f);
 
   // 确认工控机已经发送了动作序列
   Seq::WaitUntil([](){

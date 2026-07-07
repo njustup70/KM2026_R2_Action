@@ -184,6 +184,10 @@ public:
   static Color Green;
   static Color Blue;
   static Color White;
+  static Color Pink;
+  static Color Orange;
+  static Color Yellow;
+  static Color Purple;
   static Color Up_Purpor;
   static Color Up_Yellow;
 
