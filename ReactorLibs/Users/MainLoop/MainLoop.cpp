@@ -12,10 +12,25 @@ void MainLoop::Start()
     test_led.Init(Hardware::tim_led, BSP::TIM::CH4);
     test_led.BiasFactor = Vec3(0.843f, 1.0f, 0.843f);
 
+    // 取矛头用的小黄
     Pin spear_ir = {'E', 6};
-    
-    // 初始化小黄
     spear_detector.Init(spear_ir);
+
+    /*****      四个按钮（当小黄处理了）      *****/
+    // 第一个：红蓝区切换
+    Pin button_0_pin = {'I', 9};
+    button_0.Init(button_0_pin);
+
+    // 第二个：一区/三区重试点
+    Pin button_1_pin = {'F', 10};
+    button_1.Init(button_1_pin);
+
+    // 第三和第四个：重试码
+    Pin button_2_pin = {'A', 4};
+    Pin button_3_pin = {'A', 5};
+    button_2.Init(button_2_pin);
+    button_3.Init(button_3_pin);
+
 
     test_led.Lit(Color(0.0f, 0.0f, 0.0f));
     test_led.Segment(2);
@@ -26,6 +41,13 @@ void MainLoop::Update()
     test_led.Handle();
     static float last_report_time = 0.0f;
     spear_detected = spear_detector.Read();
+
+    // 读取按键
+    button_pressed[0] = button_0.Read();
+    button_pressed[1] = button_1.Read();
+    button_pressed[2] = button_2.Read();
+    button_pressed[3] = button_3.Read();
+
     cnt++;
 
     if (System.runtime_tick - last_report_time >= 15.0f)

@@ -17,6 +17,13 @@ class MainLoop : public Application
     InfraredDetector spear_detector;
     bool spear_detected = false;
 
+    // 重试/切场按钮，当小黄处理了
+    InfraredDetector button_0;
+    InfraredDetector button_1;
+    InfraredDetector button_2;
+    InfraredDetector button_3;
+    bool button_pressed[4] = {false, false, false, false};
+
     /*--------------        切区逻辑        ----------------*/
     /// @brief 所有切换红蓝区的逻辑，都封装在里边
     void ToggleAreaLogics();
