@@ -1,0 +1,113 @@
+{
+  "format_version": 1,
+  "waypoints": [
+    {
+      "x": 11.38,
+      "y": 5.23,
+      "theta": 0.0,
+      "vx": null,
+      "vy": null,
+      "speed": null,
+      "vw": null
+    },
+    {
+      "x": 11.38,
+      "y": 4.8,
+      "theta": 0.0,
+      "vx": null,
+      "vy": null,
+      "speed": null,
+      "vw": null
+    },
+    {
+      "x": 11.3,
+      "y": 4.2,
+      "theta": 0.0,
+      "vx": null,
+      "vy": null,
+      "speed": null,
+      "vw": null
+    },
+    {
+      "x": 11.2,
+      "y": 3.9,
+      "theta": 0.0,
+      "vx": null,
+      "vy": null,
+      "speed": null,
+      "vw": null
+    },
+    {
+      "x": 11.17,
+      "y": 3.315,
+      "theta": 0.0,
+      "vx": null,
+      "vy": null,
+      "speed": null,
+      "vw": null
+    },
+    {
+      "x": 11.1,
+      "y": 2.0,
+      "theta": 0.0,
+      "vx": null,
+      "vy": null,
+      "speed": null,
+      "vw": null
+    },
+    {
+      "x": 10.75,
+      "y": 0.85,
+      "theta": -1.5707,
+      "vx": null,
+      "vy": null,
+      "speed": null,
+      "vw": null
+    }
+  ],
+  "settings": {
+    "density": 40.0,
+    "max_dt": null,
+    "showpath": true,
+    "solver": "coupled",
+    "speed_limits": {
+      "max_v": 4.0,
+      "max_a": 2.7,
+      "max_w": 3.8,
+      "max_aw": 6.28,
+      "max_jk": 10.0,
+      "lat_accel_max": 1.5,
+      "interval_speed_limits": []
+    },
+    "body_size": {
+      "length": 0.78,
+      "width": 0.78
+    }
+  },
+  "obstacles": [
+    {
+      "kind": "rect",
+      "x": 10.1,
+      "y": 2.6,
+      "theta": 0.0,
+      "w": 1.1,
+      "h": 2.0
+    },
+    {
+      "kind": "rect",
+      "x": 11.825,
+      "y": 2.685,
+      "theta": 0.0,
+      "w": 0.35,
+      "h": 0.35
+    },
+    {
+      "kind": "rect",
+      "x": 11.825,
+      "y": 3.405,
+      "theta": 0.0,
+      "w": 0.35,
+      "h": 0.35
+    }
+  ]
+}
