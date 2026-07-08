@@ -167,13 +167,15 @@ void MainLoop::ToggleAreaLogics()
         if (targ_area == AREA_RED)
         {
             APP::monit.LogRespond("Start Challenge Graph: RED");
-            APP::state_core.Enable(Challenge_Treasure_RedGr_id);
+            APP::state_core.Enable(Challenge_Explore_RedGr_id);
+            // APP::state_core.Enable(Challenge_Treasure_RedGr_id);
             confirmed_area = true;
         }
         else
         {
             APP::monit.LogRespond("Start Challenge Graph: BLUE");
             APP::state_core.Enable(Challenge_Explore_BlueGr_id);
+            // APP::state_core.Enable(Challenge_Treasure_BlueGr_id);
             confirmed_area = true;
         }
     }
