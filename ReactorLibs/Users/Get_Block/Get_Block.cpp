@@ -135,6 +135,7 @@ void GetBlock::_ReadSensors()
     // _sensor[0]=下仓  [1]=上仓
     _grid[0] = _sensor[0].Read();   // 下仓
     _grid[1] = _sensor[1].Read();   // 上仓
+    _is_block_exist = detector.Read(); // 九宫格   
 }
 
 // ==================== 辅助 ====================

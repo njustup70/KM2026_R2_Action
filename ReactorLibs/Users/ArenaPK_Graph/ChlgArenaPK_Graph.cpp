@@ -263,7 +263,7 @@ void Put_First_Block(StateCore *core)
   Seq::Wait(1.0f);
 
   // 放块
-  APP::get_block.Put();
+  APP::get_block.Push();
 
   // 等待放块完成
   Seq::Wait(1.0f);

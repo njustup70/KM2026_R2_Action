@@ -96,6 +96,9 @@ private:
     bool _store_debug = false;
     bool _put_debug = false;
 
+    // ==================== 九宫格内物块状态 ====================
+    bool _is_block_exist;
+
     // uint32_t _action_tick = 0;  // 阶段开始时间戳 (s) ——old
     float _action_tick = 0.0f;      // 阶段开始时间戳 (s)——改用本地计时
     float _local_tick = 0.0f;       // 本地独立计时器（累加式）
