@@ -358,11 +358,24 @@ void FetchSpear_FromOrigin(uint8_t spear_id)
 
   OriginTo::SpearChase(spear_id, Vec3(0.02f, 0.02f, 0.02f));
 
+  uint32_t log_tick = 0;
   // 追逐路径，直到完成
   while (!APP::path_chaser.IsFinished())
   {
     Vec3 speed_vec = APP::path_chaser.GetCmdBody();
+    Vec3 w_vec = APP::path_chaser.GetCmdWorld();
+    auto tg_p = APP::path_chaser.GetDebugTargetByCurrentT();
     APP::chas.Move(speed_vec, 0.01f);
+
+    if (++log_tick >= 10)
+    {
+        log_tick = 0;
+        APP::monit.LogInfo("pos(%.2f, %.2f, %.2f)",
+                           System.position.x, System.position.y, System.position.z);
+        APP::monit.LogSpec("v(%.2f, %.2f, %.2f)",
+                           w_vec.x, w_vec.y, w_vec.z);
+        APP::monit.LogRespond("tp:%.2f,%.2f,%.2f", tg_p.pos.x, tg_p.pos.y, tg_p.yaw);
+    }
 
     Seq::Wait(0.005f); // 200hz更新频率
   }

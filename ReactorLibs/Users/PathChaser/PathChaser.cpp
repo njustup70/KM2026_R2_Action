@@ -69,6 +69,29 @@ void PathChaserType::SetYawTarget(float ang_rad)
     }
 }
 
+PathChaserType::DebugPathTarget PathChaserType::GetDebugTargetByCurrentT() const
+{
+    DebugPathTarget out;
+    if (_mode != ChaseMode::Path || !_use_t_ref || !_path_valid || _waypoints == nullptr || _waypoint_count == 0)
+    {
+        return out;
+    }
+
+    PathRef ref = _sample_ref_by_time(_elapsed_sec);
+    out.valid = true;
+    out.pos = ref.pos;
+    out.yaw = ref.yaw;
+    out.vel = ref.vel;
+    out.omega = ref.omega;
+    out.t = ref.t;
+    return out;
+}
+
+Vec2 PathChaserType::GetDebugTargetPosByCurrentT() const
+{
+    return GetDebugTargetByCurrentT().pos;
+}
+
 float PathChaserType::_wrap_pi(float rad)
 {
     while (rad > PI) rad -= 2.0f * PI;

@@ -259,8 +259,8 @@ void Walk_To_Dock(StateCore *core)
   
   APP::jaw.SetTrackMode(false);
 
-  APP::jaw.SetPosCode(APP::jaw._hori_origin_code - JawConst::_hori_max_travel_code / 2 - 100000, 
-    APP::jaw._vert_origin_code - 236000);
+  APP::jaw.SetPosCode(APP::jaw._hori_origin_code - JawConst::_hori_max_travel_code / 2, 
+    APP::jaw._vert_origin_code - 200000);
 
   APP::monit.LogInfo("Fetch and Dock again.");
 
@@ -316,8 +316,6 @@ void Dock_Fetch_And_Back(StateCore *core)
     {
       // 离开对接模式
       APP::jaw.SetTrackMode(false);
-      // 清除标志位
-      APP::comm_center.ClearDockFlag();
       // 跳出等待，准备进入二区
       giveup_dock = true;
       break;
@@ -349,8 +347,8 @@ void Dock_Fetch_And_Back(StateCore *core)
   // 只有没有放弃对接时，才将矛头回中。否则害怕损坏机构
   if (!giveup_dock)
   {
-    APP::jaw.SetPosCode(APP::jaw._hori_origin_code - JawConst::_hori_max_travel_code / 2 - 100000, 
-      APP::jaw._vert_origin_code - 236000);
+    APP::jaw.SetPosCode(APP::jaw._hori_origin_code - JawConst::_hori_max_travel_code / 2, 
+      APP::jaw._vert_origin_code - 200000);
   }
 
   APP::monit.LogInfo("Go to Climb.");

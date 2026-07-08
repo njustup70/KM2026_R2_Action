@@ -15,6 +15,7 @@
 #include "Area3_Act.hpp"
 
 /// @brief 所有的路径文件
+#include "PathCenter.hpp"
 #include "ttd_1.hpp"
 #include "ttd_2.hpp"
 #include "ttd_3.hpp"
@@ -210,33 +211,34 @@ void Put_First_Block(StateCore *core)
   }
 
   // 先把块抬起来
-  APP::get_block.LiftUp();
+  // APP::get_block.LiftUp();
 
-  MOVE::MoveToTargGes(Vec3(11.1f, 1.3f, 0.0f));
-  // 等待遥控器的出发指令
+  // MOVE::MoveToTargGes(Vec3(11.1f, 1.3f, 0.0f));
+  // // 等待遥控器的出发指令
+  // // while(MOD::farcon.button_second_half[0] != 1)
+  // // {
+  // //   Response_Button();
+  // //   Seq::Wait(0.01f);
+  // // }
+  // MOVE::MoveToTargGes(Vec3(11.08f, 2.71f, 0.0f));
+  // // 等待遥控器的出发指令
   // while(MOD::farcon.button_second_half[0] != 1)
   // {
   //   Response_Button();
   //   Seq::Wait(0.01f);
   // }
-  MOVE::MoveToTargGes(Vec3(11.08f, 2.71f, 0.0f));
-  // 等待遥控器的出发指令
-  while(MOD::farcon.button_second_half[0] != 1)
-  {
-    Response_Button();
-    Seq::Wait(0.01f);
-  }
-  MOVE::MoveToTargGes(Vec3(11.08f, 3.39f, 0.0f));
+  // MOVE::MoveToTargGes(Vec3(11.08f, 3.39f, 0.0f));
 
-  // 等待遥控器的出发指令
-  while(MOD::farcon.button_second_half[0] != 1)
-  {
-    Response_Button();
-    Seq::Wait(0.01f);
-  }
+  // // 等待遥控器的出发指令
+  // while(MOD::farcon.button_second_half[0] != 1)
+  // {
+  //   Response_Button();
+  //   Seq::Wait(0.01f);
+  // }
 
-  // 这个点不能给 0.75，定位不准，回来想办法解决
-  MOVE::MoveToTargGes(Vec3(10.70f, 5.20f, 1.571f));
+  // // 这个点不能给 0.75，定位不准，回来想办法解决
+  // MOVE::MoveToTargGes(Vec3(10.70f, 5.20f, 1.571f));
+  MOVE::MoveToTargPos(PATH::A23_2());
 
   // 等待，保障稳定性
   Seq::Wait(1.0f);

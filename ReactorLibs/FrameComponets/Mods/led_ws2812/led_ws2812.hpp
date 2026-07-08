@@ -507,10 +507,10 @@ bool LedWs2812<MaxLedNumsT>::_ApplyTempBlinkFrame()
         Color color = temp_blink_color_ * BiasFactor;
         _FillOverlayFrame(color.r, color.g, color.b);
     }
-    else if (temp_blink_state_on_)
+    else
     {
         temp_blink_state_on_ = false;
-        _RestoreBaseFrame();
+        _FillOverlayFrame(0, 0, 0);
     }
 
     return true;

@@ -298,7 +298,7 @@ void Jaw::PitchUp()
 
 void Jaw::PitchDown()
 {
-    _pitch_pos = _pitch_origin_code + (JawConst::_pitch_max_travel_code / 2) - 4000;
+    _pitch_pos = _pitch_origin_code + (JawConst::_pitch_max_travel_code / 2) - 5000;
 }
 
 void Jaw::SetPos(float x_mm, float y_mm)
@@ -450,7 +450,7 @@ void Jaw::_GetVertOrigin()
             // 记录中点偏移
             _vert_origin_code = motor_3508_vert.driver.measure.total_angle;
             // 往回走到三分之一
-            _y_pos = _vert_origin_code - 174600; //后面加的是夹到矛头最好的位置偏移
+            _y_pos = _vert_origin_code - 200000; //后面加的是夹到矛头最好的位置偏移
             motor_3508_vert.SetPos(_y_pos);
         }
     }

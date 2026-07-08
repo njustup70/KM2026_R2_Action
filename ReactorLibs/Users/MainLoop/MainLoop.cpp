@@ -67,6 +67,13 @@ void MainLoop::Update()
 
     // 处理重试逻辑
     if (!graph_started) JudgeRetryFlags();
+
+    static bool kfs_blinked = false;
+    if (APP::comm_center.IsKFSSeqRecved() && !kfs_blinked)
+    {
+        test_led.TempBlink(Color::Pink, 3, 0.5f);
+        kfs_blinked = true;
+    }
 }
 
 

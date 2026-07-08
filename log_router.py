@@ -5,6 +5,8 @@ import threading
 import sys
 import select
 import time
+from datetime import datetime
+from pathlib import Path
 from colorama import init, Fore, Style
 
 # 初始化 Colorama 以支持 Windows 终端颜色
@@ -22,6 +24,9 @@ TRACK_JUSTFLOAT_HEAD = b"[j]"
 
 # 是否显示每一行接收到的原始数据 (调试开关)，可通过终端动态配置
 DEBUG_SHOW_RAW_LINE = False
+
+# 是否将识别到的日志自动写入 ./logs/y_m_d_h_m_s_log.txt
+ENABLE_FILE_LOGGING = True
 
 # 转发给 VOFA+ 的 TCP 端口 (VOFA+ 选 TCP Client 连接此端口)
 TCP_HOST = "0.0.0.0"
@@ -166,6 +171,19 @@ def main():
 
     port_name, baud_rate, DEBUG_SHOW_RAW_LINE = serial_config
 
+    log_file = None
+    if ENABLE_FILE_LOGGING:
+        try:
+            logs_dir = Path("./logs")
+            logs_dir.mkdir(parents=True, exist_ok=True)
+            log_filename = datetime.now().strftime("%Y_%m_%d_%H_%M_%S_log.txt")
+            log_path = logs_dir / log_filename
+            log_file = log_path.open("a", encoding="utf-8", buffering=1)
+            print(f"{Fore.CYAN}[System] File logging enabled: {log_path}")
+        except Exception as e:
+            log_file = None
+            print(f"{Fore.YELLOW}[System] File logging disabled: {e}")
+
     if "-p" not in sys.argv[1:]:
         print(
             f"{Fore.CYAN}[System] Auto selected {port_name} @ {baud_rate}, raw/debug output: {'ON' if DEBUG_SHOW_RAW_LINE else 'OFF'}"
@@ -288,6 +306,9 @@ def main():
                                     end="",
                                     flush=True,
                                 )
+                                if log_file:
+                                    log_file.write(line_str)
+                                    log_file.flush()
 
                                 # 主动避免粘包: 多截取的尾部换行极低概率可能会混入波形的有效有效帧 (0x0A/0x0D)。
                                 # 一旦错杀没发给波形会导致帧错位死机。
@@ -397,6 +418,8 @@ def main():
         print(f"\n{Fore.YELLOW}Stopping...")
     finally:
         forwarder.stop()
+        if log_file:
+            log_file.close()
         if "ser" in locals() and ser.is_open:
             ser.close()
 

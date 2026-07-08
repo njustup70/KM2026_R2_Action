@@ -43,6 +43,17 @@ class PathChaserType : public Application
         Vec3 body;     // 车体坐标系速度命令 (vx, vy, omega)
     };
 
+    /// @brief 调试用路径参考点信息
+    struct DebugPathTarget
+    {
+        bool valid = false;
+        Vec2 pos;      // 当前 t 对应的目标位置
+        float yaw = 0.0f;
+        Vec2 vel;
+        float omega = 0.0f;
+        float t = 0.0f;
+    };
+
     /// @brief 设置路径并尝试开始追踪
     /// @return true=接受并进入 Path 模式，false=路径非法或起点偏差过大
     template <size_t N>
@@ -126,6 +137,12 @@ class PathChaserType : public Application
 
     /// @brief 获取当前命令（世界系+车体系）
     CtrlCmd GetCmd() const { return _cmd; }
+
+    /// @brief 调试：获取当前路径追踪时刻 t 对应的目标参考点
+    DebugPathTarget GetDebugTargetByCurrentT() const;
+
+    /// @brief 调试：只获取当前路径追踪时刻 t 对应的目标位置
+    Vec2 GetDebugTargetPosByCurrentT() const;
 
     /// @brief 设置路径启动时的起点距离门限，单位m；<=0 表示关闭该保护
     void SetPathStartGuardDist(float dist) { _path_start_guard_dist = dist; }
