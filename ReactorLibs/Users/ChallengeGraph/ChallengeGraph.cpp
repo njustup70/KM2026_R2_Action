@@ -330,10 +330,10 @@ void Dock_Fetch_And_Back(StateCore *core)
 
   // 等待 12 秒
   float wait_time_s = 0.0f;
-  while (wait_time_s < 6.0f)
+  while (wait_time_s < 12.0f)
   {
     wait_time_s += 0.05f;
-    wait_progress = wait_time_s / 6.0f;
+    wait_progress = wait_time_s / 12.0f;
     Seq::Wait(0.05f);
   }
 
