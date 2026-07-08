@@ -27,6 +27,7 @@
 
 #include "MainLoop.hpp"
 #include "Area2_Act.hpp"
+#include "Area3_Act.hpp"
 
 
 StateGraph graph("LoopGraph");
@@ -42,82 +43,12 @@ void Action_of_Dege(StateCore *core)
   {
     Response_Button_main();
     Seq::Wait(0.01f);
-  }
-
-  // 抬升先上去
-  APP::get_block.motor_dm_lift.SetPosVel(-750, 15);
-
-  // 先开爪
-  APP::vac_claw.OpenSnap();
-  Seq::Wait(0.4f);
-
-  // 再伸出
-  APP::vac_claw.StretchOut();
-
-  // 等待伸出完成后，闭上爪
-  Seq::Wait(1.5f);
-  APP::vac_claw.CloseSnap();
-
-  // 等爪子抓住后
-  Seq::Wait(2.5f);
-
-  // 打开负压泵
-  APP::get_block.OpenPump();
-
-  // 等待吸住后，翻转物块，收爪
-  Seq::Wait(1.0f);
-  APP::vac_claw.StretchBack();
-
-  // 此时爪还抓着物块，关闭负压泵
-  APP::get_block.ClosePump();
-
-  APP::get_block._StartBelt();
-
-  APP::vac_claw.OpenSnap();
-
-  APP::get_block.OpenPRV();
-
-  APP::get_block.Store();
-  
-  // Seq::WaitUntil([]()
-  // {
-  //   return APP::get_block._sensor[0].Read();
-  // });
-
-  // Seq::Wait(0.5f);
-
-  // APP::get_block.motor_dm_lift.SetPosVel(-5.0f, 15);
-
-  // Seq::Wait(3.0f);
-
-  // APP::get_block.motor_dm_lift.SetPosVel(-750.0f, 15);
-
-  // APP::get_block._StopBelt();
-
-
-  while(MOD::farcon.button_second_half[0] != 1)
-  {
-    Response_Button_main();
-    Seq::Wait(0.01f);
-  }
-
-  // APP::get_block.Store();
-
-  core->GetCurState().Complete = true;
-}
-
-void Action_of_Dege_Fetch_UP200(StateCore *core)
-{
-  while(MOD::farcon.button_second_half[0] != 1)
-  {
-    Response_Button_main();
-    Seq::Wait(0.01f);
   }  
   
   // Area2::mei_lin_array.FetchBlock(BlockHeight::DOWN200);
-  APP::leg.SetFrontPosSlow(-200.0f, 5.0f);
-  APP::leg.SetBackPosSlow(-200.0f, 5.0f);
-
+  // APP::leg.SetFrontPosSlow(-200.0f, 5.0f);
+  // APP::leg.SetBackPosSlow(-200.0f, 5.0f);
+  Area3::FetchBlockOnTheGround();
   // Area2::block_pos.GetIn(1);
   // Area2::mei_lin_array.Climb_Up200();
 
@@ -228,16 +159,16 @@ void MainFrameCpp()
   Area2::mei_lin_array.Init();
 
   // 注册状态机（仅注册，不启动。启动在 Mainloop 中）
-  APP::main_loop.Challenge_Explore_RedGr_id = Config_R2_Challenge_StateGraph();
-  APP::main_loop.Challenge_Explore_BlueGr_id = Config_R2_Challenge_Blue_StateGraph();
+  // APP::main_loop.Challenge_Explore_RedGr_id = Config_R2_Challenge_StateGraph();
+  // APP::main_loop.Challenge_Explore_BlueGr_id = Config_R2_Challenge_Blue_StateGraph();
 
-  // 注册三区挑战赛
-  APP::main_loop.Challenge_Treasure_BlueGr_id = ChallengeArenaPK_Graph_Blue();
-  APP::main_loop.Challenge_Treasure_RedGr_id = ChallengeArenaPK_Graph();
+  // // 注册三区挑战赛
+  // APP::main_loop.Challenge_Treasure_BlueGr_id = ChallengeArenaPK_Graph_Blue();
+  // APP::main_loop.Challenge_Treasure_RedGr_id = ChallengeArenaPK_Graph();
 
-  // APP::state_core.RegistGraph(graph);
-  // graph.Degenerate(Action_of_Dege_Fetch_UP200);
-  // APP::state_core.Enable(0);
+  APP::state_core.RegistGraph(graph);
+  graph.Degenerate(Action_of_Dege);
+  APP::state_core.Enable(0);
 }
 
 
