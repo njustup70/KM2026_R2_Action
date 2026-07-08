@@ -61,11 +61,13 @@ public:
     static void FieldToggleRxCb(uint8_t func_code, const uint8_t *payload, uint8_t payload_len, void *user_ctx);
     static void OpticalRxCallback(uint8_t func_code, const uint8_t* payload, uint8_t payload_len, void* user_ctx);
     static void DockRxCallback(uint8_t func_code, const uint8_t* payload, uint8_t payload_len, void* user_ctx);
+    static void ArenaActRxCallback(uint8_t func_code, const uint8_t* payload, uint8_t payload_len, void* user_ctx);
     
     Area3ActCode Get_R1_InstruCode() const { return _area3_act_code; }
     
     /// @warning 享受完指令后，请务必调用 Reset_R1_InstruCode() 来清除指令码，避免重复执行
     void Reset_R1_InstruCode() { _area3_act_code = Area3ActCode::Idle; }
+    void Set_R1_InstruCode(Area3ActCode code) { _area3_act_code = code; }
 
     /**
      * @brief 三区光通信，接收来自R1的指令，路由至不同状态

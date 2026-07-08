@@ -55,6 +55,7 @@ void CommCenter::Start()
     // // 注册光通信数据回调（如果需要）
     MOD::optical_comm.Regist(0xC2, OpticalRxCallback); // kfs数据回调
     MOD::optical_comm.Regist(0xC3, DockRxCallback);
+    MOD::optical_comm.Regist(0xC4, ArenaActRxCallback);
 }
 
 void CommCenter::Update()
@@ -259,3 +260,12 @@ void CommCenter::DockRxCallback(uint8_t func_code, const uint8_t* payload, uint8
         APP::monit.LogRespond("[Optic] Dock bias: x=%.1fmm y=%.1fmm", bias.x, bias.y);
     }
 }
+
+void CommCenter::ArenaActRxCallback(uint8_t func_code, const uint8_t* payload, uint8_t payload_len, void* user_ctx)
+{
+    if(func_code == 0xC4)
+    {
+        APP::comm_center.Set_R1_InstruCode(static_cast<Area3ActCode>(payload[0]));
+    }
+}
+
