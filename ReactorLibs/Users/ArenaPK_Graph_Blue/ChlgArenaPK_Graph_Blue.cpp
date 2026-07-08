@@ -29,6 +29,7 @@ static void Waiting_for_Start(StateCore *core);
 static void Put_First_Block(StateCore *core);
 static void Waiting_R1_Instru(StateCore *core);
 static void Fetch2_From_Mid(StateCore *core);
+static void PutBlock_L2(Vec2 pos);
 
 /** **/
 
@@ -256,19 +257,22 @@ void Waiting_R1_Instru(StateCore *core)
   {
     case Area3ActCode::Put_L2_N4_Block:
     {
-
+      PutBlock_L2(Arena_R2_PutKFSPos_Blue[0]);
       break;
     }
     case Area3ActCode::Put_L2_N5_Block:
     {
+      PutBlock_L2(Arena_R2_PutKFSPos_Blue[1]);
       break;
     }
     case Area3ActCode::Put_L2_N6_Block:
     {
+      PutBlock_L2(Arena_R2_PutKFSPos_Blue[2]);
       break;
     }
     case Area3ActCode::Put_L3:
     {
+      // 新的放块函数
       break;
     }
     case Area3ActCode::Combine:
@@ -288,6 +292,8 @@ void Waiting_R1_Instru(StateCore *core)
       break;
     }
   }
+  // 清除，防止重复执行
+  APP::comm_center.Reset_R1_InstruCode();
 }
 
 /*******************************************************************************/
@@ -331,9 +337,23 @@ static void Fetch2_From_Mid(StateCore *core)
   core->GetCurState().Complete = true;
 }
 
-static void PutBlock()
+// 放二层块的封装
+static void PutBlock_L2(Vec2 pos)
 {
+  // 此时接收到R1的命令，等待2.0s，R1让开
+  Seq::Wait(2.0f);
 
+  // 抬腿
+  APP::leg.SetFrontPos(-385);
+  APP::leg.SetBackPos(-365);
+
+  // 走到九宫格对应格子前
+  MOVE::MoveToTargGes(Vec3(pos.x, pos.y, -1.5707));
+
+  // 新的放块函数
+  
+  // 回到光通信位置，等待下一个指令
+  MOVE::MoveToTargGes(Vec3(10.75, 0.9, -1.5707));
 }
 /*******************************************************************************/
 

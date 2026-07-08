@@ -34,6 +34,10 @@ Vec2 Arena_R2_KFS_FetchPos[2] = {
   Vec2(11.1, 3.405), Vec2(11.1, 2.685)
 }; // 块之间间隔：0.175 + 0.175 + 0.37 = 0.72 m
 
+Vec2 Arena_R2_PutKFSPos[3] = {
+  Vec2(10.21f, 0.7f), Vec2(10.75f, 0.7f), Vec2(11.29f, 0.7f)
+}; // 分别对应4、5、6格子
+
 /**
  * @brief 技能挑战赛：“九宫藏宝” 状态图初始化
  * 
@@ -348,6 +352,25 @@ static void Fetch2_From_Mid(StateCore *core)
   core->GetCurState().Complete = true;
 }
 
+// 放二层块的封装
+static void PutBlock_L2(Vec2 pos)
+{
+  // 此时接收到R1的命令，等待2.0s，R1让开
+  Seq::Wait(2.0f);
+
+  // 抬腿
+  APP::leg.SetFrontPos(-385);
+  APP::leg.SetBackPos(-365);
+
+  // 走到九宫格对应格子前
+  MOVE::MoveToTargGes(Vec3(pos.x, pos.y, 1.5707));
+
+  // 新的放块函数
+  
+  // 回到光通信位置，等待下一个指令
+  MOVE::MoveToTargGes(Vec3(10.75, 5.50, 1.5707));
+}
+
 /**
  * @brief 此时，R2靠边站好。并将光通信 / 红外接收端向外对准，准备接收信息。并路由至不同状态
  * @note 这个函数里如果没有阻塞，那么根据状态机的设计，这个状态将会以 200Hz 循环
@@ -363,14 +386,17 @@ void Waiting_R1_Instru(StateCore *core)
   {
     case Area3ActCode::Put_L2_N4_Block:
     {
+      PutBlock_L2(Arena_R2_PutKFSPos[0]);
       break;
     }
     case Area3ActCode::Put_L2_N5_Block:
-    {
+    {      
+      PutBlock_L2(Arena_R2_PutKFSPos[1]);
       break;
     }
     case Area3ActCode::Put_L2_N6_Block:
     {
+      PutBlock_L2(Arena_R2_PutKFSPos[2]);
       break;
     }
     case Area3ActCode::Put_L3:
