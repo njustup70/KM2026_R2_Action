@@ -15,7 +15,6 @@
 #include "Area3_Act.hpp"
 
 /// @brief 所有的路径文件
-#include "PathCenter.hpp"
 #include "ttd_1.hpp"
 #include "ttd_2.hpp"
 #include "ttd_3.hpp"
@@ -210,28 +209,34 @@ void Put_First_Block(StateCore *core)
     Seq::Wait(0.01f);
   }
 
-  MOVE::MoveToTargPos(PATH::A23_2());
+  // 先把块抬起来
+  APP::get_block.LiftUp();
 
-  // MOVE::MoveToTargGes(Vec3(11.38f, 1.2f, 0.0f));
-
-  // MOVE::MoveToTargGes(Vec3(11.08f, 2.71f, 0.0f));
+  MOVE::MoveToTargGes(Vec3(11.1f, 1.3f, 0.0f));
   // 等待遥控器的出发指令
   // while(MOD::farcon.button_second_half[0] != 1)
   // {
   //   Response_Button();
   //   Seq::Wait(0.01f);
   // }
-  // MOVE::MoveToTargGes(Vec3(11.08f, 3.39f, 0.0f));
+  MOVE::MoveToTargGes(Vec3(11.08f, 2.71f, 0.0f));
+  // 等待遥控器的出发指令
+  while(MOD::farcon.button_second_half[0] != 1)
+  {
+    Response_Button();
+    Seq::Wait(0.01f);
+  }
+  MOVE::MoveToTargGes(Vec3(11.08f, 3.39f, 0.0f));
 
   // 等待遥控器的出发指令
-  // while(MOD::farcon.button_second_half[0] != 1)
-  // {
-  //   Response_Button();
-  //   Seq::Wait(0.01f);
-  // }
+  while(MOD::farcon.button_second_half[0] != 1)
+  {
+    Response_Button();
+    Seq::Wait(0.01f);
+  }
 
   // 这个点不能给 0.75，定位不准，回来想办法解决
-  // MOVE::MoveToTargGes(Vec3(10.75f, 5.05f, 1.571f));
+  MOVE::MoveToTargGes(Vec3(10.70f, 5.20f, 1.571f));
 
   // 等待，保障稳定性
   Seq::Wait(1.0f);
@@ -243,9 +248,8 @@ void Put_First_Block(StateCore *core)
     Seq::Wait(0.01f);
   }
   // 抬起腿
-  APP::leg.SetFrontPosSlow(-395, 0.8f);
-  APP::leg.SetBackPosSlow(-375, 0.8f);
-
+  APP::leg.SetFrontPos(-372);
+  APP::leg.SetBackPos(-372);
   // 等腿抬好
   Seq::Wait(1.5f);
 
@@ -323,7 +327,7 @@ static void Fetch2_From_Mid(StateCore *core)
     Seq::Wait(0.01f);
   }
   // 移动到第二个块面前
-  MOVE::MoveToTargGes(Vec3(Arena_R2_KFS_FetchPos[1].x, Arena_R2_KFS_FetchPos[1].y, 0.0f));
+  MOVE::MoveToTargGes(Vec3(11.1f, 3.315f, 0.0f));
   // APP::path_chaser.ChaseGes();
 
   // 等待到达
@@ -342,7 +346,7 @@ static void Fetch2_From_Mid(StateCore *core)
   Seq::Wait(1.0f);
 
   // 返回等待点（光通信朝向 R1）
-  MOVE::MoveToTargGes(Vec3(10.1f, 2.3f, -1.571f));
+  MOVE::MoveToTargGes(Vec3(10.75f, 0.7f, -1.571f));
 
   // 至此：完成所有R2的全自动逻辑，进入R1的指令等待状态
   core->GetCurState().Complete = true;
@@ -416,6 +420,8 @@ void Waiting_R1_Instru(StateCore *core)
       break;
     }
   }
+  // 清除，防止重复执行
+  APP::comm_center.Reset_R1_InstruCode();
 }
 
 /*******************************************************************************/
