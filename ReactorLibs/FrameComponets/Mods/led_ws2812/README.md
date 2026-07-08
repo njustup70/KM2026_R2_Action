@@ -4,7 +4,7 @@
 `LedWs2812` 是一个基于 `PWM + DMA` 的 WS2812 灯带驱动，提供：
 - 单点设色：`SetColor`
 - 整带填充：`Fill`
-- 预设效果：`Breath / GradientFlow / Running / Lit / Expand / Blink / ProgBar`
+- 预设效果：`Breath / GradientFlow / Running / Lit / Expand / Blink / TempBlink / ProgBar`
 - 循环维护：`Handle`
 - 底层下发：`Upload`
 
@@ -76,7 +76,14 @@ void MyLightApp::Start()
 led.Blink(Color(a, b, c), 3, 0.5f);
 ```
 
-这表示灯带会按 50% 占空比闪烁 3 次，单个闪烁节拍为 0.5s；完成后会再保持熄灭 1.5s，然后重新进入下一轮闪烁。
+这表示灯带会按 50% 占空比闪烁 3 次，单个闪烁节拍为 0.5s；完成后会再保持熄灭 1.0s，然后重新进入下一轮闪烁。
+
+### TempBlink 用法
+```cpp
+led.TempBlink(Color(a, b, c), 3, 0.5f, 2);
+```
+
+`TempBlink()` 不会切换当前灯效，而是在当前灯效之上临时覆盖闪烁。上例表示按 `Blink` 同样的节奏闪烁 2 个循环；完成后会自动恢复到原来的灯效或静态颜色。
 
 ### 进度条用法
 ```cpp
