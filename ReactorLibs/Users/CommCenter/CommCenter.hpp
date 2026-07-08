@@ -53,6 +53,8 @@ public:
     bool AtFirstArea() const { return at_first_area; }
     bool AtThirdArea() const { return !at_first_area; }
 
+    bool area3_act_over = false;
+
     void ClearDockFlag();
     void SlamCorrection(); // 触发Sick纠正
     static void SlamRxCallback(uint8_t func_code, const uint8_t *payload, uint8_t payload_len, void *user_ctx);

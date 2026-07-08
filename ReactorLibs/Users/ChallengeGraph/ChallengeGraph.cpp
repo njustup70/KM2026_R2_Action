@@ -130,6 +130,8 @@ void Waiting_for_Start(StateCore *core)
   APP::leg.F_AlmostOrigin();
   APP::leg.B_AlmostOrigin();
 
+  Seq::Wait(0.1f);
+
   // 等待遥控器指令，然后才进入下一步
   while(MOD::farcon.button_second_half[0] != 1)
   {
@@ -450,7 +452,7 @@ void Goto_Area2(StateCore *core)
 
   APP::monit.LogInfo("I'm Ahead of MeiLin.");
 
-  APP::comm_center.SlamCorrection();
+  // APP::comm_center.SlamCorrection();
 
   // 防止纠正的时候抬腿了
   Seq::Wait(2.0f);

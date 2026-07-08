@@ -379,7 +379,7 @@ void Jaw::ChangePos(float delta_x_mm, float delta_y_mm)
     if (_x_pos > hori_max) _x_pos = hori_max;
     if (_x_pos < hori_min) _x_pos = hori_min;
 
-    int vert_min = _vert_origin_code - JawConst::_vert_max_travel_code;
+    int vert_min = _vert_origin_code - JawConst::_vert_max_travel_code + 4000; // 给个 4000 不堵转
     int vert_max = _vert_origin_code;
     if (_y_pos > vert_max) _y_pos = vert_max;
     if (_y_pos < vert_min) _y_pos = vert_min;

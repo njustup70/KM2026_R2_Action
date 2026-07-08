@@ -4,7 +4,7 @@ GetBlock& APP::get_block = GetBlock::GetInstance();
 
 // ==================== 超时间隔 ====================
 static constexpr float T_BELT = 20.0f;
-static constexpr float T_LIFT = 3.2f; // 摩擦带上下的时间
+static constexpr float T_LIFT = 3.5f; // 摩擦带上下的时间
 static constexpr float T_LIFT_SETTLE = 3.0f;    // 传感器触发后等待抬升到位的短超时
 static constexpr float T_LIFT_BEFORE_BELT = 4.2f; // 取块1时抬升先走一段再转摩擦带
 static constexpr float T_FEED = 10.0f;
@@ -51,12 +51,12 @@ void GetBlock::Start()
         .ADRC_Womega(42.0f, 9.6f)
         .ADRC_Physic(1.0e-4f, 0.18f)
         .ADRC_Limit(8.0f)
-        .SpdLimit(8000.0f)
-        .ADRC_MaxPlannedVel(6800.0f)
+        .SpdLimit(4000.0f)
+        .ADRC_MaxPlannedVel(3800.0f)
         .ADRC_SOTF(0.05f)
         .SetDt(0.002)
         .Apply();
-    // motor_2006_feed.driver.Enable();
+    motor_2006_feed.driver.Enable();
 
     /****  两个传感器（下仓、上仓） ****/
     _sensor[0].Init(PIN_SENSOR_LOWER);
@@ -77,7 +77,7 @@ void GetBlock::Start()
     /**** 初始位置 ****/
     dm_fric_spd = 0.0f;
     dm_lift_pos = -_lift_pos_lower;
-    motor_2006_feed.SetPos(_feed_pos_retract);
+    motor_2006_feed.SetPos(-10000); // 出去是负的
 
     /**** 初始扫描 ****/
     _ReadSensors();
@@ -381,7 +381,7 @@ void GetBlock::_UpdateFSM()
                 _fsm = FSM::STORE_HOLD_PUT;
                 APP::monit.LogInfo("[GetBlock] Block2 at lower, waiting for Put()");
             }
-            else if (_LiftNear(-_lift_pos_upper))
+            else if (_IsTimeout(T_LIFT))
             {
                 // 块1已到且抬升已到高位 → 降下来接块
                 // _action_tick = System.runtime_tick;  // old
@@ -411,8 +411,8 @@ void GetBlock::_UpdateFSM()
             _StartBelt();
         }
 
-        // 下仓检测到块 && 抬升到高位 → 降下来接块
-        if (_grid[0] && _LiftNear(-_lift_pos_upper))
+        // 下仓检测到块 && 抬升超时（到高位）→ 降下来接块
+        if (_grid[0] && _IsTimeout(T_LIFT))
         {
             _StopBelt();
             _lower = true;
@@ -435,12 +435,12 @@ void GetBlock::_UpdateFSM()
     {
         dm_lift_pos = -_lift_pos_lower;
 
-        if (_LiftNear(-_lift_pos_lower))
+        if (_IsTimeout(T_LIFT))
         {
             // _action_tick = System.runtime_tick;  // old
             _action_tick = _local_tick;
             _fsm = FSM::STORE_LIFT_UP;
-            APP::monit.LogInfo("[GetBlock] Lift at bottom, block on flap, lift up");
+            APP::monit.LogInfo("[GetBlock] Lift at bottom (timeout), block on flap, lift up");
         }
         break;
     }
@@ -460,8 +460,8 @@ void GetBlock::_UpdateFSM()
             APP::monit.LogInfo("[GetBlock] Block entered upper chamber, continuing to target");
         }
 
-        // 传感器触发后等待抬升到位
-        if (_upper && _LiftNear(-_lift_pos_upper))
+        // 传感器触发后等待抬升到位（短超时）
+        if (_upper && _IsTimeout(T_LIFT_SETTLE))
         {
             if (_storing_b2)
             {
@@ -473,6 +473,11 @@ void GetBlock::_UpdateFSM()
                 _fsm = FSM::STORE_WAIT_SECOND;
                 APP::monit.LogInfo("[GetBlock] Block1 at upper, waiting for block2");
             }
+        }
+        else if (!_upper && _IsTimeout(T_LIFT))
+        {
+            APP::monit.LogError("[GetBlock] Lift up timeout (sensor not triggered)");
+            _fsm = FSM::ABORT;
         }
         break;
     }
@@ -504,8 +509,8 @@ void GetBlock::_UpdateFSM()
         // 块2随挡片下移后离开上仓传感器检测范围 → 传感器辅助判断
         dm_lift_pos = -_lift_pos_lower;
 
-        // 上仓传感器不再检测到块（块已随挡片下移离开），或位置到位
-        if (!_grid[1] && _LiftNear(-_lift_pos_lower))
+        // 上仓传感器不再检测到块（块已随挡片下移离开），或超时兜底
+        if (!_grid[1] && _IsTimeout(T_LIFT))
         {
             // _action_tick = System.runtime_tick;  // old
             _action_tick = _local_tick;
@@ -609,20 +614,25 @@ void GetBlock::_UpdateFSM()
         dm_lift_pos = -_lift_pos_upper;
 
         // 传感器在上仓下沿，块刚进入就会检测到 → 记录状态，继续上行到顶
-        // if (_grid[1] && !_upper)
-        // {
-        //     _upper = true;
-        //     _lower = false;
-        //     // _action_tick = System.runtime_tick;  // old
-        //     _action_tick = _local_tick;
-        //     APP::monit.LogInfo("[GetBlock] Block entered upper, continuing to top for ejection");
-        // }
+        if (_grid[1] && !_upper)
+        {
+            _upper = true;
+            _lower = false;
+            // _action_tick = System.runtime_tick;  // old
+            _action_tick = _local_tick;
+            APP::monit.LogInfo("[GetBlock] Block entered upper, continuing to top for ejection");
+        }
 
         // 传感器触发后等待抬升到位 → 直接推出
-        if (_upper && _LiftNear(-_lift_pos_upper))
+        if (_upper && _IsTimeout(T_LIFT_SETTLE))
         {
             _fsm = FSM::PUT_FEED_PUSH;
             APP::monit.LogInfo("[GetBlock] Lift at top, ejecting block");
+        }
+        else if (!_upper && _IsTimeout(T_LIFT))
+        {
+            APP::monit.LogError("[GetBlock] Put lift up timeout");
+            _fsm = FSM::ABORT;
         }
         break;
     }
@@ -632,7 +642,7 @@ void GetBlock::_UpdateFSM()
     {
         dm_lift_pos = -_lift_pos_lower;
 
-        if (_LiftNear(-_lift_pos_lower))
+        if (_IsTimeout(T_LIFT))
         {
             // _action_tick = System.runtime_tick;  // old
             _action_tick = _local_tick;

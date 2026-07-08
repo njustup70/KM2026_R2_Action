@@ -145,7 +145,7 @@ void SafeFirstPut()
     {
       case 1: // 要放最右边的块
         APP::monit.LogInfo("Middle Block exists, Move to right side");
-        APP::path_chaser.ChaseGes(Vec3(11.02f, 0.7f, 1.571f));
+        APP::path_chaser.ChaseGes(Vec3(11.02f, 5.20f, 1.571f));
         while (!APP::path_chaser.IsFinished())
         {
           APP::chas.Move(APP::path_chaser.GetCmdBody(), 0.01f);
@@ -155,7 +155,7 @@ void SafeFirstPut()
 
       case 2: // 要放最左边的块
         APP::monit.LogInfo("Middle Block exists, Move to left side");
-        APP::path_chaser.ChaseGes(Vec3(10.48f, 0.7f, 1.571f));
+        APP::path_chaser.ChaseGes(Vec3(10.48f, 5.20f, 1.571f));
         while (!APP::path_chaser.IsFinished())
         {
           APP::chas.Move(APP::path_chaser.GetCmdBody(), 0.01f);
@@ -204,15 +204,34 @@ void Put_First_Block(StateCore *core)
     Seq::Wait(0.01f);
   }
 
-  // 然后走到九宫格前
-  MOVE::MoveToTargGes(Vec3(11.35f, 2.45f, 0.0f));
+  // 先把块抬起来
+  APP::get_block.LiftUp();
+
+  MOVE::MoveToTargGes(Vec3(11.21f, 1.59f, 0.0f));
+  // 等待遥控器的出发指令
+  // while(MOD::farcon.button_second_half[0] != 1)
+  // {
+  //   Response_Button();
+  //   Seq::Wait(0.01f);
+  // }
+  MOVE::MoveToTargGes(Vec3(11.08f, 2.71f, 0.0f));
   // 等待遥控器的出发指令
   while(MOD::farcon.button_second_half[0] != 1)
   {
     Response_Button();
     Seq::Wait(0.01f);
   }
-  MOVE::MoveToTargGes(Vec3(10.75f, 5.30f, 1.571f));
+  MOVE::MoveToTargGes(Vec3(11.08f, 3.39f, 0.0f));
+
+  // 等待遥控器的出发指令
+  while(MOD::farcon.button_second_half[0] != 1)
+  {
+    Response_Button();
+    Seq::Wait(0.01f);
+  }
+
+  // 这个点不能给 0.75，定位不准，回来想办法解决
+  MOVE::MoveToTargGes(Vec3(10.70f, 5.20f, 1.571f));
 
   // 等待，保障稳定性
   Seq::Wait(1.0f);
@@ -224,24 +243,31 @@ void Put_First_Block(StateCore *core)
     Seq::Wait(0.01f);
   }
   // 抬起腿
-  APP::leg.SetFrontPos(-365);
-  APP::leg.SetFrontPos(-365);
+  APP::leg.SetFrontPos(-372);
+  APP::leg.SetBackPos(-372);
   // 等腿抬好
   Seq::Wait(1.5f);
 
   // 等待遥控器的出发指令
-  // while(MOD::farcon.button_second_half[0] != 1)
-  // {
-  //   Response_Button();
-  //   Seq::Wait(0.01f);
-  // }
+  while(MOD::farcon.button_second_half[0] != 1)
+  {
+    Response_Button();
+    Seq::Wait(0.01f);
+  }
   // SafeFirstPut();
+  Seq::Wait(1.0f);
 
   // 放块
   APP::get_block.Put();
 
   // 等待放块完成
   Seq::Wait(1.0f);
+  // 等待遥控器的出发指令
+  while(MOD::farcon.button_second_half[0] != 1)
+  {
+    Response_Button();
+    Seq::Wait(0.01f);
+  }
 
   // 走到等待点，等待R1命令
   core->GetCurState().Complete = true;
@@ -249,6 +275,45 @@ void Put_First_Block(StateCore *core)
 
 
 /*******************************************************************************/
+
+/**
+ * @brief 假设R2从九宫格中点出发，返回取两个块的逻辑
+ * @details 还需要给R1让路
+ * @param core 
+ */
+static void Fetch2_From_Mid(StateCore *core)
+{
+  // 运行路径跟踪程序
+  // APP::path_chaser.ChasePath(PTF);
+
+  // 走到块跟前了
+  APP::monit.LogInfo("[Arena] I'm at the block.");
+
+  // 取第一个块
+  Area3::FetchBlockOnTheGround();
+
+  // 等待取块完成
+  Seq::Wait(1.0f);
+
+  // 移动到第二个块面前
+  MOVE::MoveToTargGes(Vec3(11.1f, 3.315f, 0.0f));
+  // APP::path_chaser.ChaseGes();
+
+  // 等待到达
+  APP::monit.LogInfo("[Arena] I'm at the second block.");
+
+  // 取第二个块
+  Area3::FetchBlockOnTheGround();
+
+  // 等待取块完成
+  Seq::Wait(1.0f);
+
+  // 返回等待点（光通信朝向 R1）
+  MOVE::MoveToTargGes(Vec3(10.75f, 0.7f, -1.571f));
+
+  // 至此：完成所有R2的全自动逻辑，进入R1的指令等待状态
+  core->GetCurState().Complete = true;
+}
 
 /**
  * @brief 此时，R2靠边站好。并将光通信 / 红外接收端向外对准，准备接收信息。并路由至不同状态

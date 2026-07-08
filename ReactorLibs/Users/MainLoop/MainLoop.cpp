@@ -48,10 +48,10 @@ void MainLoop::Update()
     spear_detected = spear_detector.Read();
 
     // 读取按键
-    button_pressed[0] = button_0.Read();
-    button_pressed[1] = button_1.Read();
-    button_pressed[2] = button_2.Read();
-    button_pressed[3] = button_3.Read();
+    button_pressed[0] = !button_0.Read();
+    button_pressed[1] = !button_1.Read();
+    button_pressed[2] = !button_2.Read();
+    button_pressed[3] = !button_3.Read();
 
     cnt++;
 
@@ -100,11 +100,11 @@ void MainLoop::RefreshRetryLed()
     test_led.SegLit(3, retry_color);
 }
 
-
+int area_red_blue_cnt = 0;
 void MainLoop::ToggleAreaLogics()
 {
     // 根据当前的红蓝区，4Hz (50分频) 持续发送给工控机，确保工控机知道当前的区域选择
-    static int area_red_blue_cnt = 0;
+    // static int area_red_blue_cnt = 0;
     // 如果已经确定了分区，可以不用继续发了
     static bool confirmed_area = false;
     // 防止一直触发灯带的标志位
@@ -133,13 +133,13 @@ void MainLoop::ToggleAreaLogics()
     }
 
     // 红蓝区逻辑（STM32 维护）
-    if ((MOD::farcon.toggle[3] == 1 || button_pressed[0] == 1) && targ_area == AREA_RED)
+    if ((MOD::farcon.toggle[3] == 1 ) && targ_area == AREA_RED)
     {
         targ_area = AREA_BLUE;
         APP::monit.LogRespond("Toggle Area: BLUE");
         RefreshFieldLed();
     }
-    else if ((MOD::farcon.toggle[3] == 0 || button_pressed[0] == 0) && targ_area == AREA_BLUE)
+    else if ((MOD::farcon.toggle[3] == 0) && targ_area == AREA_BLUE)
     {
         targ_area = AREA_RED;
         APP::monit.LogRespond("Toggle Area: RED");
@@ -167,7 +167,7 @@ void MainLoop::ToggleAreaLogics()
         if (targ_area == AREA_RED)
         {
             APP::monit.LogRespond("Start Challenge Graph: RED");
-            APP::state_core.Enable(Challenge_Explore_RedGr_id);
+            APP::state_core.Enable(Challenge_Treasure_RedGr_id);
             confirmed_area = true;
         }
         else

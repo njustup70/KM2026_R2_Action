@@ -379,7 +379,8 @@ void VacuumClaw::_GetPitchOrigin()
 
             // 走到最大位置
             pitch_origined_pos = _pitch_origin_code + 35000;
-            motor_pitch.SetPos(pitch_origined_pos);
+            pitch_pos = pitch_origined_pos;
+            motor_pitch.SetPos(pitch_pos);
         }
     }
     else

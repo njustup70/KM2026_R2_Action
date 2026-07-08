@@ -213,7 +213,7 @@ class PathChaserType : public Application
 
     float _point_kp_pos = 2.0f;          // 普通跑点位置P增益
     float _point_kp_yaw = 1.75f;          // 普通跑点yaw P增益
-    float _point_max_vel = 2.5f;        // 普通跑点最大平移速度，单位m/s
+    float _point_max_vel = 1.5f;        // 普通跑点最大平移速度，单位m/s
     float _point_min_vel = 0.05f;        // 预留给低层死区补偿的参数；当前普通跑点末端不再用作保底速度
     float _point_max_omega = 3.14f;      // 普通跑点最大角速度，单位rad/s
     float _point_min_omega = 0.05f;      // 预留给低层死区补偿的参数；当前普通跑点末端不再用作保底角速度

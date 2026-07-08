@@ -39,6 +39,11 @@ Vec2 Arena_R2_KFS_FetchPos_Blue[2] = {
   Vec2(11.1, 2.595), Vec2(11.1, 3.315)
 };
 
+// 分别对应 4、5、6 格子，格子中心间距 0.54m
+Vec2 Arena_R2_PutKFSPos_Blue[3] = {
+  Vec2(11.29f, 0.7f), Vec2(10.75f, 0.7f), Vec2(10.21f, 0.7f)
+};
+
 /**
  * @brief 技能挑战赛：“九宫藏宝” 状态图初始化
  * 
@@ -72,7 +77,8 @@ int ChallengeArenaPK_Graph_Blue()
 
   /**----------     进行状态间链接    ----------**/
   s_wait.LinkTo(&(s_wait.Complete), s_put_first_block);
-  s_put_first_block.LinkTo(&(s_put_first_block.Complete), s_waiting_R1_instru);
+  s_put_first_block.LinkTo(&(s_put_first_block.Complete), s_fetch2_from_mid);
+  s_fetch2_from_mid.LinkTo(&(s_fetch2_from_mid.Complete), s_waiting_R1_instru);
 
   /**----------     向状态机核心注册    ----------**/
   return APP::state_core.RegistGraph(Arena_PK_Graph_Blue);
@@ -244,12 +250,13 @@ void Waiting_R1_Instru(StateCore *core)
 {
   /**
    * @brief 根据R1的指令，路由至不同状态
-   * 
+   * @note 刚进入这个函数时，R2 取完 1号块，位于 (10.75f, 0.7f, -1.571f)
    */
   switch (APP::comm_center.Get_R1_InstruCode())
   {
     case Area3ActCode::Put_L2_N4_Block:
     {
+
       break;
     }
     case Area3ActCode::Put_L2_N5_Block:
@@ -324,9 +331,13 @@ static void Fetch2_From_Mid(StateCore *core)
   core->GetCurState().Complete = true;
 }
 
+static void PutBlock()
+{
+
+}
 /*******************************************************************************/
 
-// void 
+
 
 
 

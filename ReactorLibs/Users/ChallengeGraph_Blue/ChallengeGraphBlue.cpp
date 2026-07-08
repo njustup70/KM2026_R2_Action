@@ -356,7 +356,7 @@ void Goto_Area2(StateCore *core)
       break;
   }
 
-  APP::comm_center.SlamCorrection();
+  // APP::comm_center.SlamCorrection();
 
   Seq::Wait(1.0f);
 
