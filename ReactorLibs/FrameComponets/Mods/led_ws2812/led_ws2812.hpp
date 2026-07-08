@@ -54,12 +54,21 @@ private:
     float effect_width_ = 0.2f;
     uint8_t effect_blink_times_ = 1;
     bool blink_state_on_ = false;
+    bool temp_blink_active_ = false;
+    Color temp_blink_color_;
+    float temp_blink_period_ = 1.0f;
+    uint8_t temp_blink_times_ = 1;
+    uint8_t temp_blink_loop_times_ = 1;
+    bool temp_blink_state_on_ = false;
+    uint32_t temp_blink_dwt_tick_ = 0;
+    float temp_blink_runtime_ = 0.0f;
     Color prog_bar_color_;
     float* prog_bar_value_ = nullptr;
     float prog_bar_last_value_ = -1.0f;
 
     // 灯带的写入缓冲区，每颗灯24bit，颜色顺序是GRB，末尾补一段低电平用于锁存
     uint32_t WS2812buf2send[MaxLedNumsT * kBitsPerLed + kResetSlots] = {0};
+    Color base_frame_colors_[MaxLedNumsT];
 
 public:
     LedWs2812() {};
@@ -121,11 +130,18 @@ public:
     void _ApplyRunningFrame();
     void _ApplyExpandFrame();
     void _ApplyBlinkFrame();
+    bool _ApplyTempBlinkFrame();
     void _ApplyProgBarFrame();
     void _ResetEffectRuntime();
+    void _ResetTempBlinkRuntime();
     void _ActivateStaticMode();
+    uint8_t _NormalizeLedId(int8_t Led_id) const;
+    void _EncodeColorToBuffer(uint8_t Led_id, uint8_t R, uint8_t G, uint8_t B);
     void _SetColorRaw(int8_t Led_id, uint8_t R, uint8_t G, uint8_t B);
+    void _SetOverlayColorRaw(int8_t Led_id, uint8_t R, uint8_t G, uint8_t B);
     void _FillFrame(uint8_t R, uint8_t G, uint8_t B);
+    void _FillOverlayFrame(uint8_t R, uint8_t G, uint8_t B);
+    void _RestoreBaseFrame();
     float _NormalizePeriod(float period) const;
     bool _IsSameColor(const Color& lhs, const Color& rhs) const;
     float _Clamp01(float value) const;
@@ -138,6 +154,7 @@ public:
     void GradientFlow(Color color_0, Color color_1, float period);
     void Running(Color color, float width, float period);
     void Blink(Color color, uint8_t times, float period);
+    void TempBlink(Color color, uint8_t times, float period, uint8_t loop_times = 1);
     void Lit(Color color); // 供外部调用的Fill，省算力
     void Expand(Color color_0, float period);
     void ProgBar(Color color, float* progress);
@@ -194,14 +211,38 @@ void LedWs2812<MaxLedNumsT>::_SetColorRaw(int8_t Led_id, uint8_t R, uint8_t G, u
 {
     if (LedNums == 0) return;
 
+    uint8_t normalized_id = _NormalizeLedId(Led_id);
+    base_frame_colors_[normalized_id] = Color(R, G, B);
+    _EncodeColorToBuffer(normalized_id, R, G, B);
+    dirty_ = true;
+}
+
+template <size_t MaxLedNumsT>
+uint8_t LedWs2812<MaxLedNumsT>::_NormalizeLedId(int8_t Led_id) const
+{
+    if (LedNums == 0) return 0;
+
     while (Led_id > (LedNums - 1)) Led_id -= LedNums;
     while (Led_id < 0) Led_id += LedNums;
+    return static_cast<uint8_t>(Led_id);
+}
 
+template <size_t MaxLedNumsT>
+void LedWs2812<MaxLedNumsT>::_EncodeColorToBuffer(uint8_t Led_id, uint8_t R, uint8_t G, uint8_t B)
+{
     size_t base = static_cast<size_t>(Led_id) * kBitsPerLed;
 
     for (int i = 0; i < 8; i++) WS2812buf2send[base + i] = (G & (1 << (7 - i)) ? (HIGH_WS2812) : LOW_WS2812);
     for (int i = 8; i < 16; i++) WS2812buf2send[base + i] = (R & (1 << (15 - i)) ? (HIGH_WS2812) : LOW_WS2812);
     for (int i = 16; i < 24; i++) WS2812buf2send[base + i] = (B & (1 << (23 - i)) ? (HIGH_WS2812) : LOW_WS2812);
+}
+
+template <size_t MaxLedNumsT>
+void LedWs2812<MaxLedNumsT>::_SetOverlayColorRaw(int8_t Led_id, uint8_t R, uint8_t G, uint8_t B)
+{
+    if (LedNums == 0) return;
+
+    _EncodeColorToBuffer(_NormalizeLedId(Led_id), R, G, B);
     dirty_ = true;
 }
 
@@ -243,6 +284,14 @@ void LedWs2812<MaxLedNumsT>::_ResetEffectRuntime()
 }
 
 template <size_t MaxLedNumsT>
+void LedWs2812<MaxLedNumsT>::_ResetTempBlinkRuntime()
+{
+    temp_blink_runtime_ = 0.0f;
+    temp_blink_dwt_tick_ = DWT->CYCCNT;
+    temp_blink_state_on_ = false;
+}
+
+template <size_t MaxLedNumsT>
 void LedWs2812<MaxLedNumsT>::_ActivateStaticMode()
 {
     current_mode_ = EffectMode::Static;
@@ -256,6 +305,26 @@ void LedWs2812<MaxLedNumsT>::_FillFrame(uint8_t R, uint8_t G, uint8_t B)
     {
         _SetColorRaw(i, R, G, B);
     }
+}
+
+template <size_t MaxLedNumsT>
+void LedWs2812<MaxLedNumsT>::_FillOverlayFrame(uint8_t R, uint8_t G, uint8_t B)
+{
+    for (int i = 0; i < LedNums; i++)
+    {
+        _SetOverlayColorRaw(i, R, G, B);
+    }
+}
+
+template <size_t MaxLedNumsT>
+void LedWs2812<MaxLedNumsT>::_RestoreBaseFrame()
+{
+    for (int i = 0; i < LedNums; i++)
+    {
+        Color color = base_frame_colors_[i];
+        _EncodeColorToBuffer(static_cast<uint8_t>(i), color.r, color.g, color.b);
+    }
+    dirty_ = true;
 }
 
 template <size_t MaxLedNumsT>
@@ -375,14 +444,15 @@ void LedWs2812<MaxLedNumsT>::_ApplyBlinkFrame()
 
     uint8_t blink_times = (effect_blink_times_ == 0) ? 1 : effect_blink_times_;
     float slot_period = _NormalizePeriod(effect_period_);
-    float cycle_period = blink_times * slot_period * 2.0f;
+    float active_period = blink_times * slot_period;
+    float cycle_period = active_period + (slot_period * 2.0f);
 
     float delta_t = DWT_GetDeltaTime(&dwt_tick);
     RuntimeCnt += delta_t;
     if (RuntimeCnt >= cycle_period) RuntimeCnt = fmod(RuntimeCnt, cycle_period);
 
     bool should_on = false;
-    if (RuntimeCnt < (blink_times * slot_period))
+    if (RuntimeCnt < active_period)
     {
         should_on = fmod(RuntimeCnt, slot_period) < (slot_period * 0.5f);
     }
@@ -399,6 +469,51 @@ void LedWs2812<MaxLedNumsT>::_ApplyBlinkFrame()
     {
         _FillFrame(0, 0, 0);
     }
+}
+
+template <size_t MaxLedNumsT>
+bool LedWs2812<MaxLedNumsT>::_ApplyTempBlinkFrame()
+{
+    if (!temp_blink_active_ || LedNums == 0) return false;
+
+    uint8_t blink_times = (temp_blink_times_ == 0) ? 1 : temp_blink_times_;
+    uint8_t loop_times = (temp_blink_loop_times_ == 0) ? 1 : temp_blink_loop_times_;
+    float slot_period = _NormalizePeriod(temp_blink_period_);
+    float active_period = blink_times * slot_period;
+    float cycle_period = active_period + (slot_period * 2.0f);
+    float total_period = cycle_period * loop_times;
+
+    float delta_t = DWT_GetDeltaTime(&temp_blink_dwt_tick_);
+    temp_blink_runtime_ += delta_t;
+
+    if (temp_blink_runtime_ >= total_period)
+    {
+        temp_blink_active_ = false;
+        temp_blink_state_on_ = false;
+        _RestoreBaseFrame();
+        return true;
+    }
+
+    float cycle_runtime = fmod(temp_blink_runtime_, cycle_period);
+    bool should_on = false;
+    if (cycle_runtime < active_period)
+    {
+        should_on = fmod(cycle_runtime, slot_period) < (slot_period * 0.5f);
+    }
+
+    if (should_on)
+    {
+        temp_blink_state_on_ = true;
+        Color color = temp_blink_color_ * BiasFactor;
+        _FillOverlayFrame(color.r, color.g, color.b);
+    }
+    else if (temp_blink_state_on_)
+    {
+        temp_blink_state_on_ = false;
+        _RestoreBaseFrame();
+    }
+
+    return true;
 }
 
 template <size_t MaxLedNumsT>
@@ -513,6 +628,28 @@ void LedWs2812<MaxLedNumsT>::Blink(Color color, uint8_t times, float period)
 }
 
 template <size_t MaxLedNumsT>
+void LedWs2812<MaxLedNumsT>::TempBlink(Color color, uint8_t times, float period, uint8_t loop_times)
+{
+    uint8_t normalized_times = (times == 0) ? 1 : times;
+    uint8_t normalized_loop_times = (loop_times == 0) ? 1 : loop_times;
+    float normalized_period = _NormalizePeriod(period);
+    bool keep_runtime = temp_blink_active_
+        && _IsSameColor(temp_blink_color_, color)
+        && (temp_blink_times_ == normalized_times)
+        && (temp_blink_loop_times_ == normalized_loop_times)
+        && (temp_blink_period_ == normalized_period);
+
+    temp_blink_color_ = color;
+    temp_blink_times_ = normalized_times;
+    temp_blink_loop_times_ = normalized_loop_times;
+    temp_blink_period_ = normalized_period;
+    temp_blink_active_ = true;
+
+    if (!keep_runtime) _ResetTempBlinkRuntime();
+    _ApplyTempBlinkFrame();
+}
+
+template <size_t MaxLedNumsT>
 void LedWs2812<MaxLedNumsT>::Lit(Color color)
 {
     color = color * BiasFactor;
@@ -610,7 +747,6 @@ void LedWs2812<MaxLedNumsT>::Handle()
     switch (current_mode_)
     {
         case EffectMode::Static:
-            if (!dirty_) return;
             break;
         case EffectMode::Breath:
             _ApplyBreathFrame();
@@ -633,6 +769,8 @@ void LedWs2812<MaxLedNumsT>::Handle()
         default:
             return;
     }
+
+    _ApplyTempBlinkFrame();
 
     if (!dirty_) return;
     Upload();
