@@ -43,6 +43,7 @@
 #include "a12_b3.hpp"
 
 #include "a23_2.hpp"
+#include "a23_b2.hpp"
 
 namespace PATH
 {
@@ -216,8 +217,13 @@ const Path<147>& A12_B3()
     return ::A12_B3;
 }
 
-const Path<200>& A23_2_first()
+const Path<188>& A23_2()
 {
-    return ::A23_2_first;
+    return ::A23_2;
+}
+
+const Path<188>& A23_B2()
+{
+    return ::A23_B2;
 }
 }
