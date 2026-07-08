@@ -308,6 +308,16 @@ void VacuumClaw::CloseSnap_Hard()
         APP::monit.LogWarning("Unorigined snapclaw!");
 }
 
+void VacuumClaw::PitchOrigin()
+{
+    pitch_pos = pitch_origined_pos;
+}
+
+void VacuumClaw::PitchDown()
+{
+    pitch_pos = pitch_origined_pos + FETCH_PITCH_POS;
+}
+
 void VacuumClaw::_GetClawOrigin()
 {
     static uint32_t runed_tick = 0;  

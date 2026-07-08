@@ -83,6 +83,10 @@ public:
 
     void CloseSnap();
     void CloseSnap_Hard();
+
+    void PitchOrigin();
+    void PitchDown();
+    
     /**
      * @brief 
      * 
