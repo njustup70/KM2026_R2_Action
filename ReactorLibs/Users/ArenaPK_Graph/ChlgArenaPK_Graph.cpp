@@ -28,7 +28,7 @@ StateGraph Arena_PK_Graph("Arena_PK");
 static void Waiting_for_Start(StateCore *core);
 static void Put_First_Block(StateCore *core);
 static void Waiting_R1_Instru(StateCore *core);
-static void Fetch_0_1_Block(StateCore *core);
+static void Fetch2_From_Mid(StateCore *core);
 
 Vec2 Arena_R2_KFS_FetchPos[2] = {
   Vec2(11.1, 3.405), Vec2(11.1, 2.685)
@@ -62,11 +62,12 @@ int ChallengeArenaPK_Graph()
   s_wait.StateAction = Waiting_for_Start;
   s_put_first_block.StateAction = Put_First_Block;
   s_waiting_R1_instru.StateAction = Waiting_R1_Instru;
-  s_fetch_0_1_block.StateAction = Fetch_0_1_Block;
+  s_fetch_0_1_block.StateAction = Fetch2_From_Mid;
 
   /**----------     进行状态间链接    ----------**/
   s_wait.LinkTo(&(s_wait.Complete), s_put_first_block);
-  s_put_first_block.LinkTo(&(s_put_first_block.Complete), s_waiting_R1_instru);
+  s_put_first_block.LinkTo(&(s_put_first_block.Complete), s_fetch_0_1_block);
+  s_fetch_0_1_block.LinkTo(&(s_fetch_0_1_block.Complete), s_waiting_R1_instru);
 
   /**----------     向状态机核心注册    ----------**/
   return APP::state_core.RegistGraph(Arena_PK_Graph);
@@ -207,7 +208,7 @@ void Put_First_Block(StateCore *core)
   // 先把块抬起来
   APP::get_block.LiftUp();
 
-  MOVE::MoveToTargGes(Vec3(11.21f, 1.59f, 0.0f));
+  MOVE::MoveToTargGes(Vec3(11.1f, 1.3f, 0.0f));
   // 等待遥控器的出发指令
   // while(MOD::farcon.button_second_half[0] != 1)
   // {
@@ -285,16 +286,42 @@ static void Fetch2_From_Mid(StateCore *core)
 {
   // 运行路径跟踪程序
   // APP::path_chaser.ChasePath(PTF);
+    // 等待遥控器的出发指令
+  while(MOD::farcon.button_second_half[0] != 1)
+  {
+    Response_Button();
+    Seq::Wait(0.01f);
+  }
+  // 放完二层块，得先放下腿，再去取块
+  APP::leg.F_AlmostOrigin();
+  APP::leg.B_AlmostOrigin();
+  Seq::WaitUntil([](){
+    return (fabs(APP::leg.real_front_pos_mm) < 50 && fabs(APP::leg.real_back_pos_mm) < 50);
+  });
+
+  MOVE::MoveToTargGes(Vec3(Arena_R2_KFS_FetchPos[0].x, Arena_R2_KFS_FetchPos[0].y, 0.0));
 
   // 走到块跟前了
   APP::monit.LogInfo("[Arena] I'm at the block.");
 
+  // 等待遥控器的出发指令
+  while(MOD::farcon.button_second_half[0] != 1)
+  {
+    Response_Button();
+    Seq::Wait(0.01f);
+  }
   // 取第一个块
   Area3::FetchBlockOnTheGround();
 
   // 等待取块完成
   Seq::Wait(1.0f);
 
+  // 等待遥控器的出发指令
+  while(MOD::farcon.button_second_half[0] != 1)
+  {
+    Response_Button();
+    Seq::Wait(0.01f);
+  }
   // 移动到第二个块面前
   MOVE::MoveToTargGes(Vec3(11.1f, 3.315f, 0.0f));
   // APP::path_chaser.ChaseGes();
@@ -302,6 +329,12 @@ static void Fetch2_From_Mid(StateCore *core)
   // 等待到达
   APP::monit.LogInfo("[Arena] I'm at the second block.");
 
+  // 等待遥控器的出发指令
+  while(MOD::farcon.button_second_half[0] != 1)
+  {
+    Response_Button();
+    Seq::Wait(0.01f);
+  }
   // 取第二个块
   Area3::FetchBlockOnTheGround();
 
@@ -363,11 +396,6 @@ void Waiting_R1_Instru(StateCore *core)
   }
 }
 
-static void Fetch_0_1_Block(StateCore *core)
-{
-
-
-}
 /*******************************************************************************/
 
 
