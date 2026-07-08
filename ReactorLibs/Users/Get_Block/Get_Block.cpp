@@ -51,10 +51,10 @@ void GetBlock::Start()
         .ADRC_Womega(42.0f, 9.6f)
         .ADRC_Physic(1.0e-4f, 0.18f)
         .ADRC_Limit(8.0f)
-        .SpdLimit(4000.0f)
-        .ADRC_MaxPlannedVel(3800.0f)
-        .ADRC_SOTF(0.05f)
-        .SetDt(0.002)
+        .SpdLimit(14000.0f)
+        .ADRC_MaxPlannedVel(14000.0f)
+        .ADRC_SOTF(0.7f)
+        .SetDt(0.001)
         .Apply();
     motor_2006_feed.driver.Enable();
 
@@ -574,9 +574,9 @@ void GetBlock::_UpdateFSM()
     // ═══════════════════ 放块: 送块收回 ═══════════════════
     case FSM::PUT_FEED_RETRACT:
     {
-        motor_2006_feed.SetPos(_feed_pos_retract);
+        motor_2006_feed.SetPos(-_feed_pos_retract);
 
-        if (_FeedNear(_feed_pos_retract))
+        if (_FeedNear(-_feed_pos_retract))
         {
             if (_storing_b2)
             {
