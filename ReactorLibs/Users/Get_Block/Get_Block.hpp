@@ -122,8 +122,8 @@ private:
     // float dm_lift_pos  = 0.0f;  // 抬升机构目标位置
 
     // ==================== 送块2006位置常量（需标定） ====================
-    float _feed_pos_retract = 500.0f;     // 收回
-    float _feed_pos_extend  = 1765000.0f;  // 伸出（上仓块被推出）
+    float _feed_pos_retract = 50000.0f;     // 收回
+    float _feed_pos_extend  = 1689000.0f;  // 伸出（上仓块被推出）
 
     // ==================== 私有方法 ====================
     void _UpdateFSM();
