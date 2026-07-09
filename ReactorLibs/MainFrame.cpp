@@ -183,14 +183,14 @@ void MainFrameCpp()
 // void Response_Button_main()
 // {
 //     static float max_velo = 1.5f;
-//     if(MOD::farcon.toggle[2] == 0)
-//     {
-//       max_velo = 1.5f;
-//     }
-//     else if(MOD::farcon.toggle[2] == 1)
-//     {
-//       max_velo = 0.5f;
-//     }
+    // if(MOD::farcon.toggle[2] == 0)
+    // {
+    //   max_velo = 1.5f;
+    // }
+    // else if(MOD::farcon.toggle[2] == 1)
+    // {
+    //   max_velo = 0.5f;
+    // }
 
 //     // 计算遥控器死区：0-15不算，将15-100映射到原来的0.0-1.0
 //     constexpr float deadzone = 15.0f;
