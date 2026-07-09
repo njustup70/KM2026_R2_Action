@@ -52,9 +52,9 @@ void GetBlock::Start()
         .ADRC_Womega(42.0f, 9.6f)
         .ADRC_Physic(1.0e-4f, 0.18f)
         .ADRC_Limit(8.0f)
-        .SpdLimit(14000.0f)
-        .ADRC_MaxPlannedVel(14000.0f)
-        .ADRC_SOTF(0.7f)
+        .SpdLimit(10000.0f)
+        .ADRC_MaxPlannedVel(10000.0f)
+        .ADRC_SOTF(0.2f)
         .SetDt(0.001)
         .Apply();
     motor_2006_feed.driver.Enable();
@@ -723,6 +723,10 @@ void GetBlock::_UpdateFSM()
             _upper = true;
             _lower = false;
             _action_tick = _local_tick;
+            // APP::monit.LogInfo("[GetBlock] Block entered upper (LIFT_UP_HOLD)");
+        }
+        if(_upper && _lift_at_upper)
+        {
             APP::monit.LogInfo("[GetBlock] Block entered upper (LIFT_UP_HOLD)");
         }
 
