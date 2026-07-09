@@ -561,12 +561,12 @@ void Response_Button()
       static bool is_lift_up = false;
       if(!is_lift_up)
       {
-        APP::get_block.dm_lift_pos = -755;
+        APP::get_block.LiftUp();
         is_lift_up = true;
       }
       else
       {
-        APP::get_block.dm_lift_pos = -3;
+        APP::get_block.LiftDown();
         is_lift_up = false;
       }
       last_lift_time = DWT_GetTimeline_Sec();

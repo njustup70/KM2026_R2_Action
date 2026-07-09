@@ -28,8 +28,8 @@ void Area3::FetchBlockOnTheGround()
     return (fabs(APP::leg.real_back_pos_mm) > 95 && fabs(APP::leg.real_front_pos_mm) > 95);
   });  
 
-  // 先把达妙抬起来
-  APP::get_block.dm_lift_pos = -757;  // _lift_vel = 18.0 rad/s
+  // 先把抬升达妙抬起来；Store() 会从该预抬升状态接管存块流程
+  APP::get_block.LiftUp();
 
   // 爪子翻转到竖直，合上爪子
   APP::vac_claw.PitchDown();

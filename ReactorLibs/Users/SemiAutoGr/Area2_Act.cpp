@@ -479,8 +479,8 @@ void MeiLinArray::FetchBlock(BlockHeight height)
   // APP::chas.Move(Vec2(0.2,0), 2.0f);
   // Seq::Wait(1.0f);
 
-  // 抬升先上去
-  APP::get_block.dm_lift_pos = -755.0f;
+  // 抬升先上去；后续 Store() 会从预抬升状态接管
+  APP::get_block.LiftUp();
 
   // 先开爪
   APP::vac_claw.OpenSnap();
