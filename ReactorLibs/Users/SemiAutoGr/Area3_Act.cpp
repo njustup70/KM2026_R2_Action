@@ -32,7 +32,7 @@ void Area3::FetchBlockOnTheGround()
   Seq::Wait(1.5f);
 
   // 往前走去取物块
-  APP::chas.Move(Vec2(0.1, 0), 3.0);
+  APP::chas.Move(Vec2(0.08, 0), 3.0);
 
   APP::vac_claw.CloseSnap();
 
@@ -42,13 +42,13 @@ void Area3::FetchBlockOnTheGround()
     return fabs(APP::vac_claw.motor_snap.driver.measure.total_angle - APP::vac_claw.snap_pos) < 1000;
   });  
 
-  // 车往前移动一小段吸上物块
-  APP::chas.Move(Vec2(0.05, 0), 7.0);
+  // 车往前移动一小段吸上物块(如果合上爪子的速度变快了，那么向前移动的时间也要改长)
+  APP::chas.Move(Vec2(0.02, 0), 7.0);
 
   // 开泵
   APP::get_block.OpenPump();
   Seq::Wait(1.0f);
-  APP::chas.Move(Vec2(-0.15, 0), 3.0);
+  APP::chas.Move(Vec2(-0.20, 0), 3.0);
   Seq::Wait(1.3f);
   // 停下
   APP::chas.Move(Vec2(0, 0), 3.0);
