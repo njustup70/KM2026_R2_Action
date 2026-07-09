@@ -16,9 +16,13 @@
 
 void Area3::FetchBlockOnTheGround()
 {
+  // 关闭泄压阀
+  APP::get_block.ClosePRV();
+
   // 再抬起来一点
   APP::leg.SetFrontPos(-100);
   APP::leg.SetBackPos(-100);
+
   Seq::WaitUntil([]()
   {
     return (fabs(APP::leg.real_back_pos_mm) > 95 && fabs(APP::leg.real_front_pos_mm) > 95);
@@ -32,22 +36,28 @@ void Area3::FetchBlockOnTheGround()
   Seq::Wait(1.5f);
 
   // 往前走去取物块
-  APP::chas.Move(Vec2(0.08, 0), 3.0);
+  APP::chas.Move(Vec2(0.06, 0), 3.0);
 
   APP::vac_claw.CloseSnap();
 
   // 等爪子关上
-  Seq::WaitUntil([]()
-  {
-    return fabs(APP::vac_claw.motor_snap.driver.measure.total_angle - APP::vac_claw.snap_pos) < 1000;
-  });  
-
-  // 车往前移动一小段吸上物块(如果合上爪子的速度变快了，那么向前移动的时间也要改长)
-  APP::chas.Move(Vec2(0.02, 0), 7.0);
+  // Seq::WaitUntil([]()
+  // {
+  //   return fabs(APP::vac_claw.motor_snap.driver.measure.total_angle - APP::vac_claw.snap_pos) < 10000;
+  // });  
+  Seq::Wait(1.0f);
+  APP::monit.LogInfo("Snaped, Pumping.");
 
   // 开泵
   APP::get_block.OpenPump();
-  Seq::Wait(1.0f);
+
+  // 车往前移动一小段吸上物块(如果合上爪子的速度变快了，那么向前移动的时间也要改长)
+  APP::chas.Move(Vec2(0.1, 0), 7.0);
+  Seq::Wait(0.5f);
+
+  APP::vac_claw.CloseSnap_Hard();
+  Seq::Wait(0.5f);
+  
   APP::chas.Move(Vec2(-0.20, 0), 3.0);
   Seq::Wait(1.3f);
   // 停下
@@ -58,7 +68,7 @@ void Area3::FetchBlockOnTheGround()
 
   APP::get_block.Store();
 
-  APP::vac_claw.CloseSnap_Hard();
+  
 
   // 再伸出一点
   APP::vac_claw.stretch_pos = 93000;

@@ -94,6 +94,8 @@ void Waiting_for_Start(StateCore *core)
   APP::leg.F_AlmostOrigin();
   APP::leg.B_AlmostOrigin();
 
+  Seq::Wait(1.0f);
+
   // 等待遥控器指令，然后才进入下一步
   while(MOD::farcon.button_second_half[0] != 1)
   {
@@ -171,86 +173,85 @@ void Put_First_Block(StateCore *core)
     // 先把块抬起来
   APP::get_block.LiftUp();
 
-  // 等待遥控器的出发指令
-  // while(MOD::farcon.button_second_half[0] != 1)
-  // {
-  //   Response_Button();
-  //   Seq::Wait(0.01f);
-  // }
-
   // 首先走上斜坡
   MOVE::MoveToTargGes(Vec3(8.72f, 0.79f, 0.0f));
-
   MOVE::MoveToTargGes(Vec3(11.38f, 0.77f, 0.0f));
 
-  // 等待遥控器的出发指令
-  // while(MOD::farcon.button_second_half[0] != 1)
-  // {
-  //   Response_Button();
-  //   Seq::Wait(0.01f);
-  // }
+  APP::leg.F_Origin();
+  APP::leg.B_Origin();
 
-  // // 先把块抬起来
-  // APP::get_block.LiftUp();
-
-  // MOVE::MoveToTargGes(Vec3(11.1f, 1.3f, 0.0f));
-  // // 等待遥控器的出发指令
-  // // while(MOD::farcon.button_second_half[0] != 1)
-  // // {
-  // //   Response_Button();
-  // //   Seq::Wait(0.01f);
-  // // }
-  // MOVE::MoveToTargGes(Vec3(11.08f, 2.71f, 0.0f));
-  // // 等待遥控器的出发指令
-  // while(MOD::farcon.button_second_half[0] != 1)
-  // {
-  //   Response_Button();
-  //   Seq::Wait(0.01f);
-  // }
-  // MOVE::MoveToTargGes(Vec3(11.08f, 3.39f, 0.0f));
-
-  // // 等待遥控器的出发指令
-  // while(MOD::farcon.button_second_half[0] != 1)
-  // {
-  //   Response_Button();
-  //   Seq::Wait(0.01f);
-  // }
-
-  // // 这个点不能给 0.75，定位不准，回来想办法解决
-  // MOVE::MoveToTargGes(Vec3(10.70f, 5.20f, 1.571f));
-  MOVE::MoveToTargPos(PATH::A23_2());
+  MOVE::MoveToTargPos(PATH::A23_2(), Vec3(0.01f, 0.01f, 0.01f));
 
   // 等待，保障稳定性
-  Seq::Wait(1.0f);
+  Seq::Wait(0.25f);
 
-  // 等待遥控器的出发指令
-  // while(MOD::farcon.button_second_half[0] != 1)
-  // {
-  //   Response_Button();
-  //   Seq::Wait(0.01f);
-  // }
+  // MOVE::MoveToTargGes(Vec3(10.75f, 5.15f, 1.571f));
+  // 锁定yaw角为1.571，同时平移直到两路西克激光基本相等
+  // APP::comm_center.sick_data_m[0] 约等于 APP::comm_center.sick_data_m[1];
+  int sick_cnt = 0;
+  const float sick_kd = 0.25f;
+  const float sick_d_alpha = 0.7f;
+  float last_err_dist = APP::comm_center.sick_data_m[1] - APP::comm_center.sick_data_m[0];
+  float d_err_dist_filt = 0.0f;
+  uint32_t sick_log_tick = 0;
+
+  while (sick_cnt < 10)
+  {
+    float err_dist = APP::comm_center.sick_data_m[1] - APP::comm_center.sick_data_m[0];
+
+    if (fabs(err_dist) < 0.004f)
+    {
+      sick_cnt++;
+    }
+    else
+      sick_cnt = 0;
+
+    float d_err_dist = (err_dist - last_err_dist) / 0.005f;
+    d_err_dist_filt = d_err_dist_filt * sick_d_alpha + d_err_dist * (1.0f - sick_d_alpha);
+    float err_spd = err_dist * 1.0f - sick_kd * d_err_dist_filt;
+    last_err_dist = err_dist;
+
+    Vec2 sick_fix = Vec2(err_spd, 0.0f).Rotate(-System.position.z);
+
+    // 锁定yaw角为 1.5707 rad，不用太强
+    float yaw_err = 1.5707f - System.position.z;
+    Vec3 targ_body_vec = sick_fix.ToVec3();
+    targ_body_vec.z = yaw_err * 0.8f;
+
+    if (++sick_log_tick >= 20)
+    {
+      sick_log_tick = 0;
+      APP::monit.LogInfo("sf:e%.3f v%.3f s0%.3f s1%.3f",
+                         err_dist,
+                         err_spd,
+                         APP::comm_center.sick_data_m[0],
+                         APP::comm_center.sick_data_m[1]);
+    }
+
+    APP::chas.Move(targ_body_vec, 0.01f);
+    Seq::Wait(0.005f); // 200hz更新频率
+  }
+
+  APP::monit.LogInfo("Finished sick fix. sick0:%.3f sick1:%.3f",
+                     APP::comm_center.sick_data_m[0], APP::comm_center.sick_data_m[1]);
+  APP::chas.Move(Vec3(0.0f, 0.0f, 0.0f), 0.25f);
+  Seq::Wait(0.5f);
+
   // 抬起腿
-  APP::leg.SetFrontPos(-380);
-  APP::leg.SetBackPos(-373);
+  APP::leg.SetFrontPos(-388);
+  APP::leg.SetBackPos(-380);
+
   // 等腿抬好
   Seq::WaitUntil([](){
-    return ( fabs(APP::leg.real_front_pos_mm - APP::leg.front_pos) < 3  && fabs(APP::leg.real_back_pos_mm - APP::leg.back_pos) < 3 );
+    return ( fabs(APP::leg.real_front_pos_mm - APP::leg.front_pos) < 6  && fabs(APP::leg.real_back_pos_mm - APP::leg.back_pos) < 6 );
   });
-
-  // 等待遥控器的出发指令
-  // while(MOD::farcon.button_second_half[0] != 1)
-  // {
-  //   Response_Button();
-  //   Seq::Wait(0.01f);
-  // }
-  // SafeFirstPut();
-  // Seq::Wait(1.0f);
 
   // 放块
   APP::get_block.Push();
 
   // 等待放块完成
   Seq::Wait(1.0f);
+
   // 等待遥控器的出发指令
   while(MOD::farcon.button_second_half[0] != 1)
   {
@@ -287,7 +288,7 @@ static void Fetch2_From_Mid(StateCore *core)
     Seq::Wait(0.01f);
   }
   // 运行路径跟踪程序
-  MOVE::MoveToTargPos(PATH::FFM());
+  MOVE::MoveToTargPos(PATH::FFM(), Vec3(0.05f, 0.05f, 0.03f));
 
   MOVE::MoveToTargGes(Vec3(Arena_R2_KFS_FetchPos[0].x, Arena_R2_KFS_FetchPos[0].y, 0.0));
 
@@ -332,7 +333,7 @@ static void Fetch2_From_Mid(StateCore *core)
   Seq::Wait(1.0f);
 
   // 返回等待点（光通信朝向 R1）
-  MOVE::MoveToTargGes(Vec3(11.5f, 1.2f, 1.571f));
+  MOVE::MoveToTargGes(Vec3(10.1f, 2.1f, -1.571f));
 
   // 至此：完成所有R2的全自动逻辑，进入R1的指令等待状态
   core->GetCurState().Complete = true;
@@ -613,8 +614,8 @@ void Response_Button()
     // 抬腿
     if (MOD::farcon.button_first_half[0] == 1)
     {
-      APP::leg.SetFrontPosSlow(-390.0f, 5.0f);
-      APP::leg.SetBackPosSlow(-390.0f, 5.0f);
+      APP::leg.SetFrontPosSlow(-100.0f, 1.0f);
+      APP::leg.SetBackPosSlow(-100.0f, 1.0f);
     }
 
     // 收回前腿
@@ -732,4 +733,3 @@ void Response_Button()
 
 //   APP::get_block.Store();
 // }
-

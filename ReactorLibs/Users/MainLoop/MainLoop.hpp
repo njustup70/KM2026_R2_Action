@@ -76,16 +76,20 @@ namespace MOVE
     /// @param path_data 路径数据
     /// @return true-到达终点, false-失败
 
+    /// @brief 沿预设路径移动并等待完成，使用本次路径单独的终点容差
+    /// @param path_data 路径数据
+    /// @param tolerance 本次路径单独使用的终点容差(x/y/yaw)，单位m/m/rad
+    /// @return true-到达终点, false-失败
     template <size_t N>
-    bool MoveToTargPos(const Path<N>& path)
+    bool MoveToTargPos(const Path<N>& path, Vec3 tolerance)
     {
-        if (!APP::path_chaser.ChasePath(path))
+        if (!APP::path_chaser.ChasePath(path, tolerance))
         {
             APP::monit.LogError("[AutoGraph] MoveToTargPos rejected by PathChaser.");
             return false;
         }
         uint32_t log_tick = 0;
-        
+
         while (!APP::path_chaser.IsFinished())
         {
             Vec3 speed_vec = APP::path_chaser.GetCmdBody();
@@ -100,9 +104,15 @@ namespace MOVE
             }
             Seq::Wait(0.005f); // 200hz更新频率
         }
-        
+
         APP::monit.LogInfo("Move to target position.");
         return true;
+    }
+
+    template <size_t N>
+    bool MoveToTargPos(const Path<N>& path)
+    {
+        return MoveToTargPos(path, Vec3(-1.0f, -1.0f, -1.0f));
     }
 
     /// @brief 普通跑点移动并等待完成

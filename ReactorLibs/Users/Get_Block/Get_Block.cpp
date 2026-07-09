@@ -19,7 +19,7 @@ void GetBlock::Start()
     motor_s2325.Init(Hardware::hcan_sub, 9, 19, VEL, DM_S2325);
     motor_s2325.SetFeedbackRange(3.14159f, 10.0f, 5.0f);
     motor_s2325.SetVelLimit(38);
-    motor_s2325.SetAutoEnable(true, 1000); // user_want_enable 可禁止重使能
+    motor_s2325.SetAutoEnable(true, 500); // user_want_enable 可禁止重使能
     motor_s2325.Enable();
 
     /**** 上摩擦带 2006 (hcan_main, ID 4) ****/
@@ -42,7 +42,7 @@ void GetBlock::Start()
     motor_dm_lift.SetFeedbackRange(3.14159f, 10.0f, 5.0f);
     motor_dm_lift.SetPosLimit(1500.0f, -1500.0f);
     motor_dm_lift.SetVelLimit(18.0f);
-    motor_s2325.SetAutoEnable(true, 1000); // user_want_enable 可禁止重使能
+    motor_dm_lift.SetAutoEnable(true, 500); // user_want_enable 可禁止重使能
     motor_dm_lift.Enable();
 
     /****  送块 2006 (hcan_main, ID 5) ，送出去是负值，总行程 1780000 ****/
@@ -137,9 +137,10 @@ void GetBlock::Update()
         if (fabsf(dm_lift_pos - _last_logged_dm_pos) > 0.1f)
         {
             _last_logged_dm_pos = dm_lift_pos;
-            APP::monit.LogInfo("[GetBlock] DM target: %.1f  upper=%d lower=%d lift_up=%d lift_low=%d grid[0]=%d grid[1]=%d",
-                              dm_lift_pos, _upper, _lower, _lift_at_upper, _lift_at_lower,
-                              _grid[0], _grid[1]);
+            APP::monit.LogInfo("[GetBlock] DM target: %.1f", dm_lift_pos);
+            APP::monit.LogInfo("[GetBlock] upper=%d lower=%d lift_up=%d lift_low=%d",
+                              _upper, _lower, _lift_at_upper, _lift_at_lower);
+            APP::monit.LogInfo("[GetBlock] grid[0]=%d grid[1]=%d", _grid[0], _grid[1]);
         }
     }
     
@@ -325,6 +326,10 @@ void GetBlock::ClosePump()
     relay_pump.Off();
 }
 
+/**
+ * @brief 打开泄压阀
+ * 
+ */
 void GetBlock::OpenPRV()
 {
     relay_PRV.On();
@@ -385,9 +390,11 @@ void GetBlock::_UpdateFSM()
         };
         int idx = (int)_fsm;
         if (idx >= 0 && idx < 16)
-            APP::monit.LogInfo("[GetBlock] FSM >>> %s  (dm=%.1f upper=%d lower=%d lu=%d ll=%d)",
-                              _state_name[idx], dm_lift_pos, _upper, _lower,
-                              _lift_at_upper, _lift_at_lower);
+        {
+            APP::monit.LogInfo("[GetBlock] FSM >>> %s", _state_name[idx]);
+            APP::monit.LogInfo("[GetBlock] dm=%.1f upper=%d lower=%d lu=%d ll=%d",
+                               dm_lift_pos, _upper, _lower, _lift_at_upper, _lift_at_lower);
+        }
     }
 
     switch (_fsm)
@@ -776,4 +783,3 @@ void GetBlock::_UpdateFSM()
     default: break;
     }
 }
-
