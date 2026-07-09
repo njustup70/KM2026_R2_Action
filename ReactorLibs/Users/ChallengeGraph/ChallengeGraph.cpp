@@ -314,57 +314,82 @@ void Dock_Fetch_And_Back(StateCore *core)
 
     if (APP::comm_center.IsDockGiveUp())
     {
-      // 离开对接模式
-      APP::jaw.SetTrackMode(false);
       // 跳出等待，准备进入二区
       giveup_dock = true;
       break;
     }
   }
 
-  // 灯带：进度条
-  float wait_progress = 0.0f;
-  APP::main_loop.test_led.ProgBar(Color::Up_Yellow, &wait_progress);
-
-  // 等待 12 秒
-  float wait_time_s = 0.0f;
-  while (wait_time_s < 12.0f)
-  {
-    wait_time_s += 0.05f;
-    wait_progress = wait_time_s / 12.0f;
-    Seq::Wait(0.05f);
-  }
-
-  // while(MOD::farcon.button_second_half[0] != 1)
-  // {
-  //   Response_Button();
-  //   Seq::Wait(0.01f);
-  // }
-
-  APP::jaw.CloseClaw();
+  // 离开对接模式
   APP::jaw.SetTrackMode(false);
-
-  // 只有没有放弃对接时，才将矛头回中。否则害怕损坏机构
-  if (!giveup_dock)
-  {
-    APP::jaw.SetPosCode(APP::jaw._hori_origin_code - JawConst::_hori_max_travel_code / 2, 
-      APP::jaw._vert_origin_code - 200000);
-  }
-
-  APP::monit.LogInfo("Go to Climb.");
 
   // 只有 "没取够头" / "不希望放弃对接" 时，才会再次取矛头。否则就直接进入二区
   if (need_spear_id < 2 && !giveup_dock)
   {
+    // 灯带：进度条
+    float wait_progress = 0.0f;
+    APP::main_loop.test_led.ProgBar(Color::Up_Yellow, &wait_progress);
+
+    // 等待 12 秒
+    float wait_time_s = 0.0f;
+    while (wait_time_s < 12.0f)
+    {
+      wait_time_s += 0.05f;
+      wait_progress = wait_time_s / 12.0f;
+      Seq::Wait(0.05f);
+    }
+
+    // 只有没有放弃对接时，才将矛头回中。否则害怕损坏机构
+    if (!giveup_dock)
+    {
+      APP::jaw.SetPosCode(APP::jaw._hori_origin_code - JawConst::_hori_max_travel_code / 2, 
+        APP::jaw._vert_origin_code - 200000);
+    }
+
     need_spear_id++;
     APP::comm_center.ClearDockFlag();  // 清除对接标志，避免下次误触发
     fetch_again = true;
+    APP::monit.LogInfo("Go Fetch Again.");
   }
   else
   {
     APP::comm_center.ClearDockFlag();  // 清除对接标志，避免下次误触发
+
+    Seq::Wait(0.5f);    // 避免多次光通信重复触发
+
+    APP::main_loop.test_led.Running(Color::Orange, 0.4f, 1.2f);
+    
+    // 再一次等待光通信
+    // 等待遥控器指令，然后才进入下一个状态
+    while(true)
+    {
+      Response_Button();
+      Seq::Wait(0.01f);
+
+      // 对接完成
+      if (APP::comm_center.IsDocked() || MOD::farcon.button_second_half[0] == 1 || APP::comm_center.IsDockGiveUp())
+      {
+        break;
+      }
+    }
+
+    // 灯带：进度条
+    float wait_progress = 0.0f;
+    APP::main_loop.test_led.ProgBar(Color::Up_Yellow, &wait_progress);
+
+    // 等待 6 秒
+    float wait_time_s = 0.0f;
+    while (wait_time_s < 6.0f)
+    {
+      wait_time_s += 0.05f;
+      wait_progress = wait_time_s / 6.0f;
+      Seq::Wait(0.05f);
+    }
+
+    APP::comm_center.ClearDockFlag();  // 清除对接标志，避免下次误触发
     fetch_again = false;
     move_to_area2 = true;
+    APP::monit.LogInfo("Go to Climb.");
   }
 }
 
@@ -420,6 +445,7 @@ void Retry_Comm_Error(StateCore *core)
 
 void Goto_Area2(StateCore *core)
 {
+  APP::jaw.CloseClaw();
   APP::main_loop.test_led.Blink(Color::Pink, 2, 0.5f);
 
   // 确认工控机已经发送了动作序列

@@ -30,7 +30,7 @@ static void Walk_To_Dock(StateCore *core);
 static void Walk_into_Area2(StateCore *core);
 static void Walk_into_Area3(StateCore *core);
 
-void Config_SemiAutoStateGraph()
+int Config_SemiAutoStateGraph()
 {
   StateBlock& s_wait = SemiAutoGr.AddState("wait");
   // StateBlock& s_area1_1 = SemiAutoGr.AddState("area1_1");
@@ -49,8 +49,7 @@ void Config_SemiAutoStateGraph()
   s_walk_from_a2_to_a3.LinkTo(&s_walk_from_a2_to_a3.Complete, s_wait);
 
   // 向状态机核心注册
-  APP::state_core.RegistGraph(SemiAutoGr);
-  APP::state_core.Enable(0); // 启动状态机核心，指定初始状态图为0号图
+  return APP::state_core.RegistGraph(SemiAutoGr);
 }
 
 /**
