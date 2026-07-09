@@ -144,46 +144,21 @@ void Waiting_for_Start(StateCore *core)
 /*******************************************************************************/
 void SafeFirstPut_Blue()
 {
-  static int next_block = 0;
   // 检测里边有没有块，如果有，换另一个格子
-  while(APP::get_block.IsBlockPresent())
-  {
-    // 有块存在，执行相应操作
-    next_block++;
-    if(next_block > 2)
-    {
-      next_block = 0;
-    }
+  if (!APP::get_block.IsBlockPresent())
+      return;  // 中间没块，直接放
 
-    switch(next_block)
-    {
-      case 1: // 要放最右边的块
-        APP::monit.LogInfo("Middle Block exists, Move to right side");
-        APP::path_chaser.ChaseGes(Vec3(10.48f, 0.7f, -1.571f));
-        while (!APP::path_chaser.IsFinished())
-        {
-          APP::chas.Move(APP::path_chaser.GetCmdBody(), 0.01f);
-          Seq::Wait(0.005f);
-        }
-      break;
+  APP::monit.LogInfo("Middle block exists, move to right");
+  MOVE::MoveToTargGes(Vec3(10.48f, 0.9f, -1.571f));  // 右移
 
-      case 2: // 要放最左边的块
-        APP::monit.LogInfo("Middle Block exists, Move to left side");
-        APP::path_chaser.ChaseGes(Vec3(11.02f, 0.7f, -1.571f));
-        while (!APP::path_chaser.IsFinished())
-        {
-          APP::chas.Move(APP::path_chaser.GetCmdBody(), 0.01f);
-          Seq::Wait(0.005f);
-        }
-      break;
+  if (!APP::get_block.IsBlockPresent())
+      return;  // 右边没块，直接放
 
-      default: // 三个地方都有块，被打爆了
-        APP::monit.LogInfo("Son of bitch, we are loser");
-      break;
-    }
+  APP::monit.LogInfo("Right block also exists, move to left");
+  MOVE::MoveToTargGes(Vec3(11.02f, 0.9f, -1.571f));  // 左移
 
-    Seq::Wait(0.005f);
-  }
+  if (APP::get_block.IsBlockPresent())
+      APP::monit.LogInfo("All three have blocks, we need combine");
 }
 
 /**
@@ -208,6 +183,8 @@ void Put_First_Block(StateCore *core)
   }
 
   // 首先走上斜坡
+  MOVE::MoveToTargGes(Vec3(8.74f, 5.37f, 0.0f));
+
   MOVE::MoveToTargGes(Vec3(11.38f, 5.32f, 0.0f));
 
   // 等待遥控器的出发指令
@@ -257,8 +234,8 @@ void Put_First_Block(StateCore *core)
     Seq::Wait(0.01f);
   }
   // 抬起腿
-  APP::leg.SetFrontPos(-372);
-  APP::leg.SetBackPos(-372);
+  APP::leg.SetFrontPos(-380);
+  APP::leg.SetBackPos(-373);
   // 等腿抬好
   Seq::Wait(1.5f);
 
@@ -269,7 +246,7 @@ void Put_First_Block(StateCore *core)
     Seq::Wait(0.01f);
   }
   // SafeFirstPut();
-  Seq::Wait(1.0f);
+  // Seq::Wait(1.0f);
 
   // 放块
   APP::get_block.Push();
@@ -300,6 +277,23 @@ void Waiting_R1_Instru(StateCore *core)
    * @brief 根据R1的指令，路由至不同状态
    * @note 刚进入这个函数时，R2 取完 1号块，位于 (10.75f, 0.7f, -1.571f)
    */
+  auto code = APP::comm_center.Get_R1_InstruCode();
+  if (code == Area3ActCode::Idle)
+    return;  // 无指令，跳过下面的等待和做动作
+
+  // 灯带：进度条
+  float wait_progress = 0.0f;
+  APP::main_loop.test_led.ProgBar(Color::Up_Yellow, &wait_progress);
+
+  // 等待 3 秒
+  float wait_time_s = 0.0f;
+  while (wait_time_s < 3.0f)
+  {
+    wait_time_s += 0.05f;
+    wait_progress = wait_time_s / 3.0f;
+    Seq::Wait(0.05f);
+  }
+
   switch (APP::comm_center.Get_R1_InstruCode())
   {
     case Area3ActCode::Put_L2_N4_Block:
@@ -351,26 +345,53 @@ void Waiting_R1_Instru(StateCore *core)
  * @param core 
  */
 static void Fetch2_From_Mid(StateCore *core)
-{
+{  
+  // 放完二层块，得先放下腿，再去取块
+  APP::leg.F_AlmostOrigin();
+  APP::leg.B_AlmostOrigin();
+  
+  Seq::WaitUntil([](){
+    return (fabs(APP::leg.real_front_pos_mm) < 50 && fabs(APP::leg.real_back_pos_mm) < 50);
+  });
+
   // 运行路径跟踪程序
-  // APP::path_chaser.ChasePath(PTF);
+  MOVE::MoveToTargPos(PATH::FFM_B());
+
+  MOVE::MoveToTargGes(Vec3(Arena_R2_KFS_FetchPos_Blue[0].x, Arena_R2_KFS_FetchPos_Blue[0].y, 0.0));
 
   // 走到块跟前了
   APP::monit.LogInfo("[Arena] I'm at the block.");
 
+  // 等待遥控器的出发指令
+  while(MOD::farcon.button_second_half[0] != 1)
+  {
+    Response_Button();
+    Seq::Wait(0.01f);
+  }
   // 取第一个块
   Area3::FetchBlockOnTheGround();
 
   // 等待取块完成
   Seq::Wait(1.0f);
 
+  // 等待遥控器的出发指令
+  while(MOD::farcon.button_second_half[0] != 1)
+  {
+    Response_Button();
+    Seq::Wait(0.01f);
+  }
   // 移动到第二个块面前
-  MOVE::MoveToTargGes(Vec3(11.1f, 3.315f, 0.0f));
-  // APP::path_chaser.ChaseGes();
+  MOVE::MoveToTargGes(Vec3(Arena_R2_KFS_FetchPos_Blue[1].x, Arena_R2_KFS_FetchPos_Blue[1].y, 0.0));
 
   // 等待到达
   APP::monit.LogInfo("[Arena] I'm at the second block.");
 
+  // 等待遥控器的出发指令
+  while(MOD::farcon.button_second_half[0] != 1)
+  {
+    Response_Button();
+    Seq::Wait(0.01f);
+  }
   // 取第二个块
   Area3::FetchBlockOnTheGround();
 
@@ -378,7 +399,7 @@ static void Fetch2_From_Mid(StateCore *core)
   Seq::Wait(1.0f);
 
   // 返回等待点（光通信朝向 R1）
-  MOVE::MoveToTargGes(Vec3(10.75f, 0.7f, -1.571f));
+  MOVE::MoveToTargGes(Vec3(11.5f, 1.2f, -1.571f));
 
   // 至此：完成所有R2的全自动逻辑，进入R1的指令等待状态
   core->GetCurState().Complete = true;
@@ -391,13 +412,15 @@ static void PutBlock_L2(Vec2 pos)
   Seq::Wait(2.0f);
 
   // 抬腿
-  APP::leg.SetFrontPos(-385);
-  APP::leg.SetBackPos(-365);
+  APP::leg.SetFrontPos(-380);
+  APP::leg.SetBackPos(-373);
 
   // 走到九宫格对应格子前
   MOVE::MoveToTargGes(Vec3(pos.x, pos.y, -1.5707));
 
-  // 新的放块函数
+  // 放块
+  APP::get_block.Put();
+  Seq::Wait(2.0);
   
   // 回到光通信位置，等待下一个指令
   MOVE::MoveToTargGes(Vec3(10.75, 0.9, -1.5707));
@@ -428,14 +451,14 @@ static void PutBlock_L2(Vec2 pos)
 static void Response_Button()
 {
     static float max_velo = 1.5f;
-    if(MOD::farcon.toggle[2] == 0)
-    {
-      max_velo = 1.0f;
-    }
-    else if(MOD::farcon.toggle[2] == 1)
-    {
-      max_velo = 0.33f;
-    }
+    // if(MOD::farcon.toggle[2] == 0)
+    // {
+    //   max_velo = 1.0f;
+    // }
+    // else if(MOD::farcon.toggle[2] == 1)
+    // {
+    //   max_velo = 0.33f;
+    // }
 
     // 计算遥控器死区：0-15不算，将15-100映射到原来的0.0-1.0
     constexpr float deadzone = 15.0f;
