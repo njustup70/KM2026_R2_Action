@@ -38,6 +38,11 @@ class MainLoop : public Application
     uint8_t targ_area = AREA_RED;   // 默认红区
     bool graph_started = false;     // 状态机是否已经启动
 
+    // 启动的坐标（崇武探幽+竞技赛启动坐标 / 九宫藏宝启动坐标）
+    const static uint8_t AREA_ONE = 0;
+    const static uint8_t AREA_THREE = 1;
+    uint8_t targ_start_area = AREA_ONE; // 默认崇武探幽+竞技赛
+
     /****    常用的状态图   ****/
     /// @brief "崇武探幽" 一二区技能赛
     uint8_t Challenge_Explore_RedGr_id = 0;
