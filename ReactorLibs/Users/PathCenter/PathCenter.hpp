@@ -51,4 +51,7 @@ const Path<147>& A12_B3();
 
 const Path<188>& A23_2();
 const Path<188>& A23_B2();
+
+const Path<81>& FFM_B();
+const Path<41>& FFM();
 }

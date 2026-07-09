@@ -45,6 +45,9 @@
 #include "a23_2.hpp"
 #include "a23_b2.hpp"
 
+#include "FFM_B.hpp"
+#include "FFM.hpp"
+
 namespace PATH
 {
 const Path<22>& TTD_B1()
@@ -226,4 +229,13 @@ const Path<188>& A23_B2()
 {
     return ::A23_B2;
 }
+const Path<81>& FFM_B()
+{
+    return ::FFM_B;
 }
+const Path<41>& FFM()
+{
+    return ::FFM;
+}
+}
+
