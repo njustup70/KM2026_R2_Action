@@ -13,6 +13,7 @@
 #include <cstring>
 #include "std_math.hpp"
 #include "SemiAutoGr.hpp"
+#include "MainLoop.hpp"
 
 MeiLin_BlockPos::MeiLin_BlockPos() = default;
 MeiLin_BlockPos& Area2::block_pos = MeiLin_BlockPos::GetInstance();
@@ -481,6 +482,55 @@ void MeiLinArray::FetchBlock(BlockHeight height)
 
   // 抬升先上去
   APP::get_block.dm_lift_pos = -755.0f;
+
+  /**-----------------    关于小黄对准块的代码    ---------------------**/
+
+  // 有任何一边小黄能看到，都说明歪了
+  const float side_spd = 0.10f;
+  int align_cnt_ms = 0;
+  while (IR_Read(APP::main_loop.mouthfetch_ir_left) || IR_Read(APP::main_loop.mouthfetch_ir_right))
+  {
+    bool left_seen = IR_Read(APP::main_loop.mouthfetch_ir_left);
+    bool right_seen = IR_Read(APP::main_loop.mouthfetch_ir_right);
+
+    Vec3 body_v = Vec3(0, 0, 0);
+
+    // 保持yaw角 为0 （正前方）
+    float yaw_err = 0.0f - System.position.z;
+    yaw_err = atan2f(sinf(yaw_err), cosf(yaw_err));
+    body_v.z = yaw_err * 1.2f;
+
+    // 如果左边的小黄（红外）能读取到，向右平移，保持yaw角
+    if (left_seen && !right_seen)
+    {
+      body_v.y = -side_spd;  // 向右平移
+    }
+    // 如果右边的小黄能读取到，向左平移，保持yaw角
+    else if (right_seen && !left_seen)
+    {
+      body_v.y = side_spd;  // 向左平移
+    }
+    else
+    {
+      // 两边同时看到时，先只稳住姿态，避免横向来回抖
+      body_v.y = 0.0f;
+    }
+
+    APP::chas.Move(body_v, 0.006f);
+    Seq::Wait(0.005f);
+
+    align_cnt_ms += 5;
+    if (align_cnt_ms >= 2000)   // 最多对准时间：2s
+    {
+      APP::monit.LogError("[Area2] mouthfetch align timeout.");
+      break;
+    }
+  }
+
+  /**----------------------------------------------------**/
+
+  APP::chas.Move(Vec3(0, 0, 0), 0.01f);
+  Seq::Wait(0.05f);
 
   // 先开爪
   APP::vac_claw.OpenSnap();
