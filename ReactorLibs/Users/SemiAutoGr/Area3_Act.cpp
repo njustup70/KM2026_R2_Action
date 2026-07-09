@@ -59,11 +59,14 @@ void Area3::FetchBlockOnTheGround()
   APP::get_block.Store();
 
   APP::vac_claw.CloseSnap_Hard();
-  // 先翻转一点达妙
-  APP::vac_claw.PitchOrigin();
-  Seq::Wait(1.2f);
+
   // 再伸出一点
   APP::vac_claw.stretch_pos = 93000;
+  // Seq::Wait(0.9f);
+  // 先翻转一点达妙
+  APP::vac_claw.PitchOrigin();
+  
+
 
   // // 等爪子伸出
   // Seq::Wait(0.7f);
@@ -72,8 +75,8 @@ void Area3::FetchBlockOnTheGround()
     return fabs(APP::vac_claw.motor_stretch.driver.measure.total_angle - APP::vac_claw.stretch_pos) < 100;
   });  
 
-//   // 再等一小会，达妙完全翻回来.这个值必须大一点，否则不知道为什么爪子会先于达妙运动
-//   Seq::Wait(2.0f);
+  // 再等一小会
+  Seq::Wait(2.2f);
 
   // 收回
   APP::vac_claw.stretch_pos = 600.0; // 防堵转，给个略大于0的值
