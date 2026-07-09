@@ -14,6 +14,10 @@
 // ============ 负压泵的 GPIO ============
 #define PIN_PUMP  {'H', 2}   
 
+// ============ 抬升达妙到位检测 ============
+#define PIN_LIFT_LOWER_DETECT  {'B', 0}   // 抬升低位检测（到位=1）
+#define PIN_LIFT_UPPER_DETECT  {'B', 1}   // 抬升高位检测（到位=1）
+
 class GetBlock : public Application
 {
     SINGLETON(GetBlock) : Application("GetBlock") {};
@@ -52,6 +56,10 @@ public:
     // 三区检测九宫格有没有块的小黄
     InfraredDetector detector;
 
+    // ==================== 抬升达妙到位检测 ====================
+    InfraredDetector _sensor_lift_lower;  // PB0: 抬升低位检测
+    InfraredDetector _sensor_lift_upper;  // PB1: 抬升高位检测
+
     // ==================== DM电机目标值（Update中持续发送） ====================
     float dm_fric_spd = 0.0f;   // 下摩擦带目标速度
     float dm_lift_pos  = 0.0f;  // 抬升机构目标位置
@@ -75,8 +83,9 @@ private:
         // --- 放块链路 ---
         PUT_FEED_PUSH,         // 送块2006伸出 → 上仓块从前方推出
         PUT_FEED_RETRACT,      // 送块收回
-        PUT_LIFT_UP,           // 下仓块抬升到上仓
+        PUT_LIFT_UP,           // 下仓块抬升到上仓（自动推出）
         PUT_LIFT_DOWN,         // 抬升回低位
+        LIFT_UP_HOLD,          // 仅抬升到高位并保持（外部调用 Push 才推出）
 
         COMPLETE,
         ABORT,
@@ -98,6 +107,10 @@ private:
 
     // ==================== 九宫格内物块状态 ====================
     bool _is_block_exist;
+
+    // ==================== 抬升达妙位置状态（_ReadSensors刷新） ====================
+    bool _lift_at_lower = false;  // PB0: 达妙在低位
+    bool _lift_at_upper = false;  // PB1: 达妙在高位
 
     // uint32_t _action_tick = 0;  // 阶段开始时间戳 (s) ——old
     float _action_tick = 0.0f;      // 阶段开始时间戳 (s)——改用本地计时
