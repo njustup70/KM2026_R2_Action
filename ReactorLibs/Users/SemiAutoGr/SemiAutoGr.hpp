@@ -4,6 +4,6 @@
 #include "Chassis.hpp"
 #include <cstdint>
 
-void Config_SemiAutoStateGraph();
+int Config_SemiAutoStateGraph();
 void Response_Button_main();
 extern StateGraph SemiAutoGr;

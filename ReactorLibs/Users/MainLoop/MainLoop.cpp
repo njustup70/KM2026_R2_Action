@@ -5,6 +5,11 @@
 
 MainLoop& APP::main_loop = MainLoop::GetInstance();
 
+#define Challenge_Area12_EXPLORE
+// #define Challenge_Area3_ARENA
+// #define Compete_KungfuMaster
+
+
 float debug_cnt = 0;
 
 void MainLoop::Start()
@@ -174,15 +179,32 @@ void MainLoop::ToggleAreaLogics()
         if (targ_area == AREA_RED)
         {
             APP::monit.LogRespond("Start Challenge Graph: RED");
+            
+            #if defined(Challenge_Area12_EXPLORE)
             APP::state_core.Enable(Challenge_Explore_RedGr_id);
-            // APP::state_core.Enable(Challenge_Treasure_RedGr_id);
+            #elif defined(Challenge_Area3_ARENA)
+            APP::state_core.Enable(Challenge_Treasure_RedGr_id);
+            #elif defined(Compete_KungfuMaster)
+            APP::state_core.Enable(Compete_KM_RedGr_id);
+            #else
+            APP::monit.LogError("Start Challenge Graph failed: no challenge macro defined.");
+            #endif
             confirmed_area = true;
         }
         else
         {
             APP::monit.LogRespond("Start Challenge Graph: BLUE");
+
+            #if defined(Challenge_Area12_EXPLORE)
             APP::state_core.Enable(Challenge_Explore_BlueGr_id);
-            // APP::state_core.Enable(Challenge_Treasure_BlueGr_id);
+            #elif defined(Challenge_Area3_ARENA)
+            APP::state_core.Enable(Challenge_Treasure_BlueGr_id);
+            #elif defined(Compete_KungfuMaster)
+            APP::state_core.Enable(Compete_KM_BlueGr_id);
+            #else
+            APP::monit.LogError("Start Challenge Graph failed: no challenge macro defined.");
+            #endif
+
             confirmed_area = true;
         }
     }

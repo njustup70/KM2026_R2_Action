@@ -167,6 +167,9 @@ void MainFrameCpp()
   APP::main_loop.Challenge_Treasure_BlueGr_id = ChallengeArenaPK_Graph_Blue();
   APP::main_loop.Challenge_Treasure_RedGr_id = ChallengeArenaPK_Graph();
 
+  // 注册主赛
+  APP::main_loop.Compete_KM_RedGr_id = Config_SemiAutoStateGraph();
+
   // APP::state_core.RegistGraph(graph);
   // graph.Degenerate(Action_of_Dege);
   // APP::state_core.Enable(0);
