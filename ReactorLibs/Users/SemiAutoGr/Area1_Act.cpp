@@ -288,6 +288,7 @@ void Aim_And_Fetch(int spear_id)
 void Fetch()
 {
   APP::monit.LogInfo("Is IR got?%.2f,%.2f,%.2f", System.position.x, System.position.y, System.position.z);
+  
   // 检查小黄是否读取到
   while(!APP::main_loop.spear_detector.Read())
   {

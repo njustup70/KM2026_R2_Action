@@ -21,6 +21,12 @@ void MainLoop::Start()
     Pin spear_ir = {'E', 6};
     spear_detector.Init(spear_ir);
 
+    /*****      左右的取块对准小黄      *****/
+    Pin mouthfetch_ir_left_pin = {'C', 1};
+    mouthfetch_ir_left.Init(mouthfetch_ir_left_pin);
+    Pin mouthfetch_ir_right_pin = {'C', 5};
+    mouthfetch_ir_right.Init(mouthfetch_ir_right_pin);
+
     /*****      四个按钮（当小黄处理了）      *****/
     // 第一个：红蓝区切换
     Pin button_0_pin = {'I', 9};

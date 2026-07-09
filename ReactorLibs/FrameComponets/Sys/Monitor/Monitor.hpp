@@ -8,7 +8,7 @@
 #include "bsp_uart.hpp"
 
 /**
- * @brief 用于监控机器人的各项状态，还有调试、日志等功能]
+ * @brief 用于监控机器人的各项状态，还有调试、日志等功能
  * @warning 本类也属于：单例
  */
 class Monitor

@@ -24,6 +24,10 @@ class MainLoop : public Application
     InfraredDetector button_3;
     bool button_pressed[4] = {false, false, false, false};
 
+    // 取块左右俩小黄，本来想放GetBlock里，但是GetBlock串味儿了。
+    InfraredDetector mouthfetch_ir_left;
+    InfraredDetector mouthfetch_ir_right;
+
     /*--------------        切区逻辑        ----------------*/
     /// @brief 所有切换红蓝区的逻辑，都封装在里边
     void ToggleAreaLogics();
@@ -125,5 +129,36 @@ namespace MOVE
 
         APP::monit.LogInfo("Move to target gesture.");
         return true;
+    }
+
+    /// @brief 按世界系速度方向持续推进，同时锁定目标 yaw，直到停止条件满足
+    /// @tparam StopPred 停止条件谓词，返回 true 时退出
+    /// @param world_speed_xy 世界系下的平面速度向量
+    /// @param target_yaw 期望锁定的 yaw
+    /// @param yaw_gain yaw 误差的比例系数
+    /// @param stop_pred 停止条件
+    /// @param move_duration 单次速度指令保持时间，默认 10ms
+    /// @param wait_dt 循环等待时间，默认 5ms
+    template <typename StopPred>
+    inline void MoveWhileLockYawUntil(Vec2 world_speed_xy,
+                                      float target_yaw,
+                                      float yaw_gain,
+                                      StopPred&& stop_pred,
+                                      float move_duration = 0.01f,
+                                      float wait_dt = 0.005f)
+    {
+        while (!stop_pred())
+        {
+            Vec2 body_speed_xy = world_speed_xy.Rotate(-System.position.z);
+
+            float yaw_err = target_yaw - System.position.z;
+            yaw_err = atan2f(sinf(yaw_err), cosf(yaw_err));
+
+            Vec3 body_speed = body_speed_xy.ToVec3();
+            body_speed.z = yaw_err * yaw_gain;
+
+            APP::chas.Move(body_speed, move_duration);
+            Seq::Wait(wait_dt); // 200hz更新频率
+        }
     }
 }
