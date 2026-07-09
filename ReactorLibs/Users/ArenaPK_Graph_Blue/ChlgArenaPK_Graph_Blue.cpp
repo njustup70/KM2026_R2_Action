@@ -13,6 +13,7 @@
 #include "Get_Block.hpp"
 #include "MainLoop.hpp"
 #include "Area3_Act.hpp"
+#include "PathCenter.hpp"
 
 /// @brief 所有的路径文件
 #include "ttd_1.hpp"
@@ -192,49 +193,95 @@ void SafeFirstPut_Blue()
  */
 void Put_First_Block(StateCore *core)
 {
-  // 灯带：滚动
   APP::main_loop.test_led.Running(Color::Up_Yellow * 0.75f, 0.5f, 1.0f);
-  
+
   // 小抬一点腿
   APP::leg.SetFrontPos(-50.0f);
   APP::leg.SetBackPos(-50.0f);
   Seq::Wait(0.3f);
 
+  // 等待遥控器的出发指令
+  while(MOD::farcon.button_second_half[0] != 1)
+  {
+    Response_Button();
+    Seq::Wait(0.01f);
+  }
+
   // 首先走上斜坡
-  MOVE::MoveToTargGes(Vec3(11.45f, 5.13f, 0.0f));
+  MOVE::MoveToTargGes(Vec3(11.38f, 5.32f, 0.0f));
 
-  // 然后走到九宫格前
-  MOVE::MoveToTargGes(Vec3(11.45f, 3.55f, 0.0f));
-  MOVE::MoveToTargGes(Vec3(10.75f, 0.7f, -1.571f));
+  // 等待遥控器的出发指令
+  while(MOD::farcon.button_second_half[0] != 1)
+  {
+    Response_Button();
+    Seq::Wait(0.01f);
+  }
 
-  // 同时把预装的物块抬到顶上准备放块
+  // 先把块抬起来
   APP::get_block.LiftUp();
+
+  // MOVE::MoveToTargGes(Vec3(11.1f, 1.3f, 0.0f));
+  // // 等待遥控器的出发指令
+  // // while(MOD::farcon.button_second_half[0] != 1)
+  // // {
+  // //   Response_Button();
+  // //   Seq::Wait(0.01f);
+  // // }
+  // MOVE::MoveToTargGes(Vec3(11.08f, 2.71f, 0.0f));
+  // // 等待遥控器的出发指令
+  // while(MOD::farcon.button_second_half[0] != 1)
+  // {
+  //   Response_Button();
+  //   Seq::Wait(0.01f);
+  // }
+  // MOVE::MoveToTargGes(Vec3(11.08f, 3.39f, 0.0f));
+
+  // // 等待遥控器的出发指令
+  // while(MOD::farcon.button_second_half[0] != 1)
+  // {
+  //   Response_Button();
+  //   Seq::Wait(0.01f);
+  // }
+
+  // // 这个点不能给 0.75，定位不准，回来想办法解决
+  // MOVE::MoveToTargGes(Vec3(10.70f, 5.20f, 1.571f));
+  MOVE::MoveToTargPos(PATH::A23_B2());
 
   // 等待，保障稳定性
   Seq::Wait(1.0f);
 
+  // 等待遥控器的出发指令
+  while(MOD::farcon.button_second_half[0] != 1)
+  {
+    Response_Button();
+    Seq::Wait(0.01f);
+  }
   // 抬起腿
-  APP::leg.SetFrontPos(-365);
-  APP::leg.SetFrontPos(-365);
-
+  APP::leg.SetFrontPos(-372);
+  APP::leg.SetBackPos(-372);
   // 等腿抬好
-  Seq::WaitUntil([]()-> bool {
-    return (APP::leg.real_front_pos_mm < -400.0f) && (APP::leg.real_back_pos_mm < -400.0f);
-  });
+  Seq::Wait(1.5f);
 
-  SafeFirstPut_Blue();
-
-  // 等待稳定再放块
+  // 等待遥控器的出发指令
+  while(MOD::farcon.button_second_half[0] != 1)
+  {
+    Response_Button();
+    Seq::Wait(0.01f);
+  }
+  // SafeFirstPut();
   Seq::Wait(1.0f);
 
   // 放块
-  APP::get_block.Put();
+  APP::get_block.Push();
 
   // 等待放块完成
   Seq::Wait(1.0f);
-
-  // 收回送块机构
-  // APP::get_block.PushBack();
+  // 等待遥控器的出发指令
+  while(MOD::farcon.button_second_half[0] != 1)
+  {
+    Response_Button();
+    Seq::Wait(0.01f);
+  }
 
   // 走到等待点，等待R1命令
   core->GetCurState().Complete = true;
