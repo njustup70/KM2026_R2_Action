@@ -130,6 +130,18 @@ void GetBlock::Update()
         motor_dm_lift.SetPosVel(dm_lift_pos, _lift_vel);
         damiao_cnt = 0;
     }
+
+    // === 诊断日志：DM位置目标值变化时记录（避免刷屏） ===
+    {
+        static float _last_logged_dm_pos = 99999.0f;
+        if (fabsf(dm_lift_pos - _last_logged_dm_pos) > 0.1f)
+        {
+            _last_logged_dm_pos = dm_lift_pos;
+            APP::monit.LogInfo("[GetBlock] DM target: %.1f  upper=%d lower=%d lift_up=%d lift_low=%d grid[0]=%d grid[1]=%d",
+                              dm_lift_pos, _upper, _lower, _lift_at_upper, _lift_at_lower,
+                              _grid[0], _grid[1]);
+        }
+    }
     
     _UpdateFSM();
 }
@@ -373,7 +385,9 @@ void GetBlock::_UpdateFSM()
         };
         int idx = (int)_fsm;
         if (idx >= 0 && idx < 16)
-            APP::monit.LogInfo("[GetBlock] FSM >>> %s", _state_name[idx]);
+            APP::monit.LogInfo("[GetBlock] FSM >>> %s  (dm=%.1f upper=%d lower=%d lu=%d ll=%d)",
+                              _state_name[idx], dm_lift_pos, _upper, _lower,
+                              _lift_at_upper, _lift_at_lower);
     }
 
     switch (_fsm)
@@ -717,16 +731,12 @@ void GetBlock::_UpdateFSM()
     {
         dm_lift_pos = -_lift_pos_upper;
 
-        // 块进入上仓 → 记录状态
+        // 块进入上仓 → 记录状态（仅触发一次，避免刷屏）
         if (_grid[1] && !_upper)
         {
             _upper = true;
             _lower = false;
             _action_tick = _local_tick;
-            // APP::monit.LogInfo("[GetBlock] Block entered upper (LIFT_UP_HOLD)");
-        }
-        if(_upper && _lift_at_upper)
-        {
             APP::monit.LogInfo("[GetBlock] Block entered upper (LIFT_UP_HOLD)");
         }
 
