@@ -759,6 +759,8 @@ void MeiLinArray::Decend_200(bool need_chase)
   {
     return (APP::leg.real_front_pos_mm > -10.0f) && (APP::leg.real_back_pos_mm > -10.0f); 
   });
+  // 伸出妲己
+  APP::leg.relay_daji.On();
 
   // 记录起始位置
   APP::monit.LogInfo("Decend200:StartPos:(%.2f,%.2f)",
@@ -843,6 +845,8 @@ void MeiLinArray::Decend_400(bool need_chase)
   {
     return (APP::leg.real_front_pos_mm > -10.0f) && (APP::leg.real_back_pos_mm > -10.0f); 
   });
+    // 伸出妲己
+  APP::leg.relay_daji.On();
 
   // 记录起始位置
   APP::monit.LogInfo("Decend400:StartPos:(%.2f,%.2f)",
