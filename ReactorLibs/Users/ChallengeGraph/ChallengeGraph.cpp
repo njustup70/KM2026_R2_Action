@@ -565,14 +565,14 @@ const static float max_farcon_beta = 1.8f; // 最大角加速度 rad/s^2
 static void Response_Button()
 {
     static float max_velo = 1.5f;
-    if(MOD::farcon.toggle[2] == 0)
-    {
-      max_velo = 1.0f;
-    }
-    else if(MOD::farcon.toggle[2] == 1)
-    {
-      max_velo = 0.33f;
-    }
+    // if(MOD::farcon.toggle[2] == 0)
+    // {
+    //   max_velo = 1.0f;
+    // }
+    // else if(MOD::farcon.toggle[2] == 1)
+    // {
+    //   max_velo = 0.33f;
+    // }
 
     // 计算遥控器死区：0-15不算，将15-100映射到原来的0.0-1.0
     constexpr float deadzone = 15.0f;
