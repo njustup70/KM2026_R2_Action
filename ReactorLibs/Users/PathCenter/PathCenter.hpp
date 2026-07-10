@@ -54,4 +54,14 @@ const Path<188>& A23_B2();
 
 const Path<81>& FFM_B();
 const Path<41>& FFM();
+
+/// @brief ArenaPK 路径：W到N区
+const Path<179>& W_TO_N4();
+const Path<161>& W_TO_N5();
+const Path<156>& W_TO_N6();
+
+/// @brief ArenaPK 路径：N区返回
+const Path<179>& N4_BACK();
+const Path<162>& N5_BACK();
+const Path<156>& N6_BACK();
 }

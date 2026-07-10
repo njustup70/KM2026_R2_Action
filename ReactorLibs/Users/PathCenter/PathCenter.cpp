@@ -48,6 +48,14 @@
 #include "FFM_B.hpp"
 #include "FFM.hpp"
 
+#include "w_to_n4.hpp"
+#include "w_to_n5.hpp"
+#include "w_to_n6.hpp"
+
+#include "n4_back.hpp"
+#include "n5_back.hpp"
+#include "n6_back.hpp"
+
 namespace PATH
 {
 const Path<22>& TTD_B1()
@@ -236,6 +244,36 @@ const Path<81>& FFM_B()
 const Path<41>& FFM()
 {
     return ::FFM;
+}
+
+const Path<179>& W_TO_N4()
+{
+    return ::W_to_N4;
+}
+
+const Path<161>& W_TO_N5()
+{
+    return ::W_to_N5;
+}
+
+const Path<156>& W_TO_N6()
+{
+    return ::W_to_N6;
+}
+
+const Path<179>& N4_BACK()
+{
+    return ::N4_Back;
+}
+
+const Path<162>& N5_BACK()
+{
+    return ::N5_Back;
+}
+
+const Path<156>& N6_BACK()
+{
+    return ::N6_Back;
 }
 }
 
