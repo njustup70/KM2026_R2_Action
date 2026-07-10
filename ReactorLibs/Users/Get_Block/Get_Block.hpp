@@ -146,8 +146,8 @@ private:
     // ==================== 私有方法 ====================
     void _InitLiftDm();
     void _ConfigureLiftDmParamsOnce();
-    void _LiftWakeUp();    ///< 唤醒抬升电机（SuperAutoEnable + Enable），仅在需要时
-    void _LiftSleep();     ///< 休眠抬升电机（Disable），不用时让它休息散热
+    void _LiftWakeUp();    ///< 确保电机可工作（清故障/使能），SuperAutoEnable 已在 Init 常开
+    void _LiftSleep();     ///< 空闲时仅下零速，不主动失能（SuperAutoEnable 常开兜底）
     void _LiftMoveUp();
     void _LiftMoveDown();
     void _LiftStop();

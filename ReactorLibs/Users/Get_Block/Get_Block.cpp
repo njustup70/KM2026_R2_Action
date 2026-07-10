@@ -193,7 +193,8 @@ void GetBlock::_InitLiftDm()
         _ConfigureLiftDmParamsOnce();
     }
     motor_dm_lift.SetVelLimit(LIFT_DM_SOFT_VEL_LIMIT);
-    // 不在初始化时使能！由 _LiftWakeUp() 按需唤醒，空闲时电机可冷却
+    motor_dm_lift.SetSuperAutoEnable(true, 500); // 始终开启，激进恢复：含故障清错+重使能
+    motor_dm_lift.Enable();
 }
 
 void GetBlock::_ConfigureLiftDmParamsOnce()
@@ -211,23 +212,25 @@ void GetBlock::_ConfigureLiftDmParamsOnce()
 
 void GetBlock::_LiftWakeUp()
 {
-    // 按需唤醒：不管电机之前是什么状态，强行清错+使能
+    // 确保电机处于可工作状态：有故障清故障，没使能则使能。
+    // SuperAutoEnable 已在 _InitLiftDm 中常开，此处不再重复设置。
     if (motor_dm_lift.HasFault())
     {
         motor_dm_lift.ClearError();
         DWT_DelayMs(5);
     }
-    motor_dm_lift.SetSuperAutoEnable(true, 500);
-    motor_dm_lift.Enable();
-    APP::monit.LogInfo("[GetBlock] Lift DM wake up (SuperAutoEnable ON)");
+    if (!motor_dm_lift.IsEnabled())
+    {
+        motor_dm_lift.Enable();
+        APP::monit.LogInfo("[GetBlock] Lift DM wake up (re-enable)");
+    }
 }
 
 void GetBlock::_LiftSleep()
 {
-    // 不用时让电机休息：关掉自动重使能，主动失能
-    motor_dm_lift.SetSuperAutoEnable(false, 500);
-    motor_dm_lift.Disable();
-    APP::monit.LogInfo("[GetBlock] Lift DM sleep (disabled for cooldown)");
+    // 不再主动失能。SuperAutoEnable 常开后，电机空闲时仅下发零速，
+    // 由 SuperAutoEnable 自行处理偶发故障，无需手动关断。
+    _lift_cmd_vel = LIFT_STOP_VEL;
 }
 
 void GetBlock::_LiftMoveUp()
@@ -503,7 +506,7 @@ bool GetBlock::IsBlockPresent()
     //     return false;
     // }
     // return false;
-    return detector.Read();
+    return !detector.Read();
 }
 
 // ==================== 内部状态机 ====================
