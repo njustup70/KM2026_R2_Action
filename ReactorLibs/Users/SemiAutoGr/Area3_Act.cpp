@@ -96,7 +96,6 @@ void Area3::FetchBlockOnTheGround()
     return fabs(APP::vac_claw.motor_stretch.driver.measure.total_angle - APP::vac_claw.stretch_pos) < 5000;
   });  
 
-
   APP::vac_claw.OpenSnap();
   APP::get_block.ClosePump();
   APP::get_block.OpenPRV();

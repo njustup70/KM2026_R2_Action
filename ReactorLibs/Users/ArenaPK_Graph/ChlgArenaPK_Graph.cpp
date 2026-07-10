@@ -30,13 +30,16 @@ static void Waiting_for_Start(StateCore *core);
 static void Put_First_Block(StateCore *core);
 static void Waiting_R1_Instru(StateCore *core);
 static void Fetch2_From_Mid(StateCore *core);
+// 从R1等待位置出发的状态函数
+static void Fetch_0_FromWait();
+static void Fetch_1_FromWait();
 
 Vec2 Arena_R2_KFS_FetchPos[2] = {
   Vec2(11.1, 3.405), Vec2(11.1, 2.685)
 }; // 块之间间隔：0.175 + 0.175 + 0.37 = 0.72 m
 
 Vec2 Arena_R2_PutKFSPos[3] = {
-  Vec2(10.21f, 0.7f), Vec2(10.75f, 0.7f), Vec2(11.29f, 0.7f)
+  Vec2(10.21f, 5.15f), Vec2(10.75f, 5.15f), Vec2(11.29f, 5.15f)
 }; // 分别对应4、5、6格子
 
 /**
@@ -181,11 +184,11 @@ void Put_First_Block(StateCore *core)
   APP::leg.B_Origin();
 
   MOVE::MoveToTargPos(PATH::A23_2(), Vec3(0.01f, 0.01f, 0.01f));
+  MOVE::MoveToTargGes(Vec3(10.75f, 5.20f, 1.571f));
 
   // 等待，保障稳定性
   Seq::Wait(0.25f);
 
-  // MOVE::MoveToTargGes(Vec3(10.75f, 5.15f, 1.571f));
   // 锁定yaw角为1.571，同时平移直到两路西克激光基本相等
   // APP::comm_center.sick_data_m[0] 约等于 APP::comm_center.sick_data_m[1];
   int sick_cnt = 0;
@@ -212,6 +215,13 @@ void Put_First_Block(StateCore *core)
     last_err_dist = err_dist;
 
     Vec2 sick_fix = Vec2(err_spd, 0.0f).Rotate(-System.position.z);
+
+    // 速度保护：限制平移速度不超过0.3m/s
+    float sick_speed = sick_fix.Length();
+    if (sick_speed > 0.3f)
+    {
+      sick_fix = sick_fix * (0.3f / sick_speed);
+    }
 
     // 锁定yaw角为 1.5707 rad，不用太强
     float yaw_err = 1.5707f - System.position.z;
@@ -340,24 +350,150 @@ static void Fetch2_From_Mid(StateCore *core)
 }
 
 // 放二层块的封装
-static void PutBlock_L2(Vec2 pos)
+static void PutBlock_L2(uint8_t id)
 {
   // 此时接收到R1的命令，等待2.0s，R1让开
   Seq::Wait(2.0f);
 
-  // 抬腿
-  APP::leg.SetFrontPos(-380);
-  APP::leg.SetBackPos(-373);
+  // 根据需求，走不同的路线
+  switch (id)
+  {
+    case 0:
+    {
+      // 放最靠近二区的格子
+      MOVE::MoveToTargPos(PATH::W_TO_N4(), Vec3(0.015f, 0.015f, 0.015f));
+      break;
+    }
+    case 1:
+    {
+      // 放中间的格子
+      MOVE::MoveToTargPos(PATH::W_TO_N5(), Vec3(0.015f, 0.015f, 0.015f));
+      break;
+    }
+    case 2:
+    {
+      // 放最靠近三区的格子
+      MOVE::MoveToTargPos(PATH::W_TO_N6(), Vec3(0.015f, 0.015f, 0.015f));
+      break;
+    }
+  }
 
-  // 走到九宫格对应格子前
-  MOVE::MoveToTargGes(Vec3(pos.x, pos.y, 1.5707));
+  // 等待到达
+  APP::monit.LogInfo("Forward is Arena.");
+
+  // 西克校准：根据id确定目标偏移量
+  // 几何关系：坐标偏移a时，一边激光近a、另一边远a，差值变化2a
+  // N4(左,id=0): X=10.21，偏移0.54m，sick[1]-sick[0]目标为+1.08
+  // N5(中,id=1): X=10.75，居中，sick[1]-sick[0]目标为0
+  // N6(右,id=2): X=11.29，偏移0.54m，sick[1]-sick[0]目标为-1.08
+  float sick_target = 0.0f;
+  if (id == 0)
+    sick_target = 1.08f;
+  else if (id == 2)
+    sick_target = -1.08f;
+
+  // 等待，保障稳定性
+  Seq::Wait(0.25f);
+
+  // 锁定yaw角为1.571，同时平移直到两路西克激光差值与目标一致
+  int sick_cnt = 0;
+  const float sick_kd = 0.25f;
+  const float sick_d_alpha = 0.7f;
+  float last_err_dist = APP::comm_center.sick_data_m[1] - APP::comm_center.sick_data_m[0] - sick_target;
+  float d_err_dist_filt = 0.0f;
+  uint32_t sick_log_tick = 0;
+
+  while (sick_cnt < 10)
+  {
+    float err_dist = APP::comm_center.sick_data_m[1] - APP::comm_center.sick_data_m[0] - sick_target;
+
+    if (fabs(err_dist) < 0.004f)
+    {
+      sick_cnt++;
+    }
+    else
+      sick_cnt = 0;
+
+    float d_err_dist = (err_dist - last_err_dist) / 0.005f;
+    d_err_dist_filt = d_err_dist_filt * sick_d_alpha + d_err_dist * (1.0f - sick_d_alpha);
+    float err_spd = err_dist * 1.0f - sick_kd * d_err_dist_filt;
+    last_err_dist = err_dist;
+
+    Vec2 sick_fix = Vec2(err_spd, 0.0f).Rotate(-System.position.z);
+
+    // 速度保护：限制平移速度不超过0.3m/s
+    float sick_speed = sick_fix.Length();
+    if (sick_speed > 0.3f)
+    {
+      sick_fix = sick_fix * (0.3f / sick_speed);
+    }
+
+    // 锁定yaw角为 1.5707 rad，不用太强
+    float yaw_err = 1.5707f - System.position.z;
+    Vec3 targ_body_vec = sick_fix.ToVec3();
+    targ_body_vec.z = yaw_err * 0.8f;
+
+    if (++sick_log_tick >= 20)
+    {
+      sick_log_tick = 0;
+      APP::monit.LogInfo("sf:e%.3f v%.3f s0%.3f s1%.3f t%.3f",
+                         err_dist,
+                         err_spd,
+                         APP::comm_center.sick_data_m[0],
+                         APP::comm_center.sick_data_m[1],
+                         sick_target);
+    }
+
+    APP::chas.Move(targ_body_vec, 0.01f);
+    Seq::Wait(0.005f); // 200hz更新频率
+  }
+
+  APP::monit.LogInfo("Finished sick fix. sick0:%.3f sick1:%.3f id:%d",
+                     APP::comm_center.sick_data_m[0], APP::comm_center.sick_data_m[1], id);
+  APP::chas.Move(Vec3(0.0f, 0.0f, 0.0f), 0.25f);
+  Seq::Wait(0.5f);
+
+  // 抬腿
+  APP::leg.SetFrontPos(-388);
+  APP::leg.SetBackPos(-380);
+
+  // 等腿抬好
+  Seq::WaitUntil([](){
+    return ( fabs(APP::leg.real_front_pos_mm - APP::leg.front_pos) < 6  && fabs(APP::leg.real_back_pos_mm - APP::leg.back_pos) < 6 );
+  });
 
   // 放块
   APP::get_block.Put();
-  Seq::Wait(2.0);
-  
-  // 回到光通信位置，等待下一个指令
-  MOVE::MoveToTargGes(Vec3(11.5f, 4.8f, 1.5707));
+
+  // 等待放块完成
+  Seq::Wait(10.0);
+
+  // 得先放下腿，再回家
+  APP::leg.F_AlmostOrigin();
+  APP::leg.B_AlmostOrigin();
+
+  // 根据需求，走不同的路线回到光通信位置，等待下一个指令
+  switch (id)
+  {
+    case 0:
+    {
+      // 放最靠近二区的格子
+      MOVE::MoveToTargPos(PATH::N4_BACK(), Vec3(0.015f, 0.015f, 0.015f));
+      break;
+    }
+    case 1:
+    {
+      // 放中间的格子
+      MOVE::MoveToTargPos(PATH::N5_BACK(), Vec3(0.015f, 0.015f, 0.015f));
+      break;
+    }
+    case 2:
+    {
+      // 放最靠近三区的格子
+      MOVE::MoveToTargPos(PATH::N6_BACK(), Vec3(0.015f, 0.015f, 0.015f));
+      break;
+    }
+  }
 }
 
 /**
@@ -379,12 +515,12 @@ void Waiting_R1_Instru(StateCore *core)
   float wait_progress = 0.0f;
   APP::main_loop.test_led.ProgBar(Color::Up_Yellow, &wait_progress);
 
-  // 等待 3 秒
+  // 等待 6 秒
   float wait_time_s = 0.0f;
-  while (wait_time_s < 3.0f)
+  while (wait_time_s < 6.0f)
   {
     wait_time_s += 0.05f;
-    wait_progress = wait_time_s / 3.0f;
+    wait_progress = wait_time_s / 6.0f;
     Seq::Wait(0.05f);
   }
 
@@ -392,17 +528,17 @@ void Waiting_R1_Instru(StateCore *core)
   {
     case Area3ActCode::Put_L2_N4_Block:
     {
-      PutBlock_L2(Arena_R2_PutKFSPos[0]);
+      PutBlock_L2(0);
       break;
     }
     case Area3ActCode::Put_L2_N5_Block:
     {      
-      PutBlock_L2(Arena_R2_PutKFSPos[1]);
+      PutBlock_L2(1);
       break;
     }
     case Area3ActCode::Put_L2_N6_Block:
     {
-      PutBlock_L2(Arena_R2_PutKFSPos[2]);
+      PutBlock_L2(2);
       break;
     }
     case Area3ActCode::Put_L3:
@@ -415,10 +551,12 @@ void Waiting_R1_Instru(StateCore *core)
     }
     case Area3ActCode::Fetch_GroundBlock_0:
     {
+      Fetch_0_FromWait();
       break;
     }
     case Area3ActCode::Fetch_GroundBlock_1:
     {
+      Fetch_1_FromWait();
       break;
     }
     default:
@@ -432,7 +570,53 @@ void Waiting_R1_Instru(StateCore *core)
 
 /*******************************************************************************/
 
+void Fetch_0_FromWait()
+{
+  // 走到第一个块跟前
+  MOVE::MoveToTargGes(Vec3(Arena_R2_KFS_FetchPos[0].x, Arena_R2_KFS_FetchPos[0].y, 0.0));
 
+  // 等待到达
+  APP::monit.LogInfo("[Arena] I'm at the second block.");
+
+  // 等待遥控器的出发指令
+  while(MOD::farcon.button_second_half[0] != 1)
+  {
+    Response_Button();
+    Seq::Wait(0.01f);
+  }
+  // 取第二个块
+  Area3::FetchBlockOnTheGround();
+
+  // 等待取块完成
+  Seq::Wait(1.0f);
+
+  // 返回等待点（光通信朝向 R1）
+  MOVE::MoveToTargGes(Vec3(10.1f, 2.1f, -1.571f));
+}
+
+void Fetch_1_FromWait()
+{
+  // 走到第二个块跟前
+  MOVE::MoveToTargGes(Vec3(Arena_R2_KFS_FetchPos[1].x, Arena_R2_KFS_FetchPos[1].y, 0.0));
+
+  // 等待到达
+  APP::monit.LogInfo("[Arena] I'm at the second block.");
+
+  // 等待遥控器的出发指令
+  while(MOD::farcon.button_second_half[0] != 1)
+  {
+    Response_Button();
+    Seq::Wait(0.01f);
+  }
+  // 取第二个块
+  Area3::FetchBlockOnTheGround();
+
+  // 等待取块完成
+  Seq::Wait(1.0f);
+
+  // 返回等待点（光通信朝向 R1）
+  MOVE::MoveToTargGes(Vec3(10.1f, 2.1f, -1.571f));
+}
 
 
 
@@ -647,10 +831,22 @@ void Response_Button()
 
     // }
 
-    // 进行梅林上的位置闭环
-    if(MOD::farcon.button_first_half[4] == 1)
+    // 进行 DM 抬升的抬上抬下
+    static bool is_dm_lift_up = false;
+    static float cooldown_tick = 0.0f;
+    if(MOD::farcon.button_first_half[4] == 1  && DWT_GetTimeline_Sec() - cooldown_tick > 1.0f)
     {
-      Area2::mei_lin_array.ChaseCurrentGrid();
+      cooldown_tick = DWT_GetTimeline_Sec();
+      if (!is_dm_lift_up)
+      {
+        APP::get_block.LiftUp();
+        is_dm_lift_up = true;
+      }
+      else
+      {
+        APP::get_block.LiftDown();
+        is_dm_lift_up = false;
+      }
     }
 }
 
