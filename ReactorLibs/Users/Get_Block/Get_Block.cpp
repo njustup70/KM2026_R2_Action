@@ -2,6 +2,9 @@
 
 GetBlock& APP::get_block = GetBlock::GetInstance();
 
+// 打开后输出抬升DM的完整反馈诊断日志；默认关闭，避免刷屏。
+// #define GETBLOCK_LIFT_DM_DIAG_LOG
+
 // ==================== 超时间隔 ====================
 static constexpr float T_BELT = 20.0f;
 static constexpr float T_LIFT = 3.5f; // 摩擦带上下的时间（短距兜底）
@@ -9,14 +12,17 @@ static constexpr float T_LIFT_SETTLE = 3.0f;    // 传感器触发后等待抬�
 static constexpr float T_LIFT_BEFORE_BELT = 4.2f; // 取块1时抬升先走一段再转摩擦带
 static constexpr float T_LIFT_LONG = 60.0f;  // 抬升全程超时（大行程兜底）
 static constexpr float T_LIFT_TRAVEL = 4.0f; // 速度模式单程兜底，超时即停机中止
+#ifdef GETBLOCK_LIFT_DM_DIAG_LOG
+static constexpr float T_LIFT_DIAG_LOG = 0.5f; // 抬升动作中周期性诊断日志
+#endif
 static constexpr float T_FEED = 10.0f;
 static constexpr float BELT_RPM    = 17.0f;
 static constexpr float DM_BELT_VEL = 17.0f;
-static constexpr float LIFT_UP_VEL = -17.0f;   // 现有位置模式中向上为负，速度沿用该方向
-static constexpr float LIFT_DOWN_VEL = 17.0f;
-static constexpr float LIFT_STOP_VEL = 0.0f;
-static constexpr float LIFT_DM_SOFT_VEL_LIMIT = 18.0f;
-static constexpr float LIFT_DM_HARD_VEL_LIMIT = 18.0f;
+static constexpr float LIFT_UP_VEL = -132.0f;   // 现有位置模式中向上为负，速度沿用该方向
+static constexpr float LIFT_DOWN_VEL = 132.0f;   // 下行目标速度，正方向
+static constexpr float LIFT_STOP_VEL = 0.0f;    // 停止速度指令，用于限位/超时/中止
+static constexpr float LIFT_DM_SOFT_VEL_LIMIT = 160.0f; // MCU侧SetVel限幅，每次启动生效
+static constexpr float LIFT_DM_HARD_VEL_LIMIT = 160.0f; // 电调MAX_SPD寄存器限幅，需一次性保存
 static constexpr bool CONFIG_LIFT_DM_PARAMS_ONCE = false; // 改成true烧录一次后再改回false
 
 // ==================== Start ====================
@@ -26,7 +32,7 @@ void GetBlock::Start()
     motor_s2325.Init(Hardware::hcan_sub, 9, 19, VEL, DM_S2325);
     motor_s2325.SetFeedbackRange(3.14159f, 10.0f, 5.0f);
     motor_s2325.SetVelLimit(38);
-    motor_s2325.SetAutoEnable(true, 500); // user_want_enable 可禁止重使能
+    motor_s2325.SetSuperAutoEnable(true, 500); // 激进恢复：含故障清错+重使能
     motor_s2325.Enable();
 
     /**** 上摩擦带 2006 (hcan_main, ID 4) ****/
@@ -53,9 +59,9 @@ void GetBlock::Start()
         .ADRC_Womega(42.0f, 9.6f)
         .ADRC_Physic(1.0e-4f, 0.18f)
         .ADRC_Limit(8.0f)
-        .SpdLimit(10000.0f)
-        .ADRC_MaxPlannedVel(10000.0f)
-        .ADRC_SOTF(0.2f)
+        .SpdLimit(12000.0f)
+        .ADRC_MaxPlannedVel(12000.0f)
+        .ADRC_SOTF(0.3f)
         .SetDt(0.001)
         .Apply();
     motor_2006_feed.driver.Enable();
@@ -141,11 +147,19 @@ void GetBlock::Update()
         {
             _last_logged_lift_vel = _lift_cmd_vel;
             APP::monit.LogInfo("[GetBlock] Lift DM vel: %.1f", _lift_cmd_vel);
-            APP::monit.LogInfo("[GetBlock] upper=%d lower=%d lift_up=%d lift_low=%d",
-                              _upper, _lower, _lift_at_upper, _lift_at_lower);
-            APP::monit.LogInfo("[GetBlock] grid[0]=%d grid[1]=%d", _grid[0], _grid[1]);
+#ifdef GETBLOCK_LIFT_DM_DIAG_LOG
+            _LogLiftDmDiag("cmd");
+#endif
         }
     }
+
+#ifdef GETBLOCK_LIFT_DM_DIAG_LOG
+    if (_fsm_busy && (_local_tick - _last_lift_diag_tick) > T_LIFT_DIAG_LOG)
+    {
+        _last_lift_diag_tick = _local_tick;
+        _LogLiftDmDiag("run");
+    }
+#endif
     
     _UpdateFSM();
 }
@@ -179,8 +193,7 @@ void GetBlock::_InitLiftDm()
         _ConfigureLiftDmParamsOnce();
     }
     motor_dm_lift.SetVelLimit(LIFT_DM_SOFT_VEL_LIMIT);
-    motor_dm_lift.SetAutoEnable(true, 500); // user_want_enable 可禁止重使能
-    motor_dm_lift.Enable();
+    // 不在初始化时使能！由 _LiftWakeUp() 按需唤醒，空闲时电机可冷却
 }
 
 void GetBlock::_ConfigureLiftDmParamsOnce()
@@ -189,11 +202,32 @@ void GetBlock::_ConfigureLiftDmParamsOnce()
     APP::monit.LogWarning("[GetBlock] Writing lift DM params. Set flag false after one boot.");
     motor_dm_lift.SetFeedbackRange(3.14159f, 10.0f, 5.0f);
     motor_dm_lift.Set_Hard_VelLimit(LIFT_DM_HARD_VEL_LIMIT);
-    motor_dm_lift.Disable();
+    motor_dm_lift.Disable();    
     DWT_DelayMs(50.0f);
     motor_dm_lift.SaveParam();
     DWT_DelayMs(50.0f);
     APP::monit.LogWarning("[GetBlock] Lift DM params saved. Disable CONFIG_LIFT_DM_PARAMS_ONCE.");
+}
+
+void GetBlock::_LiftWakeUp()
+{
+    // 按需唤醒：不管电机之前是什么状态，强行清错+使能
+    if (motor_dm_lift.HasFault())
+    {
+        motor_dm_lift.ClearError();
+        DWT_DelayMs(5);
+    }
+    motor_dm_lift.SetSuperAutoEnable(true, 500);
+    motor_dm_lift.Enable();
+    APP::monit.LogInfo("[GetBlock] Lift DM wake up (SuperAutoEnable ON)");
+}
+
+void GetBlock::_LiftSleep()
+{
+    // 不用时让电机休息：关掉自动重使能，主动失能
+    motor_dm_lift.SetSuperAutoEnable(false, 500);
+    motor_dm_lift.Disable();
+    APP::monit.LogInfo("[GetBlock] Lift DM sleep (disabled for cooldown)");
 }
 
 void GetBlock::_LiftMoveUp()
@@ -223,6 +257,39 @@ void GetBlock::_LiftStop()
     _lift_cmd_vel = LIFT_STOP_VEL;
 }
 
+#ifdef GETBLOCK_LIFT_DM_DIAG_LOG
+void GetBlock::_LogLiftDmDiag(const char* tag)
+{
+    const auto& m = motor_dm_lift.driver.measure;
+    APP::monit.LogInfo("[LIFTDIAG:%s] cmd=%.1f targ=%.1f online=%d en=%d fault=%d err=0x%X msg=%d",
+                       tag,
+                       _lift_cmd_vel,
+                       motor_dm_lift.targ_vel_rads,
+                       motor_dm_lift.IsOnline(),
+                       motor_dm_lift.IsEnabled(),
+                       motor_dm_lift.HasFault(),
+                       m.err_code,
+                       (int)m.msg_cnt);
+    APP::monit.LogInfo("[LIFTDIAG:%s] raw pos=%d vel=%d torq=%d angle=%.2f fbv=%.2f tq=%.2f",
+                       tag,
+                       m.pos_code,
+                       m.vel_code,
+                       m.torq_code,
+                       m.total_angle,
+                       m.vel_rad,
+                       m.torq_nm);
+    APP::monit.LogInfo("[LIFTDIAG:%s] temp mos=%d rotor=%d up=%d low=%d grid0=%d grid1=%d fsm=%d",
+                       tag,
+                       m.temp_mos,
+                       m.temp_rotor,
+                       _lift_at_upper,
+                       _lift_at_lower,
+                       _grid[0],
+                       _grid[1],
+                       (int)_fsm);
+}
+#endif
+
 void GetBlock::_StartBelt()
 {
     motor_2006_fric.SetSpd(BELT_RPM * MotorDJIConst::redu_M2006 * 60.0f / (2 * PI));
@@ -237,6 +304,7 @@ void GetBlock::_StopBelt()
 
 void GetBlock::LiftUp()
 {
+    _LiftWakeUp();  // 唤醒抬升电机
     _fsm = FSM::LIFT_UP_HOLD;
     _fsm_busy = true;
     _action_tick = _local_tick;
@@ -245,6 +313,7 @@ void GetBlock::LiftUp()
 
 void GetBlock::LiftDown()
 {
+    _LiftWakeUp();  // 唤醒抬升电机
     _fsm = FSM::PUT_LIFT_DOWN;
     _fsm_busy = true;
     _action_tick = _local_tick;
@@ -327,6 +396,7 @@ void GetBlock::Store()
         _storing_b2 = false;
     }
 
+    _LiftWakeUp();  // 新序列开始，唤醒抬升电机
     _fsm_busy = true;
     // _action_tick = System.runtime_tick;  // old
     _action_tick = _local_tick;
@@ -376,6 +446,7 @@ void GetBlock::Put()
     else // _lower && !_upper
         _fsm = FSM::PUT_LIFT_UP;
 
+    _LiftWakeUp();  // 新序列开始，唤醒抬升电机
     _fsm_busy = true;
     // _action_tick = System.runtime_tick;  // old
     _action_tick = _local_tick;
@@ -858,6 +929,7 @@ void GetBlock::_UpdateFSM()
 
         if (_store_pending) { _store_pending = false; Store(); return; }
         if (_put_pending)   { _put_pending   = false; Put();   return; }
+        _LiftSleep();  // 无待处理任务，让抬升电机休眠散热
         break;
     }
 

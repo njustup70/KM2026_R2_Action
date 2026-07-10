@@ -112,6 +112,7 @@ private:
     bool _lift_at_lower = false;  // PB0: 达妙在低位
     bool _lift_at_upper = false;  // PB1: 达妙在高位
     float _lift_cmd_vel = 0.0f;    // 抬升DM速度指令；向上为负，向下为正
+    float _last_lift_diag_tick = -999.0f;
 
     // uint32_t _action_tick = 0;  // 阶段开始时间戳 (s) ——old
     float _action_tick = 0.0f;      // 阶段开始时间戳 (s)——改用本地计时
@@ -145,9 +146,12 @@ private:
     // ==================== 私有方法 ====================
     void _InitLiftDm();
     void _ConfigureLiftDmParamsOnce();
+    void _LiftWakeUp();    ///< 唤醒抬升电机（SuperAutoEnable + Enable），仅在需要时
+    void _LiftSleep();     ///< 休眠抬升电机（Disable），不用时让它休息散热
     void _LiftMoveUp();
     void _LiftMoveDown();
     void _LiftStop();
+    void _LogLiftDmDiag(const char* tag);
     void _UpdateFSM();
     void _ReadSensors();
     bool _IsTimeout(float sec) const;
