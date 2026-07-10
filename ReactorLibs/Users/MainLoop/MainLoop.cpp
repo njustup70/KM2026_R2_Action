@@ -277,3 +277,15 @@ void MainLoop::JudgeRetryFlags()
         }
     }
 }
+
+///@brief 遥控器按键控制逻辑
+void ButtonLogics()
+{
+    // 第二半，7号按键，重启SLAM
+    static uint8_t last_restart_time = 0;
+    if(MOD::farcon.button_second_half[6] && DWT_GetTimeline_Sec() - last_restart_time > 1.0f)
+    {
+        last_restart_time = DWT_GetTimeline_Sec();
+        MOD::host_pc.RestartSLAM();
+    }
+}
