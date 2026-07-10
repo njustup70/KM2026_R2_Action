@@ -51,13 +51,27 @@ void Action_of_Dege(StateCore *core)
   // Area3::FetchBlockOnTheGround();
   // Area2::block_pos.GetIn(1);
   // Area2::mei_lin_array.Climb_Up200();
-  APP::get_block.Put();
+  // APP::get_block.Put();
+
+  // APP::get_block.LiftUp();
+  // Seq::Wait(3.5f);
+  // APP::get_block.Store();
+
+  Area3::FetchBlockOnTheGround();
+
+  Seq::Wait(3.5f);
 
   while(MOD::farcon.button_second_half[0] != 1)
   {
     Response_Button_main();
     Seq::Wait(0.01f);
-  }  
+  }
+
+  // APP::get_block.LiftUp();
+  // Seq::Wait(3.5f);
+  // APP::get_block.Store();
+
+  Area3::FetchBlockOnTheGround();
   // Area2::mei_lin_array.FetchBlock(BlockHeight::UP200);
 
   // Area2::mei_lin_array.Climb_Up200();

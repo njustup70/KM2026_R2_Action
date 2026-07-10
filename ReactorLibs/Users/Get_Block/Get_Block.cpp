@@ -339,14 +339,14 @@ void GetBlock::PushBack()
 // ==================== 存块 ====================
 void GetBlock::Store()
 {
-    // 预抬升流程中开始存块：让存块FSM接管抬升/入料控制。
+    // 预抬升流程中开始存块：释放 LIFT_UP_HOLD，交给下方传感器逻辑统一判断。
+    // LIFT_UP_HOLD 已从源头防止空载挡片污染 _upper，这里不再重置状态。
     if (_fsm_busy && _fsm == FSM::LIFT_UP_HOLD)
     {
-        _fsm = FSM::STORE_LIFT_BEFORE_BELT;
-        _storing_b2 = false;
-        _action_tick = _local_tick;
-        APP::monit.LogInfo("[GetBlock] Store after LiftUp hold");
-        return;
+        _fsm_busy = false;
+        _fsm = FSM::IDLE;
+        APP::monit.LogInfo("[GetBlock] Store after LiftUp hold, releasing to sensor check");
+        // 不 return，继续往下走传感器判断逻辑
     }
 
     // 在等待块2状态 → 直接入料块2
@@ -369,6 +369,15 @@ void GetBlock::Store()
     }
 
     _ReadSensors();
+
+    // 抬升在低位时，挡片远离上传感器，_grid[1]/_grid[0] 读数可靠。
+    // 直接用传感器刷新 _upper/_lower，消除 FSM 缓存状态（如 LIFT_UP_HOLD
+    // 残留、或前一次存块异常退出后的脏数据）对块1/块2判定的污染。
+    if (_lift_at_lower)
+    {
+        _upper = _grid[1];
+        _lower = _grid[0];
+    }
 
     if (!_upper && !_lower)
     {
@@ -892,8 +901,10 @@ void GetBlock::_UpdateFSM()
     {
         _LiftMoveUp();
 
-        // 块进入上仓 → 记录状态（仅触发一次，避免刷屏）
-        if (_grid[1] && !_upper)
+        // 块进入上仓 → 记录状态。
+        // 只有 _lower 为真（抬升平台上确实有块）时才是真正的搬块；
+        // _lower 为假时空载挡片经过上传感器不应污染 _upper。
+        if (_grid[1] && !_upper && _lower)
         {
             _upper = true;
             _lower = false;

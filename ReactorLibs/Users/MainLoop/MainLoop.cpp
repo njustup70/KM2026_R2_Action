@@ -5,8 +5,8 @@
 
 MainLoop& APP::main_loop = MainLoop::GetInstance();
 
-// #define Challenge_Area12_EXPLORE
-#define Challenge_Area3_ARENA
+#define Challenge_Area12_EXPLORE
+// #define Challenge_Area3_ARENA
 // #define Compete_KungfuMaster
 
 
@@ -257,23 +257,19 @@ void MainLoop::ToggleAreaLogics()
 void MainLoop::JudgeRetryFlags()
 {
     static bool last_retry_button_pressed = false;
-    static float retry_cnt = DWT_GetTimeline_Sec();
 
-    // 处理重试的逻辑
-    if (!last_retry_button_pressed && button_pressed[2] == 1)
+    // 处理重试的逻辑：只在 button[2] 的上升沿触发一次
+    if (button_pressed[2] && !last_retry_button_pressed)
     {
-        // 每0.5s只触发一次
-        if (DWT_GetTimeline_Sec() - retry_cnt > 0.5f)
+        APP::monit.LogInfo("Toggle Retry");
+        retry_id++;
+        if (retry_id > max_retry_id)
         {
-            retry_cnt = DWT_GetTimeline_Sec();
-            // 上升沿时，切换到下一种重试模式
-            retry_id++;
-            if (retry_id > max_retry_id)
-            {
-                retry_id = 0;
-            }
-
-            RefreshRetryLed();
+            retry_id = 0;
         }
+
+        RefreshRetryLed();
     }
+
+    last_retry_button_pressed = button_pressed[2];
 }

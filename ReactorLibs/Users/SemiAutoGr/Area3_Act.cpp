@@ -64,19 +64,14 @@ void Area3::FetchBlockOnTheGround()
   APP::chas.Move(Vec2(0, 0), 3.0);
 
   // 开摩擦带
-  APP::get_block._StartBelt();
-
-  APP::get_block.Store();
-
-  
+  // APP::get_block._StartBelt();
+  // APP::get_block.Store();
 
   // 再伸出一点
   APP::vac_claw.stretch_pos = 93000;
   // Seq::Wait(0.9f);
   // 先翻转一点达妙
   APP::vac_claw.PitchOrigin();
-  
-
 
   // // 等爪子伸出
   // Seq::Wait(0.7f);
@@ -101,4 +96,7 @@ void Area3::FetchBlockOnTheGround()
   APP::get_block.OpenPRV();
 
   APP::get_block.Store();
+
+  APP::leg.SetFrontPos(-10);
+  APP::leg.SetBackPos(-10);
 }
