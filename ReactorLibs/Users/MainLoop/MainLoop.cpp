@@ -5,10 +5,10 @@
 
 MainLoop& APP::main_loop = MainLoop::GetInstance();
 
-#define Challenge_Area12_EXPLORE
-// #define Challenge_Area3_ARENA
+// #define Challenge_Area12_EXPLORE
+#define Challenge_Area3_ARENA
 // #define Compete_KungfuMaster
-
+void ButtonLogics();
 
 float debug_cnt = 0;
 
@@ -69,6 +69,9 @@ void MainLoop::Update()
 
     // 在此 处理状态机的启动逻辑。原因是：MainFrame 无法阻塞等待判断，只能在这里
     ToggleAreaLogics();
+
+    // 状态机启动前，就使能的按钮功能
+    ButtonLogics();
 
     // 处理重试逻辑
     if (!graph_started) JudgeRetryFlags();

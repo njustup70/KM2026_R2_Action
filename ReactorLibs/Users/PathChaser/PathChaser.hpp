@@ -187,7 +187,7 @@ class PathChaserType : public Application
     float _time_end_max_acc = 0.9f;    // 时间参考路径末端刹车限速使用的最大减速度，单位m/s^2
     float _time_end_min_vel = 0.00f;   // 时间参考路径末端未完成时保留的最低修正速度，单位m/s
     float _pos_tol = 0.01f;            // 普通跑点位置阈值，单位m
-    float _yaw_tol = 0.02f;            // 普通跑点姿态阈值，单位rad
+    float _yaw_tol = 0.015f;            // 普通跑点姿态阈值，单位rad
     Vec3 _path_default_tolerance = Vec3(0.03f, 0.03f, 0.02f); // 路径默认终点容差(x/y/yaw)，单位m/m/rad
     Vec3 _path_tolerance = Vec3(0.05f, 0.05f, 0.02f); // 当前路径终点容差(x/y/yaw)，单位m/m/rad
     uint16_t _finish_hold_ticks = 10;  // 完成保持周期，200Hz下约50ms

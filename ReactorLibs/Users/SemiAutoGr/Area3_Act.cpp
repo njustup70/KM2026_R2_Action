@@ -64,7 +64,7 @@ void Area3::FetchBlockOnTheGround()
   APP::chas.Move(Vec2(0, 0), 3.0);
 
   // 开摩擦带
-  // APP::get_block._StartBelt();
+  APP::get_block._StartBelt();
   // APP::get_block.Store();
 
   // 再伸出一点

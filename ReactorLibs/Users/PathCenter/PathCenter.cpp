@@ -51,6 +51,7 @@
 #include "w_to_n4.hpp"
 #include "w_to_n5.hpp"
 #include "w_to_n6.hpp"
+#include "w_to_comb.hpp"
 
 #include "n4_back.hpp"
 #include "n5_back.hpp"
@@ -246,7 +247,7 @@ const Path<41>& FFM()
     return ::FFM;
 }
 
-const Path<179>& W_TO_N4()
+const Path<181>& W_TO_N4()
 {
     return ::W_to_N4;
 }
@@ -261,12 +262,12 @@ const Path<156>& W_TO_N6()
     return ::W_to_N6;
 }
 
-const Path<179>& N4_BACK()
+const Path<180>& N4_BACK()
 {
     return ::N4_Back;
 }
 
-const Path<162>& N5_BACK()
+const Path<161>& N5_BACK()
 {
     return ::N5_Back;
 }
@@ -275,5 +276,12 @@ const Path<156>& N6_BACK()
 {
     return ::N6_Back;
 }
+
+const Path<114>& W_TO_COMB()
+{
+    return ::W_to_Comb;
 }
+
+}
+
 

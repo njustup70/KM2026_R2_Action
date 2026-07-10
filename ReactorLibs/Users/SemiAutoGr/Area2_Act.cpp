@@ -20,8 +20,8 @@ MeiLin_BlockPos& Area2::block_pos = MeiLin_BlockPos::GetInstance();
 MeiLinArray::MeiLinArray() = default;
 MeiLinArray& Area2::mei_lin_array = MeiLinArray::GetInstance();
 
-bool IR_Read(InfraredDetector& ir);
-bool NIR_Read(InfraredDetector& ir);
+static bool IR_Read(InfraredDetector& ir);
+static bool NIR_Read(InfraredDetector& ir);
 
 /************************* MeiLin_BlockPos 类 **************************/
 const Vec2 MeiHuaForest_Pos[12] = {
