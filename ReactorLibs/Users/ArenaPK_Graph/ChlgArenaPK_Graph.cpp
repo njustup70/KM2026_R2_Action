@@ -720,79 +720,79 @@ void Response_Button()
       last_trigger_time = DWT_GetTimeline_Sec();
     }
 
-    // 处理泄压阀的开关
-    static float last_prv_time = 0;
-    if(MOD::farcon.button_second_half[1] == 1 && DWT_GetTimeline_Sec() - last_prv_time > 1.0f)
-    {
-      static bool is_PRV_open = false;
-      if(!is_PRV_open)
-      {
-        APP::get_block.OpenPRV();
-        is_PRV_open = true;
-      }
-      else
-      {
-        APP::get_block.ClosePRV();
-        is_PRV_open = false;
-      }
-      last_prv_time = DWT_GetTimeline_Sec();
-    }
+    // // 处理泄压阀的开关
+    // static float last_prv_time = 0;
+    // if(MOD::farcon.button_second_half[1] == 1 && DWT_GetTimeline_Sec() - last_prv_time > 1.0f)
+    // {
+    //   static bool is_PRV_open = false;
+    //   if(!is_PRV_open)
+    //   {
+    //     APP::get_block.OpenPRV();
+    //     is_PRV_open = true;
+    //   }
+    //   else
+    //   {
+    //     APP::get_block.ClosePRV();
+    //     is_PRV_open = false;
+    //   }
+    //   last_prv_time = DWT_GetTimeline_Sec();
+    // }
 
-    // 处理抬升平台的升降
-    static float last_lift_time = 0;
-    if(MOD::farcon.button_second_half[3] == 1 && DWT_GetTimeline_Sec() - last_lift_time > 1.0f)
-    {
-      static bool is_lift_up = false;
-      if(!is_lift_up)
-      {
-        APP::get_block.LiftUp();
-        is_lift_up = true;
-      }
-      else
-      {
-        APP::get_block.LiftDown();
-        is_lift_up = false;
-      }
-      last_lift_time = DWT_GetTimeline_Sec();
-    }
+    // // 处理抬升平台的升降
+    // static float last_lift_time = 0;
+    // if(MOD::farcon.button_second_half[3] == 1 && DWT_GetTimeline_Sec() - last_lift_time > 1.0f)
+    // {
+    //   static bool is_lift_up = false;
+    //   if(!is_lift_up)
+    //   {
+    //     APP::get_block.LiftUp();
+    //     is_lift_up = true;
+    //   }
+    //   else
+    //   {
+    //     APP::get_block.LiftDown();
+    //     is_lift_up = false;
+    //   }
+    //   last_lift_time = DWT_GetTimeline_Sec();
+    // }
 
-    // 处理摩擦带的启停
-    static float last_belt_time = 0;
-    if(MOD::farcon.button_second_half[2] == 1 && DWT_GetTimeline_Sec() - last_belt_time > 1.0f)
-    {
-      static bool is_belt_on = false;
-      if(!is_belt_on)
-      {
-        APP::get_block.motor_2006_fric.SetSpd(15.0f * MotorDJIConst::redu_M2006 * 60.0f / (2 * PI));
-        APP::get_block.motor_s2325.SetVel(15.0f);
-        is_belt_on = true;
-      }
-      else
-      {
-        APP::get_block.motor_2006_fric.SetSpd(0);
-        APP::get_block.motor_s2325.SetVel(0);
-        is_belt_on = false;
-      }
-      last_belt_time = DWT_GetTimeline_Sec();
-    }
+    // // 处理摩擦带的启停
+    // static float last_belt_time = 0;
+    // if(MOD::farcon.button_second_half[2] == 1 && DWT_GetTimeline_Sec() - last_belt_time > 1.0f)
+    // {
+    //   static bool is_belt_on = false;
+    //   if(!is_belt_on)
+    //   {
+    //     APP::get_block.motor_2006_fric.SetSpd(15.0f * MotorDJIConst::redu_M2006 * 60.0f / (2 * PI));
+    //     APP::get_block.motor_s2325.SetVel(15.0f);
+    //     is_belt_on = true;
+    //   }
+    //   else
+    //   {
+    //     APP::get_block.motor_2006_fric.SetSpd(0);
+    //     APP::get_block.motor_s2325.SetVel(0);
+    //     is_belt_on = false;
+    //   }
+    //   last_belt_time = DWT_GetTimeline_Sec();
+    // }
 
-    // 处理放块
-    static float last_put_time = 0;
-    if(MOD::farcon.button_second_half[4] == 1 && DWT_GetTimeline_Sec() - last_put_time > 1.0f)
-    {
-      static bool is_put = false;
-      if(!is_put)
-      {
-        APP::get_block.motor_2006_feed.SetPos(-1770000.0f);
-        is_put = true;
-      }
-      else
-      {
-        APP::get_block.motor_2006_feed.SetPos(-10000.0f);
-        is_put = false;
-      }
-      last_put_time = DWT_GetTimeline_Sec();
-    }    
+    // // 处理放块
+    // static float last_put_time = 0;
+    // if(MOD::farcon.button_second_half[4] == 1 && DWT_GetTimeline_Sec() - last_put_time > 1.0f)
+    // {
+    //   static bool is_put = false;
+    //   if(!is_put)
+    //   {
+    //     APP::get_block.motor_2006_feed.SetPos(-1770000.0f);
+    //     is_put = true;
+    //   }
+    //   else
+    //   {
+    //     APP::get_block.motor_2006_feed.SetPos(-10000.0f);
+    //     is_put = false;
+    //   }
+    //   last_put_time = DWT_GetTimeline_Sec();
+    // }    
 
     /**************   均为左半按键  *************/
     // 抬腿
@@ -831,23 +831,23 @@ void Response_Button()
 
     // }
 
-    // 进行 DM 抬升的抬上抬下
-    static bool is_dm_lift_up = false;
-    static float cooldown_tick = 0.0f;
-    if(MOD::farcon.button_first_half[4] == 1  && DWT_GetTimeline_Sec() - cooldown_tick > 1.0f)
-    {
-      cooldown_tick = DWT_GetTimeline_Sec();
-      if (!is_dm_lift_up)
-      {
-        APP::get_block.LiftUp();
-        is_dm_lift_up = true;
-      }
-      else
-      {
-        APP::get_block.LiftDown();
-        is_dm_lift_up = false;
-      }
-    }
+    // // 进行 DM 抬升的抬上抬下
+    // static bool is_dm_lift_up = false;
+    // static float cooldown_tick = 0.0f;
+    // if(MOD::farcon.button_first_half[4] == 1  && DWT_GetTimeline_Sec() - cooldown_tick > 1.0f)
+    // {
+    //   cooldown_tick = DWT_GetTimeline_Sec();
+    //   if (!is_dm_lift_up)
+    //   {
+    //     APP::get_block.LiftUp();
+    //     is_dm_lift_up = true;
+    //   }
+    //   else
+    //   {
+    //     APP::get_block.LiftDown();
+    //     is_dm_lift_up = false;
+    //   }
+    // }
 }
 
 // static void FetchBlockOnTheGround()

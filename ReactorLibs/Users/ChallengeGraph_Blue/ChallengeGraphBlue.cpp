@@ -517,17 +517,17 @@ static void Response_Button()
       last_trigger_time = DWT_GetTimeline_Sec();
     }
 
-    if(MOD::farcon.button_second_half[4] == 1)
-    {
-      // 抬升达妙
-      APP::get_block.LiftUp();
-    }
+    // if(MOD::farcon.button_second_half[4] == 1)
+    // {
+    //   // 抬升达妙
+    //   APP::get_block.LiftUp();
+    // }
 
-    if(MOD::farcon.button_second_half[5] == 1)
-    {
-      // 放下达妙
-      APP::get_block.LiftDown();
-    }
+    // if(MOD::farcon.button_second_half[5] == 1)
+    // {
+    //   // 放下达妙
+    //   APP::get_block.LiftDown();
+    // }
 
     /**************   均为左半硬件  *************/
     // 抬腿
