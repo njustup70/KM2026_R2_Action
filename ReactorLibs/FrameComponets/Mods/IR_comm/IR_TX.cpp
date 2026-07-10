@@ -11,9 +11,9 @@ void IR_TX::Init(BSP::TIM::TimID tim, BSP::TIM::Channel ch)
     tim_id  = tim;
     channel = ch;
 
-    if (tim_id == nullptr || channel == 0)
+    if (tim_id == nullptr)
     {
-        BspLog_LogError("[IR_TX] Init failed: null timer or channel");
+        BspLog_LogError("[IR_TX] Init failed: null timer");
         return;
     }
 
@@ -25,8 +25,8 @@ void IR_TX::Init(BSP::TIM::TimID tim, BSP::TIM::Channel ch)
     float pwm_freq = BSP::TIM::GetFreq(tim_id);
     _pwm_period_us = (pwm_freq > 0.0f) ? (1000000.0f / pwm_freq) : 26.3f;
 
-    // 注册 PWM DMA 完成回调
-    BSP::TIM::RegistPFCb(tim_id, channel, _PulseFinishedCb, this);
+    // 注册 Update DMA 完成回调
+    BSP::TIM::RegistUpdateDmaCb(tim_id, channel, _UpdateDmaDoneCb, this);
 
     _initialized = true;
     BspLog_LogInfo("[IR_TX] Init OK, freq=%.0fHz, period=%.2fus",
@@ -40,7 +40,7 @@ void IR_TX::_FillPulse(uint32_t time_us, bool high)
     uint16_t cycles = (uint16_t)((float)time_us / _pwm_period_us + 0.5f);
     if (cycles == 0) cycles = 1;
 
-    uint32_t ccr = high ? _ccr_high : _ccr_low;
+    uint16_t ccr = (uint16_t)(high ? _ccr_high : _ccr_low);
     for (uint16_t i = 0; i < cycles; i++)
     {
         if (_dma_len >= IRTX_DMA_BUF_SIZE)
@@ -86,6 +86,8 @@ void IR_TX::_BuildFrame(uint8_t address, uint8_t command)
 
     // Stop bit
     _FillPulse(bit_on_us, true);
+    // 尾随关载波：DMA 跑完后 CCR=0，确保帧间 IR LED 彻底关闭
+    _FillPulse(5000, false);
 }
 
 void IR_TX::_BuildRepeat()
@@ -105,15 +107,10 @@ bool IR_TX::Send(uint8_t address, uint8_t command)
         BspLog_LogError("[IR_TX] Send failed: not initialized");
         return false;
     }
-    if (_dma_busy)
-    {
-        BspLog_LogWarning("[IR_TX] Send skipped: DMA busy");
-        return false;
-    }
 
     _BuildFrame(address, command);
     _dma_busy = true;
-    BSP::TIM::StartDma(tim_id, channel, _dma_buf, _dma_len);
+    BSP::TIM::StartUpdateDma(tim_id, channel, _dma_buf, _dma_len);
     return true;
 }
 
@@ -124,7 +121,7 @@ bool IR_TX::SendRepeat()
 
     _BuildRepeat();
     _dma_busy = true;
-    BSP::TIM::StartDma(tim_id, channel, _dma_buf, _dma_len);
+    BSP::TIM::StartUpdateDma(tim_id, channel, _dma_buf, _dma_len);
     return true;
 }
 
@@ -136,9 +133,9 @@ void IR_TX::RegisterDoneCallback(IRTxDoneCallback cb, void *user_ctx)
 
 // ==================== DMA 完成回调 ====================
 
-void IR_TX::_PulseFinishedCb(BSP::TIM::TimID tim, BSP::TIM::Channel ch, void *ctx)
+void IR_TX::_UpdateDmaDoneCb(BSP::TIM::TimID tim, BSP::TIM::Channel ch, void *ctx)
 {
-    BSP::TIM::StopDma(tim, ch);
+    BSP::TIM::StopUpdateDma(tim, ch);
     BSP::TIM::StopPWM(tim, ch);
 
     IR_TX *self = static_cast<IR_TX *>(ctx);

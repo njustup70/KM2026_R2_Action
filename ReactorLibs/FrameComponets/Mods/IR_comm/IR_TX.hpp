@@ -12,7 +12,7 @@
 #include "string.h"
 
 /// @brief DMA 缓冲区大小 (足够容纳一帧 NEC 数据 @ 38kHz)
-static constexpr uint16_t IRTX_DMA_BUF_SIZE = 4096;
+static constexpr uint16_t IRTX_DMA_BUF_SIZE = 8192;
 
 /// @brief 发送完成回调 (timer, channel, user_ctx)
 using IRTxDoneCallback = void (*)(BSP::TIM::TimID tim, BSP::TIM::Channel ch, void *user_ctx);
@@ -92,9 +92,9 @@ private:
     void _BuildFrame(uint8_t address, uint8_t command);
     void _BuildRepeat();
 
-    static void _PulseFinishedCb(BSP::TIM::TimID tim, BSP::TIM::Channel ch, void *ctx);
+    static void _UpdateDmaDoneCb(BSP::TIM::TimID tim, BSP::TIM::Channel ch, void *ctx);
 
-    uint32_t _dma_buf[IRTX_DMA_BUF_SIZE];
+    uint16_t _dma_buf[IRTX_DMA_BUF_SIZE];
     uint16_t _dma_len            = 0;
     bool     _dma_busy           = false;
     bool     _initialized        = false;

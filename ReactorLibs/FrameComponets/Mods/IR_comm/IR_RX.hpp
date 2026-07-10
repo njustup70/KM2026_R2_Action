@@ -89,7 +89,7 @@ public:
     uint16_t bit_1_off_us  = 1687;
 
     /// @brief 时序容差 (0.0 ~ 1.0)，默认 0.30
-    float timing_tolerance = 0.30f;
+    float timing_tolerance = 0.50f;
 
 private:
     // ==================== EXTI 处理 ====================

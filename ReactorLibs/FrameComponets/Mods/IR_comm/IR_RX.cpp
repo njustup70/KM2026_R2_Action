@@ -89,7 +89,6 @@ void IR_RX::_ExtiRouter(Pin pin)
     for (uint8_t i = 0; i < _exti_route_count; i++)
     {
         if (_exti_routes[i].used &&
-            _exti_routes[i].pin.port   == pin.port &&
             _exti_routes[i].pin.number == pin.number)
         {
             IR_RX *inst = _exti_routes[i].instance;
@@ -124,19 +123,24 @@ void IR_RX::_OnExtiEvent(uint32_t duration_us, bool is_rising)
     {
     case RxState::Idle:
         if (!is_rising)
+        {
             _rx.state = RxState::LeaderOn;
+        }
         break;
 
     case RxState::LeaderOn:
         if (is_rising)
         {
             if (_TimingInRange(duration_us, leader_on_us))
+            {
                 _rx.state = RxState::LeaderOff;
+            }
             else
+            {
                 _rx.state = RxState::Idle;
+            }
         }
         break;
-
     case RxState::LeaderOff:
         if (!is_rising)
         {

@@ -1,7 +1,10 @@
 #include "MainLoop.hpp"
 #include "HostPC.hpp"
+#include "tim.h"
 #include "farcon.hpp"
 #include "CommCenter.hpp"
+
+extern DMA_HandleTypeDef hdma_tim1_up;
 
 MainLoop& APP::main_loop = MainLoop::GetInstance();
 
@@ -44,11 +47,54 @@ void MainLoop::Start()
 
     RefreshFieldLed();
     RefreshRetryLed();
+
+    // IR 红外接收 (PC1, EXTI1)
+    ir_rx.Init(Pin{'C', 1});
+    ir_rx.local_addr = 0xFF;  // 接收所有地址的帧
+    ir_rx.RegisterRxHandler([](const IR_RX *rx,
+                                uint8_t address, uint8_t command,
+                                bool is_repeat, void *user_ctx) {
+        MainLoop *self = (MainLoop *)user_ctx;
+        self->_ir_rx_seq++;
+        APP::monit.LogInfo("[IR_RX] #%d recv addr=0x%02X cmd=0x%02X repeat=%d",
+                           self->_ir_rx_seq, address, command, is_repeat);
+    }, this);
+
+    // IR 红外发射 (TIM1_CH1 + PA8, 38kHz)
+    ir_tx.Init(ToID(&htim1), BSP::TIM::CH1);
+    ir_tx.RegisterDoneCallback(_IrTxDoneCb, this);
+}
+
+void MainLoop::SendIR(uint8_t address, uint8_t command)
+{
+    // 等上次 DMA 完成
+    while (hdma_tim1_up.Instance->NDTR > 0) { Seq::Wait(0.001); }
+
+    // 停 PWM，完全重置 DMA 流
+    HAL_TIM_PWM_Stop(&htim1, TIM_CHANNEL_1);
+    HAL_DMA_DeInit(&hdma_tim1_up);
+    HAL_DMA_Init(&hdma_tim1_up);
+
+    _ir_tx_last_addr = address;
+    _ir_tx_last_cmd  = command;
+
+    ir_tx.Send(address, command);
+}
+
+void MainLoop::_IrTxDoneCb(BSP::TIM::TimID tim, BSP::TIM::Channel ch, void *ctx)
+{
+    MainLoop *self = (MainLoop *)ctx;
+    self->_ir_tx_seq++;
+    APP::monit.LogInfo("[IR_TX] #%d sent OK addr=0x%02X cmd=0x%02X",
+                       self->_ir_tx_seq,
+                       self->_ir_tx_last_addr,
+                       self->_ir_tx_last_cmd);
 }
 
 void MainLoop::Update()
 {
     test_led.Handle();
+    ir_rx.Handle();  // IR 接收超时保护
     static float last_report_time = 0.0f;
     spear_detected = spear_detector.Read();
 
