@@ -1178,7 +1178,8 @@ void MeiLinArray::ExecuteSequence()
         break;
     }
 
-    Seq::Wait(1.0f);
+    // Seq::Wait(1.0f);
+    
     // while(MOD::farcon.button_second_half[0] != 1)
     // {
     //   Response_Button_main();

@@ -479,7 +479,7 @@ void Goto_Area2(StateCore *core)
   // APP::comm_center.SlamCorrection();
 
   // 防止纠正的时候抬腿了
-  Seq::Wait(2.0f);
+  // Seq::Wait(2.0f);
 
   APP::monit.LogInfo("Pos Corrected : %.2f, %.2f, %.2f",System.position.x, System.position.y, System.position.z);
 
@@ -502,8 +502,6 @@ void Goto_Area2(StateCore *core)
 void Area2_HostAction(StateCore *core)
 {
   APP::monit.LogInfo("Now, Start Area2 Actions.");
-
-  
 
   // 此时走到了梅林跟前，准备执行二区序列动作
   Area2::mei_lin_array.ExecuteSequence();
