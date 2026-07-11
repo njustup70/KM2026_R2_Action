@@ -140,7 +140,7 @@ inline void Lift_Leg::PosLim()
 }
 
 /**
- * @brief C板发回的，关于腿部位置 的 回调
+ * @brief C板发回的，关于腿部位置 的 回调。因为发送的数据是复数，realpos的正负是对齐front_pos和back_pos的
  *
  * @param task_id 2
  * @param payload 0-1位：int16:前腿位置，2-3位：int16:后腿位置，均为mm
