@@ -98,6 +98,36 @@ public:
   void ChaseCurrentGrid();
   void ChaseCurrentGrid_BLUE();
 
+  /// @brief 进入二区的逻辑，会在路径的中点之后开始抬腿，预期1.5s完成
+  template <size_t N>
+  bool RunIntoArea2(const Path<N>& path, Vec3 tolerance)
+  {
+      if (!APP::path_chaser.ChasePath(path, tolerance))
+      {
+          APP::monit.LogError("RunIntoArea2 rejected by PathChaser.");
+          return false;
+      }
+      uint32_t log_tick = 0;
+
+      while (!APP::path_chaser.IsFinished())
+      {
+          Vec3 speed_vec = APP::path_chaser.GetCmdBody();
+          Vec3 world_vec = APP::path_chaser.GetCmdWorld();
+          APP::chas.Move(speed_vec, 0.01f);
+
+          if (++log_tick >= 20)
+          {
+              log_tick = 0;
+              // APP::monit.LogInfo("world_vec(%.3f, %.3f, %.3f)",
+              //                    world_vec.x, world_vec.y, world_vec.z);
+          }
+          Seq::Wait(0.005f); // 200hz更新频率
+      }
+
+      APP::monit.LogOK("RunIntoArea2 completed.");
+      return true;
+  }
+
 
   static void Area2ActRxCallback(uint8_t func_code, const uint8_t *payload, uint8_t payload_len, void *user_ctx);
 
