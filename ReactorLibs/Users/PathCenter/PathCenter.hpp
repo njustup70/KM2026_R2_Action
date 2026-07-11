@@ -28,10 +28,10 @@ const Path<66>& sttr4();
 const Path<74>& sttr5();
 const Path<82>& sttr6();
 
-const Path<23>& TTD_1();
-const Path<19>& TTD_2();
-const Path<18>& TTD_3();
-const Path<16>& TTD_4();
+const Path<26>& TTD_1();
+const Path<23>& TTD_2();
+const Path<21>& TTD_3();
+const Path<21>& TTD_4();
 
 const Path<72>& DTT_1();
 const Path<71>& DTT_2();
