@@ -129,6 +129,21 @@ class PathChaserType : public Application
     /// @brief 是否完成路径跟踪（终点位置+姿态双阈值保持）
     bool IsFinished() const { return _finished; }
 
+    /// @brief 获取路径追踪进度 [0.0, 1.0]
+    /// @details 时间参考模式：_elapsed_sec / _path_total_time（时间比，O(1)）；
+    ///          进度参考模式：_find_nearest_path_s(now_pos) / _path_total_len（弧长比，O(n)）；
+    ///          Idle/Point 模式返回 0.0f
+    float GetProgress() const;
+
+    /// @brief 获取路径追踪已运行时间，单位s
+    float GetElapsedTime() const { return _elapsed_sec; }
+
+    /// @brief 获取当前路径总时长，单位s
+    float GetPathTotalTime() const { return _path_total_time; }
+
+    /// @brief 获取当前路径总长度，单位m
+    float GetPathTotalLength() const { return _path_total_len; }
+
     /// @brief 获取世界系输出命令
     Vec3 GetCmdWorld() const { return _cmd.world; }
 

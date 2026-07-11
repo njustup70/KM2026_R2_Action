@@ -92,6 +92,31 @@ Vec2 PathChaserType::GetDebugTargetPosByCurrentT() const
     return GetDebugTargetByCurrentT().pos;
 }
 
+float PathChaserType::GetProgress() const
+{
+    // 已完成则直接返回 1.0
+    if (_finished) return 1.0f;
+
+    // 非 Path 模式无进度概念，返回 0
+    if (_mode != ChaseMode::Path) return 0.0f;
+
+    if (_use_t_ref)
+    {
+        // 时间参考模式：按时间比例，O(1)
+        if (_path_total_time < 1e-6f) return 0.0f;
+        float ratio = _elapsed_sec / _path_total_time;
+        return StdMath::fclamp(ratio, 0.0f, 1.0f);
+    }
+    else
+    {
+        // 路径进度参考模式：按弧长比例，O(n)
+        if (_path_total_len < 1e-6f) return 0.0f;
+        float nearest_s = _find_nearest_path_s(System.position.ToVec2());
+        float ratio = nearest_s / _path_total_len;
+        return StdMath::fclamp(ratio, 0.0f, 1.0f);
+    }
+}
+
 float PathChaserType::_wrap_pi(float rad)
 {
     while (rad > PI) rad -= 2.0f * PI;
