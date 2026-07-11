@@ -216,7 +216,7 @@ void Walk_Fetch(StateCore *core)
 void Walk_To_Dock(StateCore *core)
 {
   // 走到对接点
-  GotoDock(0);
+  GotoDock(need_spear_id);
 
   // 进入对接模式
   APP::jaw.SetTrackMode(true);
@@ -617,7 +617,7 @@ static void Response_Button()
       APP::chas.Move(Vec3(0, 0, 0), 0.2f);
     }
 
-    static float last_trigger_time = 0;
+    // static float last_trigger_time = 0;
     // if(MOD::farcon.button_second_half[7] == 1 && DWT_GetTimeline_Sec() - last_trigger_time > 1.0f)
     // {
     //   static bool is_daji_enable = false;
@@ -674,7 +674,7 @@ static void Response_Button()
     //   APP::leg.SetBackPosSlow(-4, 5.0f);
     // }
 
-    // 确认场地前，可以进行左右微调，以及选择夹第几个矛头
+    // 确认场地后，可以进行左右微调，以及选择夹第几个矛头
     static float last_bias_decline_time = 0;
     // 让下一次取矛头更偏左，x 更小，每次调整 1 cm
     if(MOD::farcon.button_first_half[0] == 1 && DWT_GetTimeline_Sec() - last_bias_decline_time > 0.5)
