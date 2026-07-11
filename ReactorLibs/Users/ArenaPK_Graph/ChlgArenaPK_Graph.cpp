@@ -49,6 +49,7 @@ Vec2 Arena_R2_KFS_FetchPos[2] = {
   Vec2(11.1, 3.405), Vec2(11.1, 2.685)
 }; // 块之间间隔：0.175 + 0.175 + 0.37 = 0.72 m
 
+Vec3 Arena_R2_L2_Mid_Ges(10.75f, 5.20f, 1.571f);
 // Vec2 Arena_R2_PutKFSPos[3] = {
 //   Vec2(10.21f, 5.15f), Vec2(10.75f, 5.15f), Vec2(11.29f, 5.15f)
 // }; // 分别对应4、5、6格子
@@ -278,7 +279,7 @@ void Put_First_Block(StateCore *core)
   APP::leg.B_Origin();
 
   MOVE::MoveToTargPos(PATH::A23_2(), Vec3(0.01f, 0.01f, 0.01f));
-  MOVE::MoveToTargGes(Vec3(10.75f, 5.20f, 1.571f));
+  MOVE::MoveToTargGes(Arena_R2_L2_Mid_Ges);
 
   // 等待，保障稳定性
   Seq::Wait(0.25f);
@@ -408,11 +409,14 @@ static void Fetch2_From_Mid(StateCore *core)
   });
 
   // 等待遥控器的出发指令
-  while(MOD::farcon.button_second_half[0] != 1)
-  {
-    Response_Button();
-    Seq::Wait(0.01f);
-  }
+  // while(MOD::farcon.button_second_half[0] != 1)
+  // {
+  //   Response_Button();
+  //   Seq::Wait(0.01f);
+  // }
+
+  // 先移动到中央，避免撞物块
+  MOVE::MoveToTargGes(Arena_R2_L2_Mid_Ges);
   // 运行路径跟踪程序
   MOVE::MoveToTargPos(PATH::FFM(), Vec3(0.05f, 0.05f, 0.03f));
 

@@ -50,6 +50,8 @@ Vec2 Arena_R2_KFS_FetchPos_Blue[2] = {
   Vec2(11.1, 2.595), Vec2(11.1, 3.315)
 }; // 块之间间隔：0.175 + 0.175 + 0.37 = 0.72 m
 
+// 第一次放块时的目标位置
+Vec3 Arena_R2_L2_Mid_Ges_Blue(10.75f, 0.80f, -1.571f);
 // 蓝区九宫格放块位置（分别对应4、5、6格子），红区 y=5.15 → 蓝区 y=0.85
 // Vec2 Arena_R2_PutKFSPos_Blue[3] = {
 //   Vec2(10.21f, 0.85f), Vec2(10.75f, 0.85f), Vec2(11.29f, 0.85f)
@@ -300,6 +302,7 @@ void Put_First_Block(StateCore *core)
   {
     float err_dist = APP::comm_center.sick_data_m[1] - APP::comm_center.sick_data_m[0];
 
+
     if (fabs(err_dist) < 0.004f)
     {
       sick_cnt++;
@@ -418,6 +421,10 @@ static void Fetch2_From_Mid(StateCore *core)
     Seq::Wait(0.01f);
   }
   // 运行路径跟踪程序（蓝区版本）
+
+  // 先移动到中央，再回去取块
+  MOVE::MoveToTargGes(Arena_R2_L2_Mid_Ges_Blue);
+
   MOVE::MoveToTargPos(PATH::FFM_B(), Vec3(0.05f, 0.05f, 0.03f));
 
   MOVE::MoveToTargGes(Vec3(Arena_R2_KFS_FetchPos_Blue[0].x, Arena_R2_KFS_FetchPos_Blue[0].y, 0.0));
