@@ -34,7 +34,7 @@ private:
     Area3ActCode _area3_act_code; // 三区光通信，接收到的指令码
     bool is_blue_field = false; // 是否是蓝场
     bool at_first_area = true; // 是否在一三区的起始点
-
+    bool at_area_one = true; // 启动坐标是否在一区
 
 public:
     Vec3 slam_pos;
@@ -52,6 +52,9 @@ public:
     /// @brief 重试出发点判断
     bool AtFirstArea() const { return at_first_area; }
     bool AtThirdArea() const { return !at_first_area; }
+    /// @brief 启动坐标判断
+    bool AtAreaOne() const { return at_area_one; }
+    bool AtAreaThree() const { return !at_area_one; }
 
     bool area3_act_over = false;
 

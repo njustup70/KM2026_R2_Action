@@ -5,12 +5,12 @@
 namespace PATH
 {
 /// @brief 蓝区：矛台到对接点 TableToDock
-const Path<16>& TTD_B6();
+const Path<19>& TTD_B6();
 const Path<16>& TTD_B5();
 const Path<16>& TTD_B4();
-const Path<18>& TTD_B3();
-const Path<21>& TTD_B2();
-const Path<22>& TTD_B1();
+const Path<16>& TTD_B3();
+const Path<16>& TTD_B2();
+const Path<16>& TTD_B1();
 
 /// @brief 蓝区：原点到矛台
 const Path<44>& sttr_b1();
@@ -51,4 +51,29 @@ const Path<147>& A12_B3();
 
 const Path<188>& A23_2();
 const Path<188>& A23_B2();
+
+const Path<42>& FFM_B();
+const Path<41>& FFM();
+
+/// @brief ArenaPK 路径：W到N区
+const Path<181>& W_TO_N4();
+const Path<161>& W_TO_N5();
+const Path<156>& W_TO_N6();
+
+/// @brief ArenaPK 路径：N区返回
+const Path<180>& N4_BACK();
+const Path<161>& N5_BACK();
+const Path<156>& N6_BACK();
+const Path<114>& W_TO_COMB();
+
+/// @brief ArenaPK_Graph_Blue 路径：W到N区
+const Path<181>& WB_TO_N4();
+const Path<161>& WB_TO_N5();
+const Path<156>& WB_TO_N6();
+
+/// @brief ArenaPK_Graph_Blue 路径：N区返回
+const Path<180>& N4B_BACK();
+const Path<161>& N5B_BACK();
+const Path<156>& N6B_BACK();
+
 }

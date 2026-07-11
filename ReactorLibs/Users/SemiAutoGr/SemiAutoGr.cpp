@@ -314,14 +314,14 @@ void Walk_into_Area3(StateCore *core)
 static void Response_Button()
 {
     static float max_velo = 1.5f;
-    if(MOD::farcon.toggle[2] == 0)
-    {
-      max_velo = 1.0f;
-    }
-    else if(MOD::farcon.toggle[2] == 1)
-    {
-      max_velo = 0.33f;
-    }
+    // if(MOD::farcon.toggle[2] == 0)
+    // {
+    //   max_velo = 1.0f;
+    // }
+    // else if(MOD::farcon.toggle[2] == 1)
+    // {
+    //   max_velo = 0.33f;
+    // }
 
     // 计算遥控器死区：0-15不算，将15-100映射到原来的0.0-1.0
     constexpr float deadzone = 15.0f;
@@ -361,13 +361,13 @@ static void Response_Button()
     if(MOD::farcon.button_second_half[4] == 1)
     {
       // 抬升达妙，向上为负
-      APP::get_block.motor_dm_lift.SetPosVel(-750, 15.0f);
+      APP::get_block.LiftUp();
     }
 
     if(MOD::farcon.button_second_half[5] == 1)
     {
       // 放下达妙
-      APP::get_block.motor_dm_lift.SetPosVel(0.0f, 15.0f);
+      APP::get_block.LiftDown();
     }
 }
 
@@ -477,12 +477,12 @@ void Response_Button_main()
       static bool is_lift_up = false;
       if(!is_lift_up)
       {
-        APP::get_block.dm_lift_pos = -755;
+        APP::get_block.LiftUp();
         is_lift_up = true;
       }
       else
       {
-        APP::get_block.dm_lift_pos = -3;
+        APP::get_block.LiftDown();
         is_lift_up = false;
       }
       last_lift_time = DWT_GetTimeline_Sec();

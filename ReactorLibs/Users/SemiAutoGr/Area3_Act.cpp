@@ -16,57 +16,62 @@
 
 void Area3::FetchBlockOnTheGround()
 {
+  // 关闭泄压阀
+  APP::get_block.ClosePRV();
+
   // 再抬起来一点
   APP::leg.SetFrontPos(-100);
   APP::leg.SetBackPos(-100);
+
   Seq::WaitUntil([]()
   {
     return (fabs(APP::leg.real_back_pos_mm) > 95 && fabs(APP::leg.real_front_pos_mm) > 95);
   });  
 
-  // 先把达妙抬起来
-  APP::get_block.dm_lift_pos = -757;  // _lift_vel = 18.0 rad/s
+  // 先把抬升达妙抬起来；Store() 会从该预抬升状态接管存块流程
+  APP::get_block.LiftUp();
 
   // 爪子翻转到竖直，合上爪子
   APP::vac_claw.PitchDown();
   Seq::Wait(1.5f);
 
   // 往前走去取物块
-  APP::chas.Move(Vec2(0.1, 0), 3.0);
+  APP::chas.Move(Vec2(0.06, 0), 3.0);
 
   APP::vac_claw.CloseSnap();
 
   // 等爪子关上
-  Seq::WaitUntil([]()
-  {
-    return fabs(APP::vac_claw.motor_snap.driver.measure.total_angle - APP::vac_claw.snap_pos) < 1000;
-  });  
-
-  // 车往前移动一小段吸上物块
-  APP::chas.Move(Vec2(0.05, 0), 7.0);
+  // Seq::WaitUntil([]()
+  // {
+  //   return fabs(APP::vac_claw.motor_snap.driver.measure.total_angle - APP::vac_claw.snap_pos) < 10000;
+  // });  
+  Seq::Wait(1.0f);
+  APP::monit.LogInfo("Snaped, Pumping.");
 
   // 开泵
   APP::get_block.OpenPump();
-  Seq::Wait(1.0f);
-  APP::chas.Move(Vec2(-0.15, 0), 3.0);
+
+  // 车往前移动一小段吸上物块(如果合上爪子的速度变快了，那么向前移动的时间也要改长)
+  APP::chas.Move(Vec2(0.1, 0), 7.0);
+  Seq::Wait(0.5f);
+
+  APP::vac_claw.CloseSnap_Hard();
+  Seq::Wait(0.5f);
+  
+  APP::chas.Move(Vec2(-0.20, 0), 3.0);
   Seq::Wait(1.3f);
   // 停下
   APP::chas.Move(Vec2(0, 0), 3.0);
 
   // 开摩擦带
   APP::get_block._StartBelt();
-
-  APP::get_block.Store();
-
-  APP::vac_claw.CloseSnap_Hard();
+  // APP::get_block.Store();
 
   // 再伸出一点
   APP::vac_claw.stretch_pos = 93000;
   // Seq::Wait(0.9f);
   // 先翻转一点达妙
   APP::vac_claw.PitchOrigin();
-  
-
 
   // // 等爪子伸出
   // Seq::Wait(0.7f);
@@ -86,10 +91,12 @@ void Area3::FetchBlockOnTheGround()
     return fabs(APP::vac_claw.motor_stretch.driver.measure.total_angle - APP::vac_claw.stretch_pos) < 5000;
   });  
 
-
   APP::vac_claw.OpenSnap();
   APP::get_block.ClosePump();
   APP::get_block.OpenPRV();
 
   APP::get_block.Store();
+
+  APP::leg.SetFrontPos(-10);
+  APP::leg.SetBackPos(-10);
 }

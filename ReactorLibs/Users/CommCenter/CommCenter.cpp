@@ -131,6 +131,7 @@ void CommCenter::FieldToggleRxCb(uint8_t func_code, const uint8_t *payload, uint
 
         uint8_t field = payload[0];
         uint8_t area_retry = payload[1];
+        uint8_t start_at = payload[2];
 
         // 首先，判断工控机当前认为的红蓝区
         if (field == static_cast<uint8_t>(HostPC::Field::RED))
@@ -158,6 +159,20 @@ void CommCenter::FieldToggleRxCb(uint8_t func_code, const uint8_t *payload, uint
         else
         {
             APP::monit.LogError("[comm] Unknown area retry value: %d", area_retry);
+        }
+
+        // 其次，判断工控机当前认为的启动坐标
+        if (start_at == static_cast<uint8_t>(HostPC::StartArea::AREA_ONE))
+        {
+            comm_center.at_area_one = true;
+        }
+        else if (start_at == static_cast<uint8_t>(HostPC::StartArea::AREA_THREE))
+        {
+            comm_center.at_area_one = false;
+        }
+        else
+        {
+            APP::monit.LogError("[comm] Unknown start pos: %d", start_at);
         }
     }
 }

@@ -62,7 +62,7 @@ public:
 
     // ==================== DM电机目标值（Update中持续发送） ====================
     float dm_fric_spd = 0.0f;   // 下摩擦带目标速度
-    float dm_lift_pos  = 0.0f;  // 抬升机构目标位置
+    float dm_lift_pos  = 0.0f;  // 抬升机构目标位置(调试/兼容显示，速度模式下不直接控电机)
 
 private:
     // ==================== 状态机 ====================
@@ -111,6 +111,8 @@ private:
     // ==================== 抬升达妙位置状态（_ReadSensors刷新） ====================
     bool _lift_at_lower = false;  // PB0: 达妙在低位
     bool _lift_at_upper = false;  // PB1: 达妙在高位
+    float _lift_cmd_vel = 0.0f;    // 抬升DM速度指令；向上为负，向下为正
+    float _last_lift_diag_tick = -999.0f;
 
     // uint32_t _action_tick = 0;  // 阶段开始时间戳 (s) ——old
     float _action_tick = 0.0f;      // 阶段开始时间戳 (s)——改用本地计时
@@ -130,18 +132,26 @@ private:
     // ==================== 抬升DM位置常量（需标定） ====================
     // 向上为负 rad
     float _lift_pos_lower = 3.0f;   // 低位（下仓接料位），防卡
-    float _lift_pos_upper = 755.0f;   // 高位（块通过单向门）TODO:标定
-    float _lift_vel       = 18.0f;   // 抬升速度 rad/s
+    float _lift_pos_upper = 760.0f;   // 高位（块通过单向门）TODO:标定
+    float _lift_vel       = 17.0f;   // 抬升速度 rad/s
 
     // // ==================== DM电机目标值（Update中持续发送） ====================
     // float dm_fric_spd = 0.0f;   // 下摩擦带目标速度
     // float dm_lift_pos  = 0.0f;  // 抬升机构目标位置
 
     // ==================== 送块2006位置常量（需标定） ====================
-    float _feed_pos_retract = 8000.0f;     // 收回
+    float _feed_pos_retract = 6000.0f;     // 收回
     float _feed_pos_extend  = 1670000.0f;  // 伸出（上仓块被推出）  // Max:1770000.0f
 
     // ==================== 私有方法 ====================
+    void _InitLiftDm();
+    void _ConfigureLiftDmParamsOnce();
+    void _LiftWakeUp();    ///< 确保电机可工作（清故障/使能），SuperAutoEnable 已在 Init 常开
+    void _LiftSleep();     ///< 空闲时仅下零速，不主动失能（SuperAutoEnable 常开兜底）
+    void _LiftMoveUp();
+    void _LiftMoveDown();
+    void _LiftStop();
+    void _LogLiftDmDiag(const char* tag);
     void _UpdateFSM();
     void _ReadSensors();
     bool _IsTimeout(float sec) const;

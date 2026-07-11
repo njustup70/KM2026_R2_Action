@@ -8,7 +8,7 @@ MainLoop& APP::main_loop = MainLoop::GetInstance();
 #define Challenge_Area12_EXPLORE
 // #define Challenge_Area3_ARENA
 // #define Compete_KungfuMaster
-
+void ButtonLogics();
 
 float debug_cnt = 0;
 
@@ -76,6 +76,9 @@ void MainLoop::Update()
     // 在此 处理状态机的启动逻辑。原因是：MainFrame 无法阻塞等待判断，只能在这里
     ToggleAreaLogics();
 
+    // 状态机启动前，就使能的按钮功能
+    ButtonLogics();
+
     // 处理重试逻辑
     if (!graph_started) JudgeRetryFlags();
 
@@ -92,6 +95,7 @@ void MainLoop::RefreshFieldLed()
 {
     test_led.SegLit(0, targ_area == AREA_BLUE ? Color::Blue : Color::Red);
     test_led.SegLit(1, APP::comm_center.AtBlueField() ? Color::Blue : Color::Red);
+    test_led.SegLit(2, APP::comm_center.AtAreaOne() ? Color::Pink : Color::Orange);
 }
 
 
@@ -129,10 +133,13 @@ void MainLoop::ToggleAreaLogics()
     static bool last_host_atblue = false;
     static bool field_led_initialized = false;
 
+    static bool last_host_start_at_one = false;
+
     if (!field_led_initialized)
     {
         RefreshFieldLed();
         last_host_atblue = APP::comm_center.AtBlueField();
+        last_host_start_at_one = APP::comm_center.AtAreaOne();
         field_led_initialized = true;
     }
 
@@ -142,11 +149,25 @@ void MainLoop::ToggleAreaLogics()
         area_red_blue_cnt = 0;
         if (targ_area == AREA_RED)
         {
-            MOD::host_pc.SendFieldChoice(HostPC::RED);
+            if(targ_start_area == AREA_ONE)
+            {
+                MOD::host_pc.SendFieldChoice(HostPC::RED, HostPC::AREA_ONE);
+            }  
+            else
+            {
+                MOD::host_pc.SendFieldChoice(HostPC::RED, HostPC::AREA_THREE);                
+            }
         }
         else
         {
-            MOD::host_pc.SendFieldChoice(HostPC::BLUE);
+            if(targ_start_area == AREA_ONE)
+            {
+                MOD::host_pc.SendFieldChoice(HostPC::BLUE, HostPC::AREA_ONE);
+            }  
+            else
+            {
+                MOD::host_pc.SendFieldChoice(HostPC::BLUE, HostPC::AREA_THREE);                
+            }        
         }
     }
 
@@ -163,6 +184,20 @@ void MainLoop::ToggleAreaLogics()
         APP::monit.LogRespond("Toggle Area: RED");
         RefreshFieldLed();
     }
+    
+    // 启动坐标切换逻辑（STM32 维护）
+    if ((MOD::farcon.toggle[2] == 1 ) && targ_start_area == AREA_ONE)
+    {
+        targ_start_area = AREA_THREE;
+        APP::monit.LogRespond("Start Area: Area Three");
+        RefreshFieldLed();
+    }
+    else if ((MOD::farcon.toggle[2] == 0) && targ_start_area == AREA_THREE)
+    {
+        targ_start_area = AREA_ONE;
+        APP::monit.LogRespond("Start Area: Area One");
+        RefreshFieldLed();
+    }
 
     // 红蓝区逻辑（工控机 维护）
     // 如果工控机反馈当前在蓝区，而上一次反馈在红区，则说明切换到了蓝区
@@ -176,6 +211,18 @@ void MainLoop::ToggleAreaLogics()
     {
         last_host_atblue = false;
         RefreshFieldLed();
+    }
+
+    // 启动坐标切换逻辑（工控机 维护）
+    if(APP::comm_center.AtAreaOne() && !last_host_start_at_one)
+    {
+        last_host_start_at_one = true;
+        RefreshFieldLed();
+    }
+    else if(APP::comm_center.AtAreaThree() && last_host_start_at_one)
+    {
+        last_host_start_at_one = false;
+        RefreshFieldLed();        
     }
 
     // 如果状态机尚未启动（还在选图），就根据选择的图，启动对应的状态图
@@ -219,23 +266,39 @@ void MainLoop::ToggleAreaLogics()
 void MainLoop::JudgeRetryFlags()
 {
     static bool last_retry_button_pressed = false;
-    static float retry_cnt = DWT_GetTimeline_Sec();
 
-    // 处理重试的逻辑
-    if (!last_retry_button_pressed && button_pressed[2] == 1)
+    // 处理重试的逻辑：只在 button[2] 的上升沿触发一次
+    if (button_pressed[2] && !last_retry_button_pressed)
     {
-        // 每0.5s只触发一次
-        if (DWT_GetTimeline_Sec() - retry_cnt > 0.5f)
+        APP::monit.LogInfo("Toggle Retry");
+        retry_id++;
+        if (retry_id > max_retry_id)
         {
-            retry_cnt = DWT_GetTimeline_Sec();
-            // 上升沿时，切换到下一种重试模式
-            retry_id++;
-            if (retry_id > max_retry_id)
-            {
-                retry_id = 0;
-            }
-
-            RefreshRetryLed();
+            retry_id = 0;
         }
+
+        RefreshRetryLed();
+    }
+
+    last_retry_button_pressed = button_pressed[2];
+}
+
+///@brief 遥控器按键控制逻辑
+void ButtonLogics()
+{
+    // 第二半，7号按键，重启SLAM
+	
+    static uint8_t last_restart_time = 0;
+    if(MOD::farcon.button_second_half[6] && DWT_GetTimeline_Sec() - last_restart_time > 1.0f)
+    {
+        last_restart_time = DWT_GetTimeline_Sec();
+        MOD::host_pc.RestartSLAM();
+    }
+
+    static uint8_t last_sick_correct_time = 0;
+    if(MOD::farcon.button_second_half[5] && DWT_GetTimeline_Sec() - last_sick_correct_time > 1.0f)
+    {
+        last_sick_correct_time = 0;
+        MOD::host_pc.SendSlamCorrectionCmd();
     }
 }

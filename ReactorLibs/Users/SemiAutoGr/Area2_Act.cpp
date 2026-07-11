@@ -21,8 +21,8 @@ MeiLin_BlockPos& Area2::block_pos = MeiLin_BlockPos::GetInstance();
 MeiLinArray::MeiLinArray() = default;
 MeiLinArray& Area2::mei_lin_array = MeiLinArray::GetInstance();
 
-bool IR_Read(InfraredDetector& ir);
-bool NIR_Read(InfraredDetector& ir);
+static bool IR_Read(InfraredDetector& ir);
+static bool NIR_Read(InfraredDetector& ir);
 
 /************************* MeiLin_BlockPos 类 **************************/
 const Vec2 MeiHuaForest_Pos[12] = {
@@ -480,8 +480,8 @@ void MeiLinArray::FetchBlock(BlockHeight height)
   // APP::chas.Move(Vec2(0.2,0), 2.0f);
   // Seq::Wait(1.0f);
 
-  // 抬升先上去
-  APP::get_block.dm_lift_pos = -755.0f;
+  // 抬升先上去；后续 Store() 会从预抬升状态接管
+  APP::get_block.LiftUp();
 
   /**-----------------    关于小黄对准块的代码    ---------------------**/
 
@@ -809,6 +809,8 @@ void MeiLinArray::Decend_200(bool need_chase)
   {
     return (APP::leg.real_front_pos_mm > -10.0f) && (APP::leg.real_back_pos_mm > -10.0f); 
   });
+  // 伸出妲己
+  APP::leg.relay_daji.On();
 
   // 记录起始位置
   APP::monit.LogInfo("Decend200:StartPos:(%.2f,%.2f)",
@@ -893,6 +895,8 @@ void MeiLinArray::Decend_400(bool need_chase)
   {
     return (APP::leg.real_front_pos_mm > -10.0f) && (APP::leg.real_back_pos_mm > -10.0f); 
   });
+    // 伸出妲己
+  APP::leg.relay_daji.On();
 
   // 记录起始位置
   APP::monit.LogInfo("Decend400:StartPos:(%.2f,%.2f)",

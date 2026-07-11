@@ -242,16 +242,16 @@ void Walk_To_Dock(StateCore *core)
     Seq::Wait(0.05f);
   }
 
-  while(MOD::farcon.button_second_half[0] != 1)
-  {
-    Response_Button();
-    Seq::Wait(0.01f);
-  }
-
+  // while(MOD::farcon.button_second_half[0] != 1)
+  // {
+  //   Response_Button();
+  //   Seq::Wait(0.01f);
+  // }
+  
   APP::jaw.SetTrackMode(false);
 
   APP::jaw.SetPosCode(APP::jaw._hori_origin_code - JawConst::_hori_max_travel_code / 2, 
-    APP::jaw._vert_origin_code - 200000);
+    APP::jaw._vert_origin_code - 220000);
 
   APP::monit.LogInfo("Fetch and Dock again.");
 
@@ -295,7 +295,6 @@ void Dock_Fetch_And_Back(StateCore *core)
     Response_Button();
     Seq::Wait(0.01f);
 
-    // 对接完成
     if (APP::comm_center.IsDocked() || MOD::farcon.button_second_half[0] == 1)
     {
       // 打开夹爪，给R1时间拿回兵器
@@ -305,6 +304,10 @@ void Dock_Fetch_And_Back(StateCore *core)
 
     if (APP::comm_center.IsDockGiveUp())
     {
+      // // 离开对接模式
+      // APP::jaw.SetTrackMode(false);
+      // // 清除标志位
+      // APP::comm_center.ClearDockFlag();
       // 跳出等待，准备进入二区
       giveup_dock = true;
       break;
@@ -334,7 +337,7 @@ void Dock_Fetch_And_Back(StateCore *core)
     if (!giveup_dock)
     {
       APP::jaw.SetPosCode(APP::jaw._hori_origin_code - JawConst::_hori_max_travel_code / 2,
-        APP::jaw._vert_origin_code - 200000);
+        APP::jaw._vert_origin_code - 220000);
     }
 
     need_spear_id++;
@@ -349,15 +352,13 @@ void Dock_Fetch_And_Back(StateCore *core)
     Seq::Wait(0.5f);    // 避免多次光通信重复触发
 
     APP::main_loop.test_led.Running(Color::Orange, 0.4f, 1.2f);
-
+    
     // 再一次等待光通信
-    // 等待遥控器指令，然后才进入下一个状态
     while(true)
     {
       Response_Button();
       Seq::Wait(0.01f);
 
-      // 对接完成
       if (APP::comm_center.IsDocked() || MOD::farcon.button_second_half[0] == 1 || APP::comm_center.IsDockGiveUp())
       {
         break;
@@ -467,17 +468,18 @@ void Goto_Area2(StateCore *core)
 
   // APP::comm_center.SlamCorrection();
 
-  // 防止纠正的时候抬腿了
-  Seq::Wait(2.0f);
+  Seq::Wait(0.2f);
 
   APP::monit.LogInfo("Pos Corrected : %.2f, %.2f, %.2f",System.position.x, System.position.y, System.position.z);
 
-  while(MOD::farcon.button_second_half[0] != 1)
-  {
-    Response_Button();
-    Seq::Wait(0.01f);
-  }
+  APP::monit.LogInfo("I'm Ahead of MeiLin.");
 
+  // while(MOD::farcon.button_second_half[0] != 1)
+  // {
+  //   Response_Button();
+  //   Seq::Wait(0.01f);
+  // }
+  
   core->GetCurState().Complete = true;
 }
 
@@ -552,14 +554,14 @@ const static float max_farcon_beta = 1.8f; // 最大角加速度 rad/s^2
 static void Response_Button()
 {
     static float max_velo = 1.5f;
-    if(MOD::farcon.toggle[2] == 0)
-    {
-      max_velo = 1.0f;
-    }
-    else if(MOD::farcon.toggle[2] == 1)
-    {
-      max_velo = 0.33f;
-    }
+    // if(MOD::farcon.toggle[2] == 0)
+    // {
+    //   max_velo = 1.0f;
+    // }
+    // else if(MOD::farcon.toggle[2] == 1)
+    // {
+    //   max_velo = 0.33f;
+    // }
 
     // 计算遥控器死区：0-15不算，将15-100映射到原来的0.0-1.0
     constexpr float deadzone = 15.0f;
@@ -624,17 +626,17 @@ static void Response_Button()
       last_trigger_time = DWT_GetTimeline_Sec();
     }
 
-    if(MOD::farcon.button_second_half[4] == 1)
-    {
-      // 抬升达妙
-      APP::get_block.motor_dm_lift.SetPosVel(-760, 15.0f);
-    }
+    // if(MOD::farcon.button_second_half[4] == 1)
+    // {
+    //   // 抬升达妙
+    //   APP::get_block.LiftUp();
+    // }
 
-    if(MOD::farcon.button_second_half[5] == 1)
-    {
-      // 放下达妙
-      APP::get_block.motor_dm_lift.SetPosVel(0.0f, 15.0f);
-    }
+    // if(MOD::farcon.button_second_half[5] == 1)
+    // {
+    //   // 放下达妙
+    //   APP::get_block.LiftDown();
+    // }
 
     /**************   均为左半硬件  *************/
     // 抬腿

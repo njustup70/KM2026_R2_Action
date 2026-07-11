@@ -45,19 +45,39 @@
 #include "a23_2.hpp"
 #include "a23_b2.hpp"
 
+#include "FFM_B.hpp"
+#include "FFM.hpp"
+
+#include "w_to_n4.hpp"
+#include "w_to_n5.hpp"
+#include "w_to_n6.hpp"
+#include "w_to_comb.hpp"
+
+#include "n4_back.hpp"
+#include "n5_back.hpp"
+#include "n6_back.hpp"
+
+#include "wb_to_n4.hpp"
+#include "wb_to_n5.hpp"
+#include "wb_to_n6.hpp"
+
+#include "n4b_back.hpp"
+#include "n5b_back.hpp"
+#include "n6b_back.hpp"
+
 namespace PATH
 {
-const Path<22>& TTD_B1()
+const Path<16>& TTD_B1()
 {
     return ::TTD_B1;
 }
 
-const Path<21>& TTD_B2()
+const Path<16>& TTD_B2()
 {
     return ::TTD_B2;
 }
 
-const Path<18>& TTD_B3()
+const Path<16>& TTD_B3()
 {
     return ::TTD_B3;
 }
@@ -72,7 +92,7 @@ const Path<16>& TTD_B5()
     return ::TTD_B5;
 }
 
-const Path<16>& TTD_B6()
+const Path<19>& TTD_B6()
 {
     return ::TTD_B6;
 }
@@ -226,4 +246,80 @@ const Path<188>& A23_B2()
 {
     return ::A23_B2;
 }
+const Path<42>& FFM_B()
+{
+    return ::FFM_B;
 }
+const Path<41>& FFM()
+{
+    return ::FFM;
+}
+
+const Path<181>& W_TO_N4()
+{
+    return ::W_to_N4;
+}
+
+const Path<161>& W_TO_N5()
+{
+    return ::W_to_N5;
+}
+
+const Path<156>& W_TO_N6()
+{
+    return ::W_to_N6;
+}
+
+const Path<180>& N4_BACK()
+{
+    return ::N4_Back;
+}
+
+const Path<161>& N5_BACK()
+{
+    return ::N5_Back;
+}
+
+const Path<156>& N6_BACK()
+{
+    return ::N6_Back;
+}
+
+const Path<114>& W_TO_COMB()
+{
+    return ::W_to_Comb;
+}
+
+const Path<181>& WB_TO_N4()
+{
+    return ::WB_to_N4;
+}
+
+const Path<161>& WB_TO_N5()
+{
+    return ::WB_to_N5;
+}
+
+const Path<156>& WB_TO_N6()
+{
+    return ::WB_to_N6;
+}
+
+const Path<180>& N4B_BACK()
+{
+    return ::N4B_Back;
+}
+
+const Path<161>& N5B_BACK()
+{
+    return ::N5B_Back;
+}
+
+const Path<156>& N6B_BACK()
+{
+    return ::N6B_Back;
+}
+
+}
+
+
