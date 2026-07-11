@@ -5,8 +5,8 @@
 
 MainLoop& APP::main_loop = MainLoop::GetInstance();
 
-// #define Challenge_Area12_EXPLORE
-#define Challenge_Area3_ARENA
+#define Challenge_Area12_EXPLORE
+// #define Challenge_Area3_ARENA
 // #define Compete_KungfuMaster
 void ButtonLogics();
 
@@ -281,6 +281,7 @@ void MainLoop::JudgeRetryFlags()
 void ButtonLogics()
 {
     // 第二半，7号按键，重启SLAM
+	
     static uint8_t last_restart_time = 0;
     if(MOD::farcon.button_second_half[6] && DWT_GetTimeline_Sec() - last_restart_time > 1.0f)
     {
