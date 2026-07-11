@@ -5,12 +5,12 @@
 namespace PATH
 {
 /// @brief 蓝区：矛台到对接点 TableToDock
-const Path<16>& TTD_B6();
+const Path<19>& TTD_B6();
 const Path<16>& TTD_B5();
 const Path<16>& TTD_B4();
-const Path<18>& TTD_B3();
-const Path<21>& TTD_B2();
-const Path<22>& TTD_B1();
+const Path<16>& TTD_B3();
+const Path<16>& TTD_B2();
+const Path<16>& TTD_B1();
 
 /// @brief 蓝区：原点到矛台
 const Path<44>& sttr_b1();
