@@ -14,6 +14,9 @@
 #include "MainLoop.hpp"
 #include "PathCenter/PathCenter.hpp"
 
+/// @brief 取矛头时的X方向偏移，由遥控器按键调整，单位m
+float fetch_spear_x_bias = 0.0f;
+
 static const float dist_sick_center = 0.34f;
 static const float spear_sick_value[6] =
     {0.115f,
@@ -356,6 +359,9 @@ void FetchSpear_FromOrigin(uint8_t spear_id)
   APP::jaw.PitchDown();
   APP::jaw.OpenClaw();
 
+  // 应用取矛头X方向偏移
+  System.SetPositionBias(Vec3(fetch_spear_x_bias, 0.0f, 0.0f));
+
   OriginTo::SpearChase(spear_id, Vec3(0.02f, 0.02f, 0.02f));
 
   uint32_t log_tick = 0;
@@ -411,6 +417,9 @@ void FetchSpear_FromDock(uint8_t spear_id)
   APP::jaw.PitchDown();
   APP::jaw.OpenClaw();
 
+  // 应用取矛头X方向偏移
+  System.SetPositionBias(Vec3(fetch_spear_x_bias, 0.0f, 0.0f));
+
   // 根据矛头编号，选择对应的路径（技能挑战赛）
   DockTo::DockSpearChase(spear_id, Vec3(0.015f, 0.015f, 0.02f));
 
@@ -461,6 +470,9 @@ void FetchSpear_FromDock(uint8_t spear_id)
  */
 void GotoDock(uint8_t spear_id)
 {
+  // 去对接点时清除取矛头偏移，确保对接位置准确
+  System.SetPositionBias(Vec3(0.0f, 0.0f, 0.0f));
+
   ToDock::LetsGo(spear_id, Vec3(0.035f, 0.05f, 0.02f));
 
   while (!APP::path_chaser.IsFinished())
