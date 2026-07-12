@@ -388,11 +388,11 @@ void MeiLinArray::FetchBlock(BlockHeight height)
   // 有任何一边小黄能看到，都说明歪了
   const float side_spd = 0.10f;
   int align_cnt_ms = 0;
-  while (IR_Read(APP::main_loop.mouthfetch_ir_left) || IR_Read(APP::main_loop.mouthfetch_ir_right))
+  while (NIR_Read(APP::main_loop.mouthfetch_ir_left) || NIR_Read(APP::main_loop.mouthfetch_ir_right))
   {
-    bool left_seen = IR_Read(APP::main_loop.mouthfetch_ir_left);
-    bool right_seen = IR_Read(APP::main_loop.mouthfetch_ir_right);
-
+    APP::monit.LogInfo("can't fetch block, need to correct");
+    bool left_seen = NIR_Read(APP::main_loop.mouthfetch_ir_left);
+    bool right_seen = NIR_Read(APP::main_loop.mouthfetch_ir_right);
     Vec3 body_v = Vec3(0, 0, 0);
 
     // 保持yaw角 为0 （正前方）
@@ -400,15 +400,15 @@ void MeiLinArray::FetchBlock(BlockHeight height)
     yaw_err = atan2f(sinf(yaw_err), cosf(yaw_err));
     body_v.z = yaw_err * 1.2f;
 
-    // 如果左边的小黄（红外）能读取到，向右平移，保持yaw角
+    // 如果左边的小黄（红外）能读取到，向左平移，保持yaw角
     if (left_seen && !right_seen)
     {
-      body_v.y = -side_spd;  // 向右平移
+      body_v.y = side_spd;  // 向右平移
     }
-    // 如果右边的小黄能读取到，向左平移，保持yaw角
+    // 如果右边的小黄能读取到，向右平移，保持yaw角
     else if (right_seen && !left_seen)
     {
-      body_v.y = side_spd;  // 向左平移
+      body_v.y = -side_spd;  // 向左平移
     }
     else
     {
@@ -434,7 +434,7 @@ void MeiLinArray::FetchBlock(BlockHeight height)
 
   // 先开爪
   APP::vac_claw.OpenSnap();
-  Seq::Wait(0.5f);
+  Seq::Wait(0.7f);
 
   APP::monit.LogInfo("stretch out to fetch block");
   // 再伸出
@@ -1015,6 +1015,8 @@ static void MoveBackAndDecend()
   else Area2::mei_lin_array.ChaseCurrentGrid();
 
   Seq::Wait(1.0f);
+
+  if (Area2::mei_lin_array._skip_approach) Area2::mei_lin_array._skip_approach = false;
 
   // 再把腿放下
   APP::leg.F_Origin();

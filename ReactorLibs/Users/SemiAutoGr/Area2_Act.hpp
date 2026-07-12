@@ -100,7 +100,7 @@ public:
   void ChaseCurrentGrid_BLUE();
 
   static void Area2ActRxCallback(uint8_t func_code, const uint8_t *payload, uint8_t payload_len, void *user_ctx);
-
+  bool _skip_approach = false; // 是否跳过接近动作
 private:
   static constexpr int MAX_SEQ = 64;
   Area2Code _seq[MAX_SEQ] = {AREA_DONE}; // 动作缓存
@@ -108,7 +108,7 @@ private:
   int _seq_len = 0;            // 已缓存的动作数
   bool _seq_ready = false;     // 序列收完标志
 
-  bool _skip_approach = false; // 是否跳过接近动作
+  
 
   bool _is_enter_act = true; // 第一次接收0x80/0x81/0x82，进行对_seq[0]的判断，第二次进入就执行判断_seq[0]和_seq[1]是否相同的逻辑
 
