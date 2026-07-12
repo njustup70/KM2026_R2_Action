@@ -221,9 +221,9 @@ void VacuumClaw::StretchOut_Second()
     // stretch_pos = 252000;
     constexpr float target_pos = 255000.0f;
     constexpr float step_size  = 8800.0f;   // 每步增量
-    constexpr float step_dt    = 0.1f;       // 每步间隔
+    constexpr float step_dt    = 0.002f;       // 每步间隔
 
-    for (float pos = 180000.0f + step_size; pos < target_pos; pos += step_size)
+    for (float pos = 190000.0f + step_size; pos < target_pos; pos += step_size)
     {
         stretch_pos = pos;
         Seq::Wait(step_dt);

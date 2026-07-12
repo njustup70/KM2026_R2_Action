@@ -11,7 +11,7 @@ static constexpr float T_LIFT = 3.5f; // 摩擦带上下的时间（短距兜底
 static constexpr float T_LIFT_SETTLE = 3.0f;    // 传感器触发后等待抬升到位的短超时
 static constexpr float T_LIFT_BEFORE_BELT = 4.2f; // 取块1时抬升先走一段再转摩擦带
 static constexpr float T_LIFT_LONG = 60.0f;  // 抬升全程超时（大行程兜底）
-static constexpr float T_LIFT_TRAVEL = 4.0f; // 速度模式单程兜底，超时即停机中止
+static constexpr float T_LIFT_TRAVEL = 5.0f; // 速度模式单程兜底，超时即停机中止
 #ifdef GETBLOCK_LIFT_DM_DIAG_LOG
 static constexpr float T_LIFT_DIAG_LOG = 0.5f; // 抬升动作中周期性诊断日志
 #endif

@@ -74,6 +74,7 @@ private:
 
     Vec2 _arcuo_bias_mm = {8, 8};
     Vec2 _optic_dock_bias_mm = {0, 0};
+    bool _lock_hostpc_bias = false;  // 超时后锁死工控机发来的视觉 offset
 
     // code 到 mm 互转方法（静态）
     static float _HoriCodeToMM(int code);
@@ -105,6 +106,8 @@ public:
     void AddOpticDockBias(float delta_x_mm, float delta_y_mm);
     void ClearOpticDockBias() { _optic_dock_bias_mm = Vec2(0, 0); }
     Vec2 GetOpticDockBias() const { return _optic_dock_bias_mm; }
+    void LockHostPCBias() { _lock_hostpc_bias = true; }
+    void UnlockHostPCBias() { _lock_hostpc_bias = false; }
 
     /**
      * @brief 设置 **相对于中心的** 取矛头位置。向上和向右为正。

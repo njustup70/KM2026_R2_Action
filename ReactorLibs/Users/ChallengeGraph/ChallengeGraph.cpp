@@ -28,6 +28,8 @@ static bool move_to_area2 = false;  // 是否可以移动到二区了
 static bool retry_dir_area2 = false; // 重试：是否需要直接进入二区
 static bool retry_comm_err = false; // 重试：是否需要重新请求工控机发送动作序
 
+static bool not_cut_off_retry = false; // 不断电重试，会失能底盘
+
 // 自动状态机
 StateGraph R2_Challenge_Graph("R2_Challenge");
 static void Waiting_for_Start(StateCore *core);
@@ -41,6 +43,9 @@ static void Area2End_BackOrigin(StateCore *core);
 // 两种重试
 static void Retry_Direct_ToArea2(StateCore *core);
 static void Retry_Comm_Error(StateCore *core);
+
+// // 申请重试后进入假失能
+// static void Retry_Wait(StateCore *core);
 
 static void Walk_into_Area2(StateCore *core);
 
@@ -58,11 +63,15 @@ int Config_R2_Challenge_StateGraph()
 
   StateBlock& s_retry_dirctA2 = R2_Challenge_Graph.AddState("retry_dircA2");    // 出发后，直接进二区
   StateBlock& s_retry_comm_err = R2_Challenge_Graph.AddState("retry_comm_err");    // 光通信信号发错了，重新请求
+  // StateBlock& s_retry_wait = R2_Challenge_Graph.AddState("retry_wait"); // 申请重试的时候，失能底盘，请求出发后做什么动作
 
   s_wait.StateAction = Waiting_for_Start;
   // 重试的状态
   s_retry_dirctA2.StateAction = Retry_Direct_ToArea2;
   s_retry_comm_err.StateAction = Retry_Comm_Error;
+
+  // // 申请重试时进入的状态
+  // s_retry_wait.StateAction = Retry_Wait;
 
   /**   一区的状态**/
   s_area1_f1.StateAction = Walk_Fetch;
@@ -86,6 +95,7 @@ int Config_R2_Challenge_StateGraph()
   // 区分：再次去取矛头，还是进入二区
   s_dock_fetch.LinkTo(&fetch_again, s_dock_fetch);
   s_dock_fetch.LinkTo(&move_to_area2, s_walk_from_a1_to_a2);
+  s_dock_fetch.LinkTo(&not_cut_off_retry, s_wait);
   
   // 进入二区，并执行任务
   s_walk_from_a1_to_a2.LinkTo(&s_walk_from_a1_to_a2.Complete, s_a2_hostact);
@@ -97,6 +107,8 @@ int Config_R2_Challenge_StateGraph()
   s_retry_dirctA2.LinkTo(&s_retry_dirctA2.Complete, s_walk_from_a1_to_a2);
   s_retry_comm_err.LinkTo(&s_retry_comm_err.Complete, s_walk_from_a1_to_a2);
 
+  // // 申请重试状态的链接
+  // s_retry_wait.LinkTo(bool *condition, StateBlock &nextState)
 
   /**----------     向状态机核心注册    ----------**/
   return APP::state_core.RegistGraph(R2_Challenge_Graph);
@@ -112,7 +124,6 @@ int Config_R2_Challenge_StateGraph()
  */
 void Waiting_for_Start(StateCore *core)
 {
-  
   Area2::mei_lin_array.is_blue = false; // 设置为红场
 
   APP::jaw.CloseClaw();
@@ -138,6 +149,9 @@ void Waiting_for_Start(StateCore *core)
     Response_Button();
     Seq::Wait(0.01f);
   }
+
+  // 不断电重试失能了底盘，在这里需要重新使能
+  APP::chas.Enable();
 
   APP::main_loop.test_led.Lit(Color::White);
 
@@ -215,6 +229,7 @@ void Walk_Fetch(StateCore *core)
  */
 void Walk_To_Dock(StateCore *core)
 {
+  static int track_mode_cnt = 0;
   // 走到对接点
   GotoDock(need_spear_id);
 
@@ -228,6 +243,12 @@ void Walk_To_Dock(StateCore *core)
   {
     Response_Button();
     Seq::Wait(0.01f);
+    
+    track_mode_cnt++;
+    if(track_mode_cnt > 800) // 超过 8s 就锁死工控机发来的bias,但是保持光通信控制bias
+    {
+      APP::jaw.LockHostPCBias();
+    }
 
     if (APP::comm_center.IsDocked())
     {
@@ -279,6 +300,8 @@ void Walk_To_Dock(StateCore *core)
  */
 void Dock_Fetch_And_Back(StateCore *core)
 {
+  // 防止场地光影响工控机发来的矛头偏移量
+  int track_mode_cnt = 0;
   // 记录是否放弃对接（每次进入都默认为false）
   bool giveup_dock = false;
 
@@ -303,7 +326,11 @@ void Dock_Fetch_And_Back(StateCore *core)
   {
     Response_Button();
     Seq::Wait(0.01f);
-
+    track_mode_cnt++;
+    if(track_mode_cnt > 800)
+    {
+      APP::jaw.LockHostPCBias();
+    }
     // 对接完成
     if (APP::comm_center.IsDocked() || MOD::farcon.button_second_half[0] == 1)
     {
@@ -316,6 +343,11 @@ void Dock_Fetch_And_Back(StateCore *core)
     {
       // 跳出等待，准备进入二区
       giveup_dock = true;
+      break;
+    }
+    if(not_cut_off_retry)
+    {
+      not_cut_off_retry = false;
       break;
     }
   }
@@ -460,13 +492,13 @@ void Goto_Area2(StateCore *core)
   switch (Area2::mei_lin_array.enter_code)
   {
     case Area2Code::ENTER_0:
-      Area2::RunIntoArea2(PATH::A12_3(), Vec3(0.15f, 0.15f, 0.0f), true);
+      Area2::RunIntoArea2(PATH::A12_3(), Vec3(0.015f, 0.015f, 0.015f), true);
       break;
     case Area2Code::ENTER_1:
-      Area2::RunIntoArea2(PATH::A12_2(), Vec3(0.15f, 0.15f, 0.0f), false);
+      Area2::RunIntoArea2(PATH::A12_2(), Vec3(0.015f, 0.015f, 0.015f), false);
       break;
     case Area2Code::ENTER_2:
-      Area2::RunIntoArea2(PATH::A12_1(), Vec3(0.15f, 0.15f, 0.0f), true);
+      Area2::RunIntoArea2(PATH::A12_1(), Vec3(0.015f, 0.015f, 0.015f), true);
       break;
     default:
       APP::monit.LogError("Invalid A2EnterCode!");
@@ -555,6 +587,24 @@ void Area2End_BackOrigin(StateCore *core)
 
   core->GetCurState().Complete = true;
 }
+
+// void Retry_Wait(StateCore *core)
+// {
+//   APP::chas.Disable();
+//   APP::leg.Disable();
+//   APP::vac_claw.Disable();
+//   while(MOD::farcon.button_second_half[0] != 1)
+//   {
+//     Response_Button();
+//     Seq::Wait(0.01f);
+//   }
+//   APP::chas.Enable();
+//   APP::leg.Enable();
+//   APP::vac_claw.Enable();  
+
+//   core->GetCurState().Complete = true;
+// }
+
 
 /*******************************************************************************/
 
@@ -704,7 +754,13 @@ static void Response_Button()
     if(MOD::farcon.button_first_half[3] == 1)
     {
       need_spear_id = 2;
-    }     
+    }
+    
+    if(MOD::farcon.button_second_half[4] == 1)
+    {
+      not_cut_off_retry = true;
+      APP::chas.Disable();
+    }
 }
 
 

@@ -5,10 +5,11 @@
 
 MainLoop& APP::main_loop = MainLoop::GetInstance();
 
-#define Challenge_Area12_EXPLORE
-// #define Challenge_Area3_ARENA
+// #define Challenge_Area12_EXPLORE
+#define Challenge_Area3_ARENA
 // #define Compete_KungfuMaster
 void ButtonLogics();
+void UpdateFarconSlamPos();
 
 float debug_cnt = 0;
 
@@ -64,6 +65,9 @@ void MainLoop::Update()
     button_pressed[2] = !button_2.Read();
     button_pressed[3] = !button_3.Read();
 
+    // ir_left = !mouthfetch_ir_left.Read();
+    // ir_right = !mouthfetch_ir_right.Read();
+
     cnt++;
 
     if (System.runtime_tick - last_report_time >= 15.0f)
@@ -88,6 +92,8 @@ void MainLoop::Update()
         test_led.TempBlink(Color::Pink, 3, 0.5f);
         kfs_blinked = true;
     }
+
+
 }
 
 
@@ -301,4 +307,18 @@ void ButtonLogics()
         last_sick_correct_time = 0;
         MOD::host_pc.SendSlamCorrectionCmd();
     }
+}
+
+void UpdateFarconSlamPos()
+{
+    uint8_t slam_pos[13];
+    Vec3 pos_packet;
+
+    pos_packet.x = System.position.x;
+    pos_packet.y = System.position.y;
+    pos_packet.z = System.position.z;
+
+    slam_pos[0] = 0x06;
+    memcpy(slam_pos + 1, &pos_packet, 12);
+    MOD::farcon.TransmitFarcon(slam_pos, sizeof(slam_pos));
 }

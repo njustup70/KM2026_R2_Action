@@ -33,7 +33,10 @@ void Jaw::_SpearHeadCb(uint8_t func_code, const uint8_t* payload, uint8_t payloa
     }
 
     Jaw* jaw = static_cast<Jaw*>(user_ctx);
-    
+
+    // 超时锁定后，不再更新工控机发来的视觉 offset，但光通信 bias 不受影响
+    if (jaw->_lock_hostpc_bias) return;
+
     memcpy(&jaw->_spear_left_err_mm, &payload[0], 4);
     memcpy(&jaw->_spear_up_err_mm, &payload[4], 4);
 

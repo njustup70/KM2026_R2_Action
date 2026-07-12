@@ -27,6 +27,8 @@ static bool move_to_area2 = false;  // 是否可以移动到二区了
 static bool retry_dir_area2 = false; // 重试：是否需要直接进入二区
 static bool retry_comm_err = false; // 重试：是否需要重新请求工控机发送动作序
 
+static bool not_cut_off_retry = false; // 不断电重试，会失能底盘
+
 // 自动状态机
 StateGraph R2_Challenge_Blue_Graph("R2_Challenge");
 static void Waiting_for_Start(StateCore *core);
@@ -81,7 +83,8 @@ int Config_R2_Challenge_Blue_StateGraph()
   // 区分：再次去取矛头，还是进入二区
   s_dock_fetch.LinkTo(&fetch_again, s_dock_fetch);
   s_dock_fetch.LinkTo(&move_to_area2, s_walk_from_a1_to_a2);
-  
+  s_dock_fetch.LinkTo(&not_cut_off_retry, s_wait);
+
   // 进入二区，并执行任务
   s_walk_from_a1_to_a2.LinkTo(&s_walk_from_a1_to_a2.Complete, s_a2_hostact);
   s_a2_hostact.LinkTo(&s_a2_hostact.Complete, s_a2end_backorigin);
@@ -106,7 +109,7 @@ int Config_R2_Challenge_Blue_StateGraph()
  */
 void Waiting_for_Start(StateCore *core)
 {
-  
+
   Area2::mei_lin_array.is_blue = true; // 设置为蓝场
 
   APP::jaw.CloseClaw();
@@ -123,12 +126,17 @@ void Waiting_for_Start(StateCore *core)
   APP::leg.F_AlmostOrigin();
   APP::leg.B_AlmostOrigin();
 
+  Seq::Wait(1.0f);
+
   // 等待遥控器指令，然后才进入下一步
   while(MOD::farcon.button_second_half[0] != 1)
   {
     Response_Button();
     Seq::Wait(0.01f);
   }
+
+  // 不断电重试失能了底盘，在这里需要重新使能
+  APP::chas.Enable();
 
   APP::main_loop.test_led.Lit(Color::White);
 
@@ -206,6 +214,7 @@ void Walk_Fetch(StateCore *core)
  */
 void Walk_To_Dock(StateCore *core)
 {
+  int track_mode_cnt = 0;
   // 走到对接点
   GotoDock_Blue(need_spear_id);
 
@@ -219,6 +228,12 @@ void Walk_To_Dock(StateCore *core)
   {
     Response_Button();
     Seq::Wait(0.01f);
+
+    track_mode_cnt++;
+    if(track_mode_cnt > 800) // 超过 8s 就锁死工控机发来的bias,但是保持光通信控制bias
+    {
+      APP::jaw.LockHostPCBias();
+    }
 
     if (APP::comm_center.IsDocked())
     {
@@ -270,6 +285,9 @@ void Walk_To_Dock(StateCore *core)
  */
 void Dock_Fetch_And_Back(StateCore *core)
 {
+  // 防止工控机发来的矛头偏移受场地光影响
+  int track_mode_cnt = 0;
+
   // 记录是否放弃对接（每次进入都默认为false）
   bool giveup_dock = false;
 
@@ -294,6 +312,11 @@ void Dock_Fetch_And_Back(StateCore *core)
   {
     Response_Button();
     Seq::Wait(0.01f);
+    track_mode_cnt++;
+    if(track_mode_cnt > 800)
+    {
+      APP::jaw.LockHostPCBias();
+    }
 
     if (APP::comm_center.IsDocked() || MOD::farcon.button_second_half[0] == 1)
     {
@@ -310,6 +333,12 @@ void Dock_Fetch_And_Back(StateCore *core)
       // APP::comm_center.ClearDockFlag();
       // 跳出等待，准备进入二区
       giveup_dock = true;
+      break;
+    }
+
+    // 如果请求不断电重试，直接跳出，由状态机转移到 s_wait
+    if(not_cut_off_retry)
+    {
       break;
     }
   }
@@ -363,6 +392,12 @@ void Dock_Fetch_And_Back(StateCore *core)
       {
         break;
       }
+
+      // 如果请求不断电重试，直接跳出，由状态机转移到 s_wait
+      if(not_cut_off_retry)
+      {
+        break;
+      }
     }
 
     // 灯带：进度条
@@ -394,7 +429,7 @@ void Dock_Fetch_And_Back(StateCore *core)
 void Retry_Direct_ToArea2(StateCore *core)
 {
   // 先走到对接点，然后接上 Goto_Area2 （需要工控机重发动作序列）
-  MOVE::MoveToTargGes(Vec3(1.3f, 1.0f, 0.0f));
+  MOVE::MoveToTargGes(Vec3(1.3f, 1.0f, -1.5707f));
   
   // 直接进入 Goto_Area2
   core->GetCurState().Complete = true;
@@ -409,7 +444,7 @@ void Retry_Direct_ToArea2(StateCore *core)
 void Retry_Comm_Error(StateCore *core)
 {
   // 走到对接点
-  MOVE::MoveToTargGes(Vec3(1.3f, 1.0f, 0.0f));
+  MOVE::MoveToTargGes(Vec3(0.8f, 1.3f, 0.0f));
 
   // 等待光通信信号
   Seq::WaitUntil([](){
@@ -668,5 +703,11 @@ static void Response_Button()
     if(MOD::farcon.button_first_half[3] == 1)
     {
       need_spear_id = 5;
-    }     
+    }
+
+    if(MOD::farcon.button_second_half[4] == 1)
+    {
+      not_cut_off_retry = true;
+      APP::chas.Disable();
+    }
 }

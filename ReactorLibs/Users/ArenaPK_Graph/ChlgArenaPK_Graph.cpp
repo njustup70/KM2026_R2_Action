@@ -28,6 +28,10 @@ StateGraph Arena_PK_Graph("Arena_PK");
 static bool retry_go_wait = false;
 static bool dirct_go_wait = false;
 
+static bool reset_put_L2_N4 = false;
+static bool reset_put_L2_N5 = false;
+static bool reset_put_L2_N6 = false;
+
 static bool IR_Read(InfraredDetector& ir);
 static bool NIR_Read(InfraredDetector& ir);
 
@@ -46,7 +50,7 @@ static void Fetch_1_FromWait();
 static void Robot_Combine();
 
 Vec2 Arena_R2_KFS_FetchPos[2] = {
-  Vec2(11.1, 3.405), Vec2(11.1, 2.685)
+  Vec2(11.1, 3.555), Vec2(11.1, 2.835)
 }; // 块之间间隔：0.175 + 0.175 + 0.37 = 0.72 m
 
 Vec3 Arena_R2_L2_Mid_Ges(10.75f, 5.20f, 1.571f);
@@ -72,7 +76,7 @@ int ChallengeArenaPK_Graph()
   StateBlock& s_fetch_0_1_block = Arena_PK_Graph.AddState("fetch_0_1_block");
   // 直接去等待（从斜坡下的）
   StateBlock& s_dirct_gowait = Arena_PK_Graph.AddState("dir_gowait");
-
+  // 拿到两个块后，申请重试后直接去
 
   /**----------     配置状态行为函数    ----------**/
   s_wait.StateAction = Waiting_for_Start;
@@ -219,9 +223,9 @@ void Direct_Go_Wait(StateCore *core)
     // 先把块抬起来
   // APP::get_block.LiftUp();
 
-  // 首先走上斜坡
-  MOVE::MoveToTargGes(Vec3(8.72f, 0.79f, 0.0f));
-  MOVE::MoveToTargGes(Vec3(11.38f, 0.77f, 0.0f));
+  // // 首先走上斜坡
+  // MOVE::MoveToTargGes(Vec3(8.72f, 0.79f, 0.0f));
+  // MOVE::MoveToTargGes(Vec3(11.38f, 0.77f, 0.0f));
 
   // 走到等待点
   MOVE::MoveToTargGes(Vec3(11.38f, 2.1f, 0.0f));
@@ -1094,22 +1098,28 @@ void Response_Button()
     }
 
     static float last_trigger_time = 0;
-    if(MOD::farcon.button_second_half[7] == 1 && DWT_GetTimeline_Sec() - last_trigger_time > 1.0f)
+    if(MOD::farcon.button_second_half[4] == 1 && DWT_GetTimeline_Sec() - last_trigger_time > 1.0f)
     {
-      static bool is_daji_enable = false;
-      if(is_daji_enable)
-      {
-        // 打开后边小轮(妲己)
-        APP::leg.relay_daji.Off();
-      }
-      else
-      {
-        APP::leg.relay_daji.On();
-      }
- 
-      is_daji_enable = !is_daji_enable;
       last_trigger_time = DWT_GetTimeline_Sec();
+      reset_put_L2_N4 = true;
     }
+    // static float last_trigger_time = 0;
+    // if(MOD::farcon.button_second_half[7] == 1 && DWT_GetTimeline_Sec() - last_trigger_time > 1.0f)
+    // {
+    //   static bool is_daji_enable = false;
+    //   if(is_daji_enable)
+    //   {
+    //     // 打开后边小轮(妲己)
+    //     APP::leg.relay_daji.Off();
+    //   }
+    //   else
+    //   {
+    //     APP::leg.relay_daji.On();
+    //   }
+ 
+    //   is_daji_enable = !is_daji_enable;
+    //   last_trigger_time = DWT_GetTimeline_Sec();
+    // }
 
     // // 处理泄压阀的开关
     // static float last_prv_time = 0;
@@ -1186,36 +1196,36 @@ void Response_Button()
     // }    
 
     /**************   均为左半按键  *************/
-    // 抬腿
-    if (MOD::farcon.button_first_half[0] == 1)
-    {
-      APP::leg.SetFrontPosSlow(-100.0f, 1.0f);
-      APP::leg.SetBackPosSlow(-100.0f, 1.0f);
-    }
+    // // 抬腿
+    // if (MOD::farcon.button_first_half[0] == 1)
+    // {
+    //   APP::leg.SetFrontPosSlow(-100.0f, 1.0f);
+    //   APP::leg.SetBackPosSlow(-100.0f, 1.0f);
+    // }
 
-    // 收回前腿
-    if (MOD::farcon.button_first_half[1] == 1)
-    {
-      APP::leg.SetFrontPosSlow(-4, 5.0f);
-    }
+    // // 收回前腿
+    // if (MOD::farcon.button_first_half[1] == 1)
+    // {
+    //   APP::leg.SetFrontPosSlow(-4, 5.0f);
+    // }
 
-    // 收回后腿
-    if (MOD::farcon.button_first_half[2] == 1)
-    {
-      APP::leg.SetBackPosSlow(-4, 5.0f);
-    }
+    // // 收回后腿
+    // if (MOD::farcon.button_first_half[2] == 1)
+    // {
+    //   APP::leg.SetBackPosSlow(-4, 5.0f);
+    // }
 
-    // 一起收回
-    if (MOD::farcon.button_first_half[3] == 1)
-    {
-      APP::leg.SetFrontPosSlow(-4, 5.0f);
-      APP::leg.SetBackPosSlow(-4, 5.0f);
-    }
+    // // 一起收回
+    // if (MOD::farcon.button_first_half[3] == 1)
+    // {
+    //   APP::leg.SetFrontPosSlow(-4, 5.0f);
+    //   APP::leg.SetBackPosSlow(-4, 5.0f);
+    // }
 
-    if(MOD::farcon.button_first_half[6] == 1)
-    {
-      APP::get_block.Put();
-    }
+    // if(MOD::farcon.button_first_half[6] == 1)
+    // {
+    //   APP::get_block.Put();
+    // }
 
     // if(MOD::farcon.button_first_half[7] == 1)
     // {
