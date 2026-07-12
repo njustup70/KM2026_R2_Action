@@ -36,9 +36,9 @@ const Path<21>& TTD_4();
 const Path<72>& DTT_1();
 const Path<71>& DTT_2();
 const Path<67>& DTT_3();
-const Path<54>& DTT_B4();
-const Path<63>& DTT_B5();
-const Path<64>& DTT_B6();
+const Path<68>& DTT_B4();
+const Path<55>& DTT_B5();
+const Path<57>& DTT_B6();
 
 /// @brief 跨区域路径
 const Path<68>& A12_1();

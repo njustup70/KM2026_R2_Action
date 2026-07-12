@@ -192,17 +192,17 @@ const Path<67>& DTT_3()
     return ::DTT_3;
 }
 
-const Path<54>& DTT_B4()
+const Path<68>& DTT_B4()
 {
     return ::DTT_B4;
 }
 
-const Path<63>& DTT_B5()
+const Path<55>& DTT_B5()
 {
     return ::DTT_B5;
 }
 
-const Path<64>& DTT_B6()
+const Path<57>& DTT_B6()
 {
     return ::DTT_B6;
 }
