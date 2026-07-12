@@ -349,111 +349,6 @@ static void FetchDown200()
   // APP::chas.Move(Vec2(0.0f, 0.0f), 1.0f);  
 }
 
-// 取左边上200的块
-// void MeiLinArray::FetchLeftSide_UP200()
-// {
-//   // 判断向左还是向右转
-
-//   // 判断取 上200 的 还是 下200 的
-
-//   Area2::mei_lin_array.TurnLeft();
-
-//   // 等0.5s转过来
-//   Seq::Wait(0.5);
-
-//   Area2::mei_lin_array.FetchBlock(BlockHeight::UP200);
-
-//   // 等一小会儿稳定一些，这个可以调短，因为FetchBlock最后调用Store的时候爪子已经伸回来了
-//   Seq::Wait(0.5);
-
-//   // 退回当前梅林的中心 
-//   Area2::mei_lin_array.ChaseCurrentGrid();
-
-//   // 放下腿
-//   APP::leg.F_Origin();
-//   APP::leg.B_Origin();
-
-//   // 等腿完全放下来才允许下一步动作
-//   Seq::WaitUntil([=]()
-//   {
-//     return (APP::leg.real_front_pos_mm > -10.0f) && (APP::leg.real_back_pos_mm > -10.0f); 
-//   });
-// }
-
-// /// @brief 伸爪取块
-// /// @param 
-// void MeiLinArray::FetchBlock(BlockHeight height)
-// {
-//   switch (height)
-//   {
-//     case BlockHeight::UP200:
-//       FetchUp200();
-//     break;
-
-//     case BlockHeight::UP400:
-//       FetchUp400();
-//     break;
-
-//     case BlockHeight::DOWN200:
-//       FetchDown200();
-//     break;
-
-//     default:
-//       APP::monit.LogError("Unamed BlockHeight");
-//     break;
-//   }
-
-//   _skip_approach = true; // 已经靠上去了，标记跳过下一次 Climb 的重复抵靠动作
-  
-//   // // 等稳定
-//   // Seq::Wait(0.5f);
-//   // APP::chas.Move(Vec2(0.2,0), 2.0f);
-//   // Seq::Wait(1.0f);
-
-//   // 抬升先上去
-//   APP::get_block.dm_lift_pos = -750.0f;
-
-//   // 先开爪
-//   APP::vac_claw.OpenSnap();
-//   Seq::Wait(0.4f);
-
-//   // 再伸出
-//   APP::vac_claw.StretchOut();
-
-//   // 等待伸出完成后，闭上爪
-//   Seq::Wait(1.2f);
-//   APP::vac_claw.CloseSnap();
-
-//   // 微微张开爪子
-//   APP::vac_claw.OpenSnapMini();
-//   // 往前慢慢走一些
-//   APP::chas.Move(Vec2(0.1, 0), 0.25f);
-//   Seq::Wait(0.25f);
-
-//   // 打开负压泵
-//   APP::get_block.OpenPump();
-
-//   // // 等爪子抓住后
-//   // Seq::Wait(2.5f);
-
-//   // 等待吸住后，翻转物块，收爪
-//   Seq::Wait(1.0f);
-//   APP::vac_claw.StretchBack();
-
-//   // 此时爪还抓着物块，关闭负压泵
-//   APP::get_block.ClosePump();
-
-//   APP::get_block._StartBelt();
-
-//   APP::vac_claw.OpenSnap();
-
-//   APP::get_block.OpenPRV();
-
-//   APP::get_block.Store();
-
-//   APP::get_block.ClosePRV();
-// }
-
 /// @brief 伸爪取块
 /// @param 
 void MeiLinArray::FetchBlock(BlockHeight height)
@@ -541,6 +436,7 @@ void MeiLinArray::FetchBlock(BlockHeight height)
   APP::vac_claw.OpenSnap();
   Seq::Wait(0.5f);
 
+  APP::monit.LogInfo("stretch out to fetch block");
   // 再伸出
   APP::vac_claw.StretchOut_First();
 
