@@ -192,7 +192,7 @@ void Walk_Fetch(StateCore *core)
   APP::main_loop.test_led.GradientFlow(Color::Up_Purpor * 0.65f, Color::Up_Yellow * 0.65f, 1.0f);
   
   // 从原点出发取矛头
-  FetchSpear_FromOrigin_Blue(3);
+  FetchSpear_FromOrigin_Blue(need_spear_id);
 
   core->GetCurState().Complete = true;
 }
@@ -207,7 +207,7 @@ void Walk_Fetch(StateCore *core)
 void Walk_To_Dock(StateCore *core)
 {
   // 走到对接点
-  GotoDock_Blue(3);
+  GotoDock_Blue(need_spear_id);
 
   // 进入对接模式
   APP::jaw.SetTrackMode(true);
@@ -608,23 +608,23 @@ static void Response_Button()
       APP::chas.Move(Vec3(0, 0, 0), 0.2f);
     }
 
-    static float last_trigger_time = 0;
-    if(MOD::farcon.button_second_half[7] == 1 && DWT_GetTimeline_Sec() - last_trigger_time > 1.0f)
-    {
-      static bool is_daji_enable = false;
-      if(is_daji_enable)
-      {
-        // 打开后边小轮(妲己)
-        APP::leg.relay_daji.Off();
-      }
-      else
-      {
-        APP::leg.relay_daji.On();
-      }
+    // static float last_trigger_time = 0;
+    // if(MOD::farcon.button_second_half[7] == 1 && DWT_GetTimeline_Sec() - last_trigger_time > 1.0f)
+    // {
+    //   static bool is_daji_enable = false;
+    //   if(is_daji_enable)
+    //   {
+    //     // 打开后边小轮(妲己)
+    //     APP::leg.relay_daji.Off();
+    //   }
+    //   else
+    //   {
+    //     APP::leg.relay_daji.On();
+    //   }
  
-      is_daji_enable = !is_daji_enable;
-      last_trigger_time = DWT_GetTimeline_Sec();
-    }
+    //   is_daji_enable = !is_daji_enable;
+    //   last_trigger_time = DWT_GetTimeline_Sec();
+    // }
 
     // if(MOD::farcon.button_second_half[4] == 1)
     // {
@@ -639,41 +639,35 @@ static void Response_Button()
     // }
 
     /**************   均为左半硬件  *************/
-    // 抬腿
-    if (MOD::farcon.button_first_half[0] == 1)
+    // 确认场地后，可以进行左右微调，以及选择夹第几个矛头
+    static float last_bias_decline_time = 0;
+    // 让下一次取矛头更偏左，x 更小，每次调整 1 cm
+    if(MOD::farcon.button_first_half[0] == 1 && DWT_GetTimeline_Sec() - last_bias_decline_time > 0.5)
     {
-      APP::leg.SetFrontPosSlow(-390.0f, 5.0f);
-      APP::leg.SetBackPosSlow(-390.0f, 5.0f);
+      last_bias_decline_time = DWT_GetTimeline_Sec();
+      fetch_spear_x_bias -= 0.01;
+      // System.SetPositionBias(Vec3(fetch_spear_x_bias, 0.0f, 0.0f));
     }
 
-    // 收回前腿
-    if (MOD::farcon.button_first_half[1] == 1)
+    // 让下一次取矛头更偏右，x 更大，每次调整 1 cm
+    static float last_bias_increase_time = 0;
+    if(MOD::farcon.button_first_half[4] == 1 && DWT_GetTimeline_Sec() - last_bias_increase_time > 0.5)
     {
-      APP::leg.SetFrontPosSlow(-4, 5.0f);
+      last_bias_increase_time = DWT_GetTimeline_Sec();
+      fetch_spear_x_bias += 0.01;
+      // System.SetPositionBias(Vec3(fetch_spear_x_bias, 0.0f, 0.0f));
     }
-
-    // 收回后腿
-    if (MOD::farcon.button_first_half[2] == 1)
+    
+    if(MOD::farcon.button_first_half[1] == 1)
     {
-      APP::leg.SetBackPosSlow(-4, 5.0f);
+      need_spear_id = 3;
     }
-
-    // 一起收回
-    if (MOD::farcon.button_first_half[3] == 1)
+    if(MOD::farcon.button_first_half[2] == 1)
     {
-      APP::leg.SetFrontPosSlow(-4, 5.0f);
-      APP::leg.SetBackPosSlow(-4, 5.0f);
-    }
-
-    if (MOD::farcon.button_first_half[4] == 1)
+      need_spear_id = 4;
+    }  
+    if(MOD::farcon.button_first_half[3] == 1)
     {
-      APP::leg.SetFrontPos(-190);
-      APP::leg.SetBackPos(-190);
-    }
-
-    if (MOD::farcon.button_first_half[5] == 1)
-    {
-      APP::leg.SetFrontPos(-4);
-      APP::leg.SetBackPos(-4);
-    }
+      need_spear_id = 5;
+    }     
 }

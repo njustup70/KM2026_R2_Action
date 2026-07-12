@@ -67,32 +67,32 @@
 
 namespace PATH
 {
-const Path<16>& TTD_B1()
+const Path<20>& TTD_B1()
 {
     return ::TTD_B1;
 }
 
-const Path<16>& TTD_B2()
+const Path<20>& TTD_B2()
 {
     return ::TTD_B2;
 }
 
-const Path<16>& TTD_B3()
+const Path<21>& TTD_B3()
 {
     return ::TTD_B3;
 }
 
-const Path<16>& TTD_B4()
+const Path<21>& TTD_B4()
 {
     return ::TTD_B4;
 }
 
-const Path<16>& TTD_B5()
+const Path<21>& TTD_B5()
 {
     return ::TTD_B5;
 }
 
-const Path<19>& TTD_B6()
+const Path<23>& TTD_B6()
 {
     return ::TTD_B6;
 }
@@ -157,22 +157,22 @@ const Path<82>& sttr6()
     return ::sttr6;
 }
 
-const Path<23>& TTD_1()
+const Path<26>& TTD_1()
 {
     return ::TTD_1;
 }
 
-const Path<19>& TTD_2()
+const Path<23>& TTD_2()
 {
     return ::TTD_2;
 }
 
-const Path<18>& TTD_3()
+const Path<21>& TTD_3()
 {
     return ::TTD_3;
 }
 
-const Path<16>& TTD_4()
+const Path<21>& TTD_4()
 {
     return ::TTD_4;
 }

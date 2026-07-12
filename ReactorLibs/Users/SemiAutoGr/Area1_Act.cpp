@@ -182,10 +182,10 @@ void LetsGo(uint8_t spear_id, Vec3 tolerance)
       StartChase(PATH::TTD_4(), tolerance);
       break;
     case 4:
-      APP::path_chaser.ChaseGes(Vec3(1.3f, 5.00f, 1.57f));
+      APP::path_chaser.ChaseGes(Vec3(1.3f, 4.70f, 1.57f));
       break;
     case 5:
-      APP::path_chaser.ChaseGes(Vec3(1.3f, 5.00f, 1.57f));
+      APP::path_chaser.ChaseGes(Vec3(1.3f, 4.70f, 1.57f));
       break;
     default:
       break;
@@ -496,6 +496,9 @@ void GotoDock(uint8_t spear_id)
  */
 void GotoDock_Blue(uint8_t spear_id)
 {
+  // 去对接点时清除取矛头偏移，确保对接位置准确
+  System.SetPositionBias(Vec3(0.0f, 0.0f, 0.0f));
+
   ToDock::LetsGo_Blue(spear_id, Vec3(0.025f, 0.05f, 0.02f));
 
   while (!APP::path_chaser.IsFinished())
@@ -520,6 +523,9 @@ void FetchSpear_FromDock_Blue(uint8_t spear_id)
 {
   APP::jaw.PitchDown();
   APP::jaw.OpenClaw();
+
+  // 应用取矛头X方向偏移
+  System.SetPositionBias(Vec3(fetch_spear_x_bias, 0.0f, 0.0f));
 
   // 根据矛头编号，选择对应的路径（技能挑战赛）
   DockTo::DockSpearChase_Blue(spear_id, Vec3(0.015f, 0.015f, 0.02f));
@@ -567,6 +573,9 @@ void FetchSpear_FromOrigin_Blue(uint8_t spear_id)
 {
   APP::jaw.PitchDown();
   APP::jaw.OpenClaw();
+
+  // 应用取矛头X方向偏移
+  System.SetPositionBias(Vec3(fetch_spear_x_bias, 0.0f, 0.0f));
 
   OriginTo::SpearChase_Blue(spear_id, Vec3(0.02f, 0.02f, 0.02f));
 

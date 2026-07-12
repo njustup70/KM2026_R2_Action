@@ -212,12 +212,12 @@ def main():
         shortest_log_prefix_len = min(len(p) for p in prefixes_bytes)
 
         def could_be_log(buf):
-            # 判断 buf 是否可能是一条彩色日志的开头
-            # 只有“完整前缀”命中才认为是日志；否则继续按 VOFA+ 数据流解析。
+            # 判断 buf 是否是彩色日志的完整前缀，或仍可能增长为一个完整前缀。
+            # 串口 read() 没有消息边界，例如 "[Respond] " 可以被分成
+            # "[Respond]" 和 " " 两次读到。若只接受完整前缀，较长的
+            # 日志头会在读到末尾空格前被误判为乱码并触发重启。
             for p in prefixes_bytes:
-                if len(buf) < len(p):
-                    continue
-                if buf[:len(p)] == p:
+                if p.startswith(buf) or buf.startswith(p):
                     return True
             return False
 
