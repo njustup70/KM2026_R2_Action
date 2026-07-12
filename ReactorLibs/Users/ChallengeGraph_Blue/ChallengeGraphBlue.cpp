@@ -394,7 +394,7 @@ void Dock_Fetch_And_Back(StateCore *core)
 void Retry_Direct_ToArea2(StateCore *core)
 {
   // 先走到对接点，然后接上 Goto_Area2 （需要工控机重发动作序列）
-  MOVE::MoveToTargGes(Vec3(1.3f, 1.0f, 0.0f));
+  MOVE::MoveToTargGes(Vec3(1.3f, 1.0f, -1.5707f));
   
   // 直接进入 Goto_Area2
   core->GetCurState().Complete = true;
