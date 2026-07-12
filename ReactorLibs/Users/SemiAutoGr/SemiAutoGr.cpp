@@ -24,28 +24,92 @@ static void Response_Button();
 
 // 自动状态机
 StateGraph SemiAutoGr("SemiAuto");
+/// @brief 当前需要取的矛头编号
+static uint8_t need_spear_id = 0;
+
+/*********    额外的状态转移Flag    *********/
+static bool fetch_again = false;    // 是否需要再次取矛头
+static bool move_to_area2 = false;  // 是否可以移动到二区了
+
+static bool retry_dir_area2 = false; // 重试：是否需要直接进入二区
+static bool retry_comm_err = false; // 重试：是否需要重新请求工控机发送动作序
+
+// 状态函数
 static void Waiting_for_Start(StateCore *core);
 static void Walk_Fetch(StateCore *core);
 static void Walk_To_Dock(StateCore *core);
+static void Dock_Fetch_And_Back(StateCore *core);
+static void Goto_Area2(StateCore *core);
+static void Area2_HostAction(StateCore *core);
+
+// 两种重试
+static void Retry_Direct_ToArea2(StateCore *core);
+static void Retry_Comm_Error(StateCore *core);
+
+// 场间逻辑
 static void Walk_into_Area2(StateCore *core);
 static void Walk_into_Area3(StateCore *core);
 
 int Config_SemiAutoStateGraph()
 {
+  /************************ 状态添加 ************************/
+  // 启动前
   StateBlock& s_wait = SemiAutoGr.AddState("wait");
-  // StateBlock& s_area1_1 = SemiAutoGr.AddState("area1_1");
-  // StateBlock& s_area1_2 = SemiAutoGr.AddState("area1_2");
+
+  // 一区
+  StateBlock& s_area1_f1 = SemiAutoGr.AddState("area1_f1");       // fetch our first spear
+  StateBlock& s_area1_td = SemiAutoGr.AddState("area1_td");       // to dock
+  StateBlock& s_dock_fetch = SemiAutoGr.AddState("dock_fetch");   // fetch and dock again
+ 
+  // 二区
+  StateBlock& s_a2_hostact = SemiAutoGr.AddState("area2_hostact");  // 二区由工控机控制的动作序列
+
+  // 三区
+
+  // 跑点
   StateBlock& s_walk_from_a1_to_a2 = SemiAutoGr.AddState("walk_a1_to_a2");
   StateBlock& s_walk_from_a2_to_a3 = SemiAutoGr.AddState("walk_a2_to_a3");
 
+  // 重试
+  StateBlock& s_retry_dirctA2 = SemiAutoGr.AddState("retry_dircA2");    // 出发后，直接进二区
+  StateBlock& s_retry_comm_err = SemiAutoGr.AddState("retry_comm_err");    // 光通信信号发错了，重新请求
+
+  /************************ 状态函数 ************************/
   s_wait.StateAction = Waiting_for_Start;
-  // s_area1_1.StateAction = Walk_Fetch;
-  // s_area1_2.StateAction = Walk_To_Dock;
+
+  // 一区的状态
+  s_area1_f1.StateAction = Walk_Fetch;
+  s_area1_td.StateAction = Walk_To_Dock;
+  s_dock_fetch.StateAction = Dock_Fetch_And_Back;
+
+  // 二区的状态
+  s_walk_from_a1_to_a2.StateAction = Goto_Area2;
+  s_a2_hostact.StateAction = Area2_HostAction;
+
+  // 三区的状态
+
+
+  // 场间跑点
   s_walk_from_a1_to_a2.StateAction = Walk_into_Area2;
   s_walk_from_a2_to_a3.StateAction = Walk_into_Area3;
 
-  s_wait.LinkTo(&s_wait.Complete, s_walk_from_a1_to_a2);
-  s_walk_from_a1_to_a2.LinkTo(&s_walk_from_a1_to_a2.Complete, s_walk_from_a2_to_a3);
+  /************************ 状态链接 ************************/
+  s_wait.LinkTo(&s_wait.Complete, s_area1_f1); // 开始先取一个矛头
+  s_area1_f1.LinkTo(&s_area1_f1.Complete, s_area1_td); // 对接
+
+  // 第一次对接后，区分：再次去取矛头，还是进入二区
+  s_area1_td.LinkTo(&fetch_again, s_dock_fetch);
+  s_area1_td.LinkTo(&move_to_area2, s_walk_from_a1_to_a2);
+
+  // 再次取矛头后，同样要区分再次去取矛头，还是进入二区
+  s_dock_fetch.LinkTo(&fetch_again, s_dock_fetch);
+  s_dock_fetch.LinkTo(&move_to_area2, s_walk_from_a1_to_a2);
+
+  // 进入二区，并执行任务
+  s_walk_from_a1_to_a2.LinkTo(&s_walk_from_a1_to_a2.Complete, s_a2_hostact);
+
+  // 进入三区，并执行任务
+  s_a2_hostact.LinkTo(&s_a2_hostact.Complete, s_walk_from_a2_to_a3);  
   s_walk_from_a2_to_a3.LinkTo(&s_walk_from_a2_to_a3.Complete, s_wait);
 
   // 向状态机核心注册
@@ -59,9 +123,25 @@ int Config_SemiAutoStateGraph()
  */
 void Waiting_for_Start(StateCore *core)
 {
+  
+  Area2::mei_lin_array.is_blue = false; // 设置为红场
+
   APP::jaw.CloseClaw();
   APP::monit.LogInfo("Waiting for start...");
-  APP::main_loop.test_led.Breath(Color::White, 4.0f);
+  if (APP::main_loop.retry_id == 0)
+  {
+    APP::main_loop.test_led.Breath(Color::White, 2.0f);
+  }
+  else    // 方便确认是否确实进入了重试模式
+  {
+    APP::main_loop.test_led.Breath(Color::Yellow, 1.0f);
+  }
+  
+
+  APP::leg.F_AlmostOrigin();
+  APP::leg.B_AlmostOrigin();
+
+  Seq::Wait(0.1f);
 
   // 等待遥控器指令，然后才进入下一步
   while(MOD::farcon.button_second_half[0] != 1)
@@ -70,7 +150,7 @@ void Waiting_for_Start(StateCore *core)
     Seq::Wait(0.01f);
   }
 
-  APP::main_loop.test_led.Running(Color::White, 0.3f, 2.0f);
+  APP::main_loop.test_led.Lit(Color::White);
 
   // 取矛头先初始化
   Seq::WaitUntil([](){
@@ -87,18 +167,30 @@ void Waiting_for_Start(StateCore *core)
   APP::monit.LogInfo("HostPC Online.");
 
   // 等待一段时间，确保一切稳定
-  Seq::Wait(2.0f);
+  Seq::Wait(0.75f);
 
   // 等待出发信号
   APP::monit.LogInfo("Ready to Go...");   
-  APP::leg.F_AlmostOrigin();
-  APP::leg.B_AlmostOrigin();
   
   // 等待遥控器的出发指令
   while(MOD::farcon.button_second_half[0] != 1)
   {
     Response_Button();
     Seq::Wait(0.01f);
+  }
+
+  /***    重试    ***/
+  if (APP::main_loop.retry_id == 1)
+  {
+    APP::monit.LogRespond("Retry: Direct to Area2.");
+    retry_dir_area2 = true;
+    return;
+  }
+  else if (APP::main_loop.retry_id == 2)
+  {
+    APP::monit.LogRespond("Retry: Comm Error.");
+    retry_comm_err = true;
+    return;
   }
 
   core->GetCurState().Complete = true; // 设置状态完成标志，触发状态转移
@@ -112,12 +204,13 @@ void Waiting_for_Start(StateCore *core)
  */
 void Walk_Fetch(StateCore *core)
 {
-  APP::leg.SetFrontPos(-10);
-  APP::leg.SetBackPos(-10);
+  APP::leg.SetFrontPos(-5);
+  APP::leg.SetBackPos(-5);
   APP::main_loop.test_led.GradientFlow(Color::Up_Purpor * 0.65f, Color::Up_Yellow * 0.65f, 1.0f);
 
-  // 取矛头
-  FetchSpear_FromOrigin(2);
+  // 取矛头，假定先取 2 号矛头，然后后面由光通信决定是否要再取一个
+  need_spear_id = 2;
+  FetchSpear_FromOrigin(need_spear_id);
 
   core->GetCurState().Complete = true;
 }
@@ -129,15 +222,15 @@ void Walk_Fetch(StateCore *core)
  */
 void Walk_To_Dock(StateCore *core)
 {
-  // 先向前走一点
-
   // 走到对接点
-  MOVE::MoveToTargPos(TTD_3);
+  GotoDock(need_spear_id);
 
   // 进入对接模式
   APP::jaw.SetTrackMode(true);
-  APP::main_loop.test_led.Breath(Color::Up_Purpor, 2.4f);
 
+  APP::main_loop.test_led.Running(Color::Up_Yellow, 0.4f, 1.2f);
+
+  // 等待遥控器指令，然后才进入下一个状态
   while(MOD::farcon.button_second_half[0] != 1)
   {
     Response_Button();
@@ -149,14 +242,161 @@ void Walk_To_Dock(StateCore *core)
     }
   }
 
+  // 灯带：进度条
+  float wait_progress = 0.0f;
+  APP::main_loop.test_led.ProgBar(Color::Up_Yellow, &wait_progress);
+
   // 打开夹爪，给R1时间拿回兵器
   APP::jaw.OpenClaw();    // 依旧OpenClaw
-  Seq::Wait(2.0f);
-  APP::jaw.CloseClaw();
 
-  APP::monit.LogInfo("Go to Climb.");
+  // 等待 12 秒
+  float wait_time_s = 0.0f;
+  while (wait_time_s < 6.0f)
+  {
+    wait_time_s += 0.05f;
+    wait_progress = wait_time_s / 6.0f;
+    Seq::Wait(0.05f);
+  }
+
+  // while(MOD::farcon.button_second_half[0] != 1)
+  // {
+  //   Response_Button();
+  //   Seq::Wait(0.01f);
+  // }
+  
+  APP::jaw.SetTrackMode(false);
+
+  APP::jaw.SetPosCode(APP::jaw._hori_origin_code - JawConst::_hori_max_travel_code / 2, 
+    APP::jaw._vert_origin_code - 200000);
+
+  APP::monit.LogInfo("Fetch and Dock again.");
+
+  // 这里让 R1 用光通信指定取哪一个，比如按按键让 R2 的 need_spear_id-- 或 ++
+  need_spear_id++;
+  APP::comm_center.ClearDockFlag(); // 清除对接标志，避免下次误触发
 
   core->GetCurState().Complete = true;
+}
+
+/**
+ * @brief 后续的从对接点取矛头并返回的逻辑
+ * 
+ * @param core 
+ */
+void Dock_Fetch_And_Back(StateCore *core)
+{
+  // 记录是否放弃对接（每次进入都默认为false）
+  bool giveup_dock = false;
+
+  fetch_again = false;
+
+  APP::main_loop.test_led.Running(Color::Up_Yellow, 0.4f, 1.2f);
+
+  FetchSpear_FromDock(need_spear_id);
+
+  /**--------------     返回对接点    ---------------**/
+
+  // 走到对接点
+  GotoDock(need_spear_id);
+
+  // 进入对接模式
+  APP::jaw.SetTrackMode(true);
+
+  APP::main_loop.test_led.Running(Color::Up_Yellow, 0.4f, 1.2f);
+
+  // 等待遥控器指令，然后才进入下一个状态
+  while(true)
+  {
+    Response_Button();
+    Seq::Wait(0.01f);
+
+    // 对接完成
+    if (APP::comm_center.IsDocked() || MOD::farcon.button_second_half[0] == 1)
+    {
+      // 打开夹爪，给R1时间拿回兵器
+      APP::jaw.OpenClaw();    // 依旧OpenClaw
+      break;
+    }
+
+    if (APP::comm_center.IsDockGiveUp())
+    {
+      // 跳出等待，准备进入二区
+      giveup_dock = true;
+      break;
+    }
+  }
+
+  // 离开对接模式
+  APP::jaw.SetTrackMode(false);
+
+  // 只有 "没取够头" / "不希望放弃对接" 时，才会再次取矛头。否则就直接进入二区
+  if (need_spear_id < 2 && !giveup_dock)
+  {
+    // 灯带：进度条
+    float wait_progress = 0.0f;
+    APP::main_loop.test_led.ProgBar(Color::Up_Yellow, &wait_progress);
+
+    // 等待 12 秒
+    float wait_time_s = 0.0f;
+    while (wait_time_s < 12.0f)
+    {
+      wait_time_s += 0.05f;
+      wait_progress = wait_time_s / 12.0f;
+      Seq::Wait(0.05f);
+    }
+
+    // 只有没有放弃对接时，才将矛头回中。否则害怕损坏机构
+    if (!giveup_dock)
+    {
+      APP::jaw.SetPosCode(APP::jaw._hori_origin_code - JawConst::_hori_max_travel_code / 2, 
+        APP::jaw._vert_origin_code - 200000);
+    }
+
+    need_spear_id++;
+    APP::comm_center.ClearDockFlag();  // 清除对接标志，避免下次误触发
+    fetch_again = true;
+    APP::monit.LogInfo("Go Fetch Again.");
+  }
+  else
+  {
+    APP::comm_center.ClearDockFlag();  // 清除对接标志，避免下次误触发
+
+    Seq::Wait(0.5f);    // 避免多次光通信重复触发
+
+    APP::main_loop.test_led.Running(Color::Orange, 0.4f, 1.2f);
+    
+    // 再一次等待光通信
+    // 等待遥控器指令，然后才进入下一个状态
+    while(true)
+    {
+      Response_Button();
+      Seq::Wait(0.01f);
+
+      // 对接完成
+      if (APP::comm_center.IsDocked() || MOD::farcon.button_second_half[0] == 1 || APP::comm_center.IsDockGiveUp())
+      {
+        break;
+      }
+    }
+
+    // 灯带：进度条
+    float wait_progress = 0.0f;
+    APP::main_loop.test_led.ProgBar(Color::Up_Yellow, &wait_progress);
+
+    // 等待 6 秒
+    float wait_time_s = 0.0f;
+    while (wait_time_s < 6.0f)
+    {
+      wait_time_s += 0.05f;
+      wait_progress = wait_time_s / 6.0f;
+      Seq::Wait(0.05f);
+    }
+
+    APP::comm_center.ClearDockFlag();  // 清除对接标志，避免下次误触发
+    fetch_again = false;
+    move_to_area2 = true;
+    APP::monit.LogInfo("Go to Climb.");
+  }
 }
 
 /**
@@ -238,14 +478,59 @@ void Walk_into_Area2(StateCore *core)
   core->GetCurState().Complete = true;
 }
 
-static void Walk_into_Area2_Host(StateCore *core)
+void Goto_Area2(StateCore *core)
 {
-  if (!MOVE::MoveToTargPos(PATH::A12_2()))
+  APP::jaw.CloseClaw();
+  APP::main_loop.test_led.Blink(Color::Pink, 2, 0.5f);
+
+  // 确认工控机已经发送了动作序列
+  Seq::WaitUntil([](){
+    return Area2::mei_lin_array.host_a2act_recved;
+  });
+
+  APP::main_loop.test_led.Lit(Color::White);
+  APP::monit.LogInfo("entercode:%x", Area2::mei_lin_array.enter_code);
+
+  // 首先，根据工控机的要求，走到相应的块的面前
+  switch (Area2::mei_lin_array.enter_code)
   {
-    APP::monit.LogError("[SemiAuto] Walk_into_Area2_Host: path rejected.");
-    Seq::Wait(3600.0f);
-    return;
+    case Area2Code::ENTER_0:
+      Area2::RunIntoArea2(PATH::A12_3(), Vec3(0.15f, 0.15f, 0.0f), true);
+      break;
+    case Area2Code::ENTER_1:
+      Area2::RunIntoArea2(PATH::A12_2(), Vec3(0.15f, 0.15f, 0.0f), false);
+      break;
+    case Area2Code::ENTER_2:
+      Area2::RunIntoArea2(PATH::A12_1(), Vec3(0.15f, 0.15f, 0.0f), true);
+      break;
+    default:
+      APP::monit.LogError("Invalid A2EnterCode!");
+      Seq::Wait(3600.0f);
+      break;
   }
+
+  APP::monit.LogInfo("I'm Ahead of MeiLin.");
+
+  // APP::comm_center.SlamCorrection();
+
+  // 防止纠正的时候抬腿了
+  // Seq::Wait(2.0f);
+
+  APP::monit.LogInfo("Pos Corrected : %.2f, %.2f, %.2f",System.position.x, System.position.y, System.position.z);
+
+  // while(MOD::farcon.button_second_half[0] != 1)
+  // {
+  //   Response_Button();
+  //   Seq::Wait(0.01f);
+  // }
+  
+  core->GetCurState().Complete = true;
+}
+
+
+static void Area2_HostAction(StateCore *core)
+{
+  APP::monit.LogInfo("Now, Start Area2 Actions.");
 
   // 此时走到了梅林跟前，准备执行二区序列动作
   Area2::mei_lin_array.ExecuteSequence();
