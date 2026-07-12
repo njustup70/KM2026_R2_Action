@@ -450,13 +450,13 @@ void Goto_Area2(StateCore *core)
   switch (Area2::mei_lin_array.enter_code)
   {
     case Area2Code::ENTER_0:
-      MOVE::MoveToTargPos(PATH::A12_B3());
+      Area2::RunIntoArea2(PATH::A12_B3(), Vec3(0.15f, 0.15f, 0.0f), true);
       break;
     case Area2Code::ENTER_1:
-      MOVE::MoveToTargPos(PATH::A12_B2());
+      Area2::RunIntoArea2(PATH::A12_B2(), Vec3(0.15f, 0.15f, 0.0f), false);
       break;
     case Area2Code::ENTER_2:
-      MOVE::MoveToTargPos(PATH::A12_B1());
+      Area2::RunIntoArea2(PATH::A12_B1(), Vec3(0.15f, 0.15f, 0.0f), true);
       break;
     default:
       APP::monit.LogError("Invalid A2EnterCode!");
@@ -468,11 +468,10 @@ void Goto_Area2(StateCore *core)
 
   // APP::comm_center.SlamCorrection();
 
-  Seq::Wait(0.2f);
+  // 防止纠正的时候抬腿了
+  // Seq::Wait(2.0f);
 
   APP::monit.LogInfo("Pos Corrected : %.2f, %.2f, %.2f",System.position.x, System.position.y, System.position.z);
-
-  APP::monit.LogInfo("I'm Ahead of MeiLin.");
 
   // while(MOD::farcon.button_second_half[0] != 1)
   // {
