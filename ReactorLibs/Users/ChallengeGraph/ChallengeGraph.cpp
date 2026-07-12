@@ -28,6 +28,8 @@ static bool move_to_area2 = false;  // 是否可以移动到二区了
 static bool retry_dir_area2 = false; // 重试：是否需要直接进入二区
 static bool retry_comm_err = false; // 重试：是否需要重新请求工控机发送动作序
 
+static bool disable_retry = false; // 不断电重试，会失能底盘
+
 // 自动状态机
 StateGraph R2_Challenge_Graph("R2_Challenge");
 static void Waiting_for_Start(StateCore *core);
@@ -41,6 +43,9 @@ static void Area2End_BackOrigin(StateCore *core);
 // 两种重试
 static void Retry_Direct_ToArea2(StateCore *core);
 static void Retry_Comm_Error(StateCore *core);
+
+// // 申请重试后进入假失能
+// static void Retry_Wait(StateCore *core);
 
 static void Walk_into_Area2(StateCore *core);
 
@@ -58,11 +63,15 @@ int Config_R2_Challenge_StateGraph()
 
   StateBlock& s_retry_dirctA2 = R2_Challenge_Graph.AddState("retry_dircA2");    // 出发后，直接进二区
   StateBlock& s_retry_comm_err = R2_Challenge_Graph.AddState("retry_comm_err");    // 光通信信号发错了，重新请求
+  // StateBlock& s_retry_wait = R2_Challenge_Graph.AddState("retry_wait"); // 申请重试的时候，失能底盘，请求出发后做什么动作
 
   s_wait.StateAction = Waiting_for_Start;
   // 重试的状态
   s_retry_dirctA2.StateAction = Retry_Direct_ToArea2;
   s_retry_comm_err.StateAction = Retry_Comm_Error;
+
+  // // 申请重试时进入的状态
+  // s_retry_wait.StateAction = Retry_Wait;
 
   /**   一区的状态**/
   s_area1_f1.StateAction = Walk_Fetch;
@@ -86,6 +95,7 @@ int Config_R2_Challenge_StateGraph()
   // 区分：再次去取矛头，还是进入二区
   s_dock_fetch.LinkTo(&fetch_again, s_dock_fetch);
   s_dock_fetch.LinkTo(&move_to_area2, s_walk_from_a1_to_a2);
+  s_dock_fetch.LinkTo(&disable_retry, s_wait);
   
   // 进入二区，并执行任务
   s_walk_from_a1_to_a2.LinkTo(&s_walk_from_a1_to_a2.Complete, s_a2_hostact);
@@ -97,6 +107,8 @@ int Config_R2_Challenge_StateGraph()
   s_retry_dirctA2.LinkTo(&s_retry_dirctA2.Complete, s_walk_from_a1_to_a2);
   s_retry_comm_err.LinkTo(&s_retry_comm_err.Complete, s_walk_from_a1_to_a2);
 
+  // // 申请重试状态的链接
+  // s_retry_wait.LinkTo(bool *condition, StateBlock &nextState)
 
   /**----------     向状态机核心注册    ----------**/
   return APP::state_core.RegistGraph(R2_Challenge_Graph);
@@ -112,6 +124,8 @@ int Config_R2_Challenge_StateGraph()
  */
 void Waiting_for_Start(StateCore *core)
 {
+  disable_retry = false;
+  APP::chas.Enable();
   
   Area2::mei_lin_array.is_blue = false; // 设置为红场
 
@@ -556,6 +570,24 @@ void Area2End_BackOrigin(StateCore *core)
   core->GetCurState().Complete = true;
 }
 
+// void Retry_Wait(StateCore *core)
+// {
+//   APP::chas.Disable();
+//   APP::leg.Disable();
+//   APP::vac_claw.Disable();
+//   while(MOD::farcon.button_second_half[0] != 1)
+//   {
+//     Response_Button();
+//     Seq::Wait(0.01f);
+//   }
+//   APP::chas.Enable();
+//   APP::leg.Enable();
+//   APP::vac_claw.Enable();  
+
+//   core->GetCurState().Complete = true;
+// }
+
+
 /*******************************************************************************/
 
 const static float max_farcon_alpha = 1.8f; // 最大加速度 m/s^2
@@ -704,7 +736,13 @@ static void Response_Button()
     if(MOD::farcon.button_first_half[3] == 1)
     {
       need_spear_id = 2;
-    }     
+    }
+    
+    if(MOD::farcon.button_second_half[4] == 1)
+    {
+      disable_retry = true;
+      APP::chas.Disable();
+    }
 }
 
 
