@@ -836,13 +836,9 @@ void MeiLinArray::Decend_200(bool need_chase)
     APP::monit.LogInfo("Leg out skip");
 
     // 先缓慢向前走
-    APP::chas.Move(Vec2(0.25, 0), 7.0f);
+    APP::chas.Move(Vec2(0.4, 0), 7.0f);
 
-    // // 如果要取块，则伸出爪取块
-    // // Seq::Wait(0.8f); // 可能要加延时
-    // if(APP::vac_claw.need_to_fetch) FetchBlock();
-
-    // 等待小黄0号检测不到后，放下前腿
+    // 等待小黄0号检测不到后，减速
     Seq::WaitUntil([&]()
     {
       return NIR_Read(APP::leg.detector[0]);
@@ -852,11 +848,7 @@ void MeiLinArray::Decend_200(bool need_chase)
   // 先缓慢向前走
   APP::chas.Move(Vec2(0.1, 0), 7.0f);
 
-  // // 如果要取块，则伸出爪取块
-  // // Seq::Wait(0.8f); // 可能要加延时
-  // if(APP::vac_claw.need_to_fetch) FetchBlock();
-
-  // 等待小黄1号检测不到后，减速
+  // 等待小黄1号检测不到后，放腿
   Seq::WaitUntil([&]()
   {
     return NIR_Read(APP::leg.detector[1]);
@@ -869,8 +861,15 @@ void MeiLinArray::Decend_200(bool need_chase)
   // 伸出妲己
   APP::leg.relay_daji.On();
 
+  // 继续向前走。等待小黄2号检测不到后，减速
+  APP::chas.Move(Vec2(0.5, 0), 7.0f);
+  Seq::WaitUntil([&]()
+  {
+    return NIR_Read(APP::leg.detector[2]);
+  });
+  APP::chas.Move(Vec2(0.2, 0), 7.0f);
+
   // 继续向前走。等待小黄3号检测不到后，放下后腿
-  APP::chas.Move(Vec2(0.24, 0), 7.0f);
   Seq::WaitUntil([&]()
   {
     return NIR_Read(APP::leg.detector[3]);
@@ -917,6 +916,7 @@ void MeiLinArray::Decend_400(bool need_chase)
      APP::comm_center.slam_pos.x, APP::comm_center.slam_pos.y);
   
   APP::monit.LogInfo("Leg out skip");
+
   // 先缓慢向前走
   APP::chas.Move(Vec2(0.25, 0), 6.0f);
   Seq::Wait(0.25f);
