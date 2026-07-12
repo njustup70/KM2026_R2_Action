@@ -27,6 +27,8 @@ class MainLoop : public Application
     // 取块左右俩小黄，本来想放GetBlock里，但是GetBlock串味儿了。
     InfraredDetector mouthfetch_ir_left;
     InfraredDetector mouthfetch_ir_right;
+    bool ir_left = false;
+    bool ir_right = false;
 
     /*--------------        切区逻辑        ----------------*/
     /// @brief 所有切换红蓝区的逻辑，都封装在里边
