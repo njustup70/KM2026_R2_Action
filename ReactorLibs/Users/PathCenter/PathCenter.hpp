@@ -52,8 +52,8 @@ const Path<147>& A12_B3();
 const Path<188>& A23_2();
 const Path<188>& A23_B2();
 
-const Path<42>& FFM_B();
-const Path<41>& FFM();
+const Path<38>& FFM_B();
+const Path<38>& FFM();
 
 /// @brief ArenaPK 路径：W到N区
 const Path<181>& W_TO_N4();
