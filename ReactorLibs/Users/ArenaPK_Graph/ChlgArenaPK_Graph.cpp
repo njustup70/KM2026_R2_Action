@@ -219,9 +219,9 @@ void Direct_Go_Wait(StateCore *core)
     // 先把块抬起来
   // APP::get_block.LiftUp();
 
-  // 首先走上斜坡
-  MOVE::MoveToTargGes(Vec3(8.72f, 0.79f, 0.0f));
-  MOVE::MoveToTargGes(Vec3(11.38f, 0.77f, 0.0f));
+  // // 首先走上斜坡
+  // MOVE::MoveToTargGes(Vec3(8.72f, 0.79f, 0.0f));
+  // MOVE::MoveToTargGes(Vec3(11.38f, 0.77f, 0.0f));
 
   // 走到等待点
   MOVE::MoveToTargGes(Vec3(11.38f, 2.1f, 0.0f));
@@ -1094,22 +1094,28 @@ void Response_Button()
     }
 
     static float last_trigger_time = 0;
-    if(MOD::farcon.button_second_half[7] == 1 && DWT_GetTimeline_Sec() - last_trigger_time > 1.0f)
+    if(MOD::farcon.button_second_half[4] == 1 && DWT_GetTimeline_Sec() - last_trigger_time > 1.0f)
     {
-      static bool is_daji_enable = false;
-      if(is_daji_enable)
-      {
-        // 打开后边小轮(妲己)
-        APP::leg.relay_daji.Off();
-      }
-      else
-      {
-        APP::leg.relay_daji.On();
-      }
- 
-      is_daji_enable = !is_daji_enable;
       last_trigger_time = DWT_GetTimeline_Sec();
+      reset_put_L2_N4 = true;
     }
+    // static float last_trigger_time = 0;
+    // if(MOD::farcon.button_second_half[7] == 1 && DWT_GetTimeline_Sec() - last_trigger_time > 1.0f)
+    // {
+    //   static bool is_daji_enable = false;
+    //   if(is_daji_enable)
+    //   {
+    //     // 打开后边小轮(妲己)
+    //     APP::leg.relay_daji.Off();
+    //   }
+    //   else
+    //   {
+    //     APP::leg.relay_daji.On();
+    //   }
+ 
+    //   is_daji_enable = !is_daji_enable;
+    //   last_trigger_time = DWT_GetTimeline_Sec();
+    // }
 
     // // 处理泄压阀的开关
     // static float last_prv_time = 0;
@@ -1186,36 +1192,36 @@ void Response_Button()
     // }    
 
     /**************   均为左半按键  *************/
-    // 抬腿
-    if (MOD::farcon.button_first_half[0] == 1)
-    {
-      APP::leg.SetFrontPosSlow(-100.0f, 1.0f);
-      APP::leg.SetBackPosSlow(-100.0f, 1.0f);
-    }
+    // // 抬腿
+    // if (MOD::farcon.button_first_half[0] == 1)
+    // {
+    //   APP::leg.SetFrontPosSlow(-100.0f, 1.0f);
+    //   APP::leg.SetBackPosSlow(-100.0f, 1.0f);
+    // }
 
-    // 收回前腿
-    if (MOD::farcon.button_first_half[1] == 1)
-    {
-      APP::leg.SetFrontPosSlow(-4, 5.0f);
-    }
+    // // 收回前腿
+    // if (MOD::farcon.button_first_half[1] == 1)
+    // {
+    //   APP::leg.SetFrontPosSlow(-4, 5.0f);
+    // }
 
-    // 收回后腿
-    if (MOD::farcon.button_first_half[2] == 1)
-    {
-      APP::leg.SetBackPosSlow(-4, 5.0f);
-    }
+    // // 收回后腿
+    // if (MOD::farcon.button_first_half[2] == 1)
+    // {
+    //   APP::leg.SetBackPosSlow(-4, 5.0f);
+    // }
 
-    // 一起收回
-    if (MOD::farcon.button_first_half[3] == 1)
-    {
-      APP::leg.SetFrontPosSlow(-4, 5.0f);
-      APP::leg.SetBackPosSlow(-4, 5.0f);
-    }
+    // // 一起收回
+    // if (MOD::farcon.button_first_half[3] == 1)
+    // {
+    //   APP::leg.SetFrontPosSlow(-4, 5.0f);
+    //   APP::leg.SetBackPosSlow(-4, 5.0f);
+    // }
 
-    if(MOD::farcon.button_first_half[6] == 1)
-    {
-      APP::get_block.Put();
-    }
+    // if(MOD::farcon.button_first_half[6] == 1)
+    // {
+    //   APP::get_block.Put();
+    // }
 
     // if(MOD::farcon.button_first_half[7] == 1)
     // {

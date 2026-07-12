@@ -222,9 +222,9 @@ void Direct_Go_Wait(StateCore *core)
     // 先把块抬起来
   // APP::get_block.LiftUp();
 
-  // 首先走上斜坡（蓝区 y: 6-0.79=5.21, 6-0.77=5.23）
-  MOVE::MoveToTargGes(Vec3(8.72f, 5.21f, 0.0f));
-  MOVE::MoveToTargGes(Vec3(11.38f, 5.23f, 0.0f));
+  // // 首先走上斜坡（蓝区 y: 6-0.79=5.21, 6-0.77=5.23）
+  // MOVE::MoveToTargGes(Vec3(8.72f, 5.21f, 0.0f));
+  // MOVE::MoveToTargGes(Vec3(11.38f, 5.23f, 0.0f));
 
   // 走到等待点（蓝区 y: 6-2.1=3.9）
   MOVE::MoveToTargGes(Vec3(11.38f, 3.9f, 0.0f));
