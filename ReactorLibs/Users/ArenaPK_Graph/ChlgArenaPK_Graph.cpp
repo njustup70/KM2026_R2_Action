@@ -28,6 +28,10 @@ StateGraph Arena_PK_Graph("Arena_PK");
 static bool retry_go_wait = false;
 static bool dirct_go_wait = false;
 
+static bool reset_put_L2_N4 = false;
+static bool reset_put_L2_N5 = false;
+static bool reset_put_L2_N6 = false;
+
 static bool IR_Read(InfraredDetector& ir);
 static bool NIR_Read(InfraredDetector& ir);
 
@@ -46,7 +50,7 @@ static void Fetch_1_FromWait();
 static void Robot_Combine();
 
 Vec2 Arena_R2_KFS_FetchPos[2] = {
-  Vec2(11.1, 3.405), Vec2(11.1, 2.685)
+  Vec2(11.1, 3.555), Vec2(11.1, 2.835)
 }; // 块之间间隔：0.175 + 0.175 + 0.37 = 0.72 m
 
 Vec3 Arena_R2_L2_Mid_Ges(10.75f, 5.20f, 1.571f);
@@ -72,7 +76,7 @@ int ChallengeArenaPK_Graph()
   StateBlock& s_fetch_0_1_block = Arena_PK_Graph.AddState("fetch_0_1_block");
   // 直接去等待（从斜坡下的）
   StateBlock& s_dirct_gowait = Arena_PK_Graph.AddState("dir_gowait");
-
+  // 拿到两个块后，申请重试后直接去
 
   /**----------     配置状态行为函数    ----------**/
   s_wait.StateAction = Waiting_for_Start;

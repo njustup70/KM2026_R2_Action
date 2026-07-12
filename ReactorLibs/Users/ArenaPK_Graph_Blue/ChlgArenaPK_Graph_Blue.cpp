@@ -47,7 +47,7 @@ static void Robot_Combine();
 
 // 蓝区取块位置（红区 y 对称：y_blue = 6 - y_red）
 Vec2 Arena_R2_KFS_FetchPos_Blue[2] = {
-  Vec2(11.1, 2.595), Vec2(11.1, 3.315)
+  Vec2(11.1, 2.445), Vec2(11.1, 3.165)
 }; // 块之间间隔：0.175 + 0.175 + 0.37 = 0.72 m
 
 // 第一次放块时的目标位置
@@ -414,12 +414,12 @@ static void Fetch2_From_Mid(StateCore *core)
     return (fabs(APP::leg.real_front_pos_mm) < 50 && fabs(APP::leg.real_back_pos_mm) < 50);
   });
 
-  // 等待遥控器的出发指令
-  while(MOD::farcon.button_second_half[0] != 1)
-  {
-    Response_Button();
-    Seq::Wait(0.01f);
-  }
+  // // 等待遥控器的出发指令
+  // while(MOD::farcon.button_second_half[0] != 1)
+  // {
+  //   Response_Button();
+  //   Seq::Wait(0.01f);
+  // }
   // 运行路径跟踪程序（蓝区版本）
 
   // 先移动到中央，再回去取块
@@ -432,12 +432,12 @@ static void Fetch2_From_Mid(StateCore *core)
   // 走到块跟前了
   APP::monit.LogInfo("[Arena] I'm at the block.");
 
-  // 等待遥控器的出发指令
-  while(MOD::farcon.button_second_half[0] != 1)
-  {
-    Response_Button();
-    Seq::Wait(0.01f);
-  }
+  // // 等待遥控器的出发指令
+  // while(MOD::farcon.button_second_half[0] != 1)
+  // {
+  //   Response_Button();
+  //   Seq::Wait(0.01f);
+  // }
   // 取第一个块
   Area3::FetchBlockOnTheGround();
 
@@ -445,11 +445,11 @@ static void Fetch2_From_Mid(StateCore *core)
   Seq::Wait(1.0f);
 
   // 等待遥控器的出发指令
-  while(MOD::farcon.button_second_half[0] != 1)
-  {
-    Response_Button();
-    Seq::Wait(0.01f);
-  }
+  // while(MOD::farcon.button_second_half[0] != 1)
+  // {
+  //   Response_Button();
+  //   Seq::Wait(0.01f);
+  // }
   // 移动到第二个块面前
   MOVE::MoveToTargGes(Vec3(Arena_R2_KFS_FetchPos_Blue[1].x, Arena_R2_KFS_FetchPos_Blue[1].y, 0.0));
   // APP::path_chaser.ChaseGes();
@@ -458,11 +458,11 @@ static void Fetch2_From_Mid(StateCore *core)
   APP::monit.LogInfo("[Arena] I'm at the second block.");
 
   // 等待遥控器的出发指令
-  while(MOD::farcon.button_second_half[0] != 1)
-  {
-    Response_Button();
-    Seq::Wait(0.01f);
-  }
+  // while(MOD::farcon.button_second_half[0] != 1)
+  // {
+  //   Response_Button();
+  //   Seq::Wait(0.01f);
+  // }
   // 取第二个块
   Area3::FetchBlockOnTheGround();
 
