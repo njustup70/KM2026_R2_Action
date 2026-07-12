@@ -635,69 +635,85 @@ void MeiLinArray::Climb_Up200(bool need_chase)
   APP::monit.LogInfo("Climb200:StartPos:(%.2f,%.2f)",
      APP::comm_center.slam_pos.x, APP::comm_center.slam_pos.y);
 
-  if(_skip_approach) _skip_approach = false;
+  if(_skip_approach)
+  {
+    APP::monit.LogInfo("Leg out skiped");
+    _skip_approach = false;
+  }
   else
   {
-    APP::monit.LogInfo("Leg out skip");
-
     // 登200时，先放低前后腿
     APP::leg.F_Down_200();
     APP::leg.B_Down_200();
-    Seq::Wait(0.5f);
+    
+    // 等待腿到位
+    Seq::WaitUntil([]()-> bool {
+      return (fabs(APP::leg.real_front_pos_mm - APP::leg.front_pos) < 10.0f) 
+      && (fabs(APP::leg.real_back_pos_mm - APP::leg.back_pos) < 10.0f);
+    });
   }
   
-    // 往前缓慢移动，直到抵靠到前端
-    APP::chas.Move(Vec2(0.35, 0), 3.0f);
-    Seq::Wait(0.35f);
-    APP::chas.Move(Vec2(0.15, 0), 3.0f);
-    Seq::Wait(0.15f);
-
-  // _skip_approach = false; // 复位标志，下次正常执行上面的抵靠动作
+  // 往前缓慢移动，直到抵靠到前端
+  APP::chas.Move(Vec2(0.5, 0), 3.0f);
+  Seq::Wait(0.2f);
+  APP::chas.Move(Vec2(0.4, 0), 3.0f);
+  Seq::Wait(0.2f);
+  APP::chas.Move(Vec2(0.28, 0), 3.0f);
+  Seq::Wait(0.2f);
+  APP::chas.Move(Vec2(0.14, 0), 6.0f);
 
 
   // 等待小黄0号检测到可以抬前腿
   Seq::WaitUntil([&]()
   {
-    return APP::leg.detector[0].Read();
+    return IR_Read(APP::leg.detector[0]);
   });
-  // 再走0.3秒，慢慢走，确保前端抵住
-  APP::chas.Move(Vec2(0.2, 0), 1.0f);
-  Seq::Wait(0.3f);
 
-  // // 如果需要取块，那么爪子也要有所行动。要先伸出来
-  // if (APP::vac_claw.need_to_fetch)
-  // {
-  //   // 此时小黄+移动已经确保前端抵住了
-  //   FetchBlock();
-  // } 
+  // 再走0.3秒，慢慢走，确保前端抵住
+  APP::chas.Move(Vec2(0.1, 0), 5.0f);
+  Seq::Wait(0.25f);
 
   // 停稳，抬腿
   APP::chas.Move(Vec2(0, 0), 2.0f);
   APP::leg.F_Origin();
-  // 抬腿的同时向前走
-  Seq::Wait(0.25f);
+
+  // 抬腿的同时向前走（抬200mm约需要0.3秒）
+  Seq::Wait(0.3f);
 
   /****   持续衰减的爆发移动速度加成  ****/
   APP::chas.Move(Vec2(1.0, 0), 3.0f);
   Seq::Wait(0.2f);
-  APP::chas.Move(Vec2(0.5, 0), 3.0f);
+  APP::chas.Move(Vec2(0.8, 0), 3.0f);
+  Seq::Wait(0.15f);
+  APP::chas.Move(Vec2(0.6, 0), 3.0f);
+  Seq::Wait(0.15f);
+  APP::chas.Move(Vec2(0.4, 0), 3.0f);
   Seq::Wait(0.1f);
-  APP::chas.Move(Vec2(0.2, 0), 3.0f);
+  APP::chas.Move(Vec2(0.2, 0), 5.0f);
 
   // 防止小黄2号误检
-  Seq::Wait(0.1f);
+  // Seq::Wait(0.1f);
+
   // 等待小黄2号检测到可以抬后腿
   Seq::WaitUntil([&]()
   {
-    return APP::leg.detector[2].Read();
+    return IR_Read(APP::leg.detector[2]);
   });
-  Seq::Wait(0.1f);
+  // Seq::Wait(0.1f);
 
-  // 抬升后腿并往前移动
+  // 抬升后腿
   APP::leg.B_Origin();
+
+  // 确认双腿归位
+  Seq::WaitUntil([]()-> bool {
+      return (fabs(APP::leg.real_front_pos_mm - APP::leg.front_pos) < 10.0f) 
+      && (fabs(APP::leg.real_back_pos_mm - APP::leg.back_pos) < 10.0f);
+    });
+  
+  // 往前移动
   APP::chas.Move(Vec2(0.5, 0), 2.0f);
 
-  Seq::Wait(1.25f);
+  Seq::Wait(0.45f);
   APP::chas.Move(Vec2(0, 0), 1.0f);
 
   Area2::block_pos.Forward();
@@ -740,14 +756,14 @@ void MeiLinArray::Climb_Up400(bool need_chase)
     });
   }
 
-    // 往前缓慢移动，直到抵靠到前端（手K曲线）
-    APP::chas.Move(Vec2(0.5, 0), 3.0f);
-    Seq::Wait(0.2f);
-    APP::chas.Move(Vec2(0.4, 0), 3.0f);
-    Seq::Wait(0.2f);
-    APP::chas.Move(Vec2(0.28, 0), 3.0f);
-    Seq::Wait(0.2f);
-    APP::chas.Move(Vec2(0.14, 0), 6.0f);
+  // 往前缓慢移动，直到抵靠到前端（手K曲线）
+  APP::chas.Move(Vec2(0.5, 0), 3.0f);
+  Seq::Wait(0.2f);
+  APP::chas.Move(Vec2(0.4, 0), 3.0f);
+  Seq::Wait(0.2f);
+  APP::chas.Move(Vec2(0.28, 0), 3.0f);
+  Seq::Wait(0.2f);
+  APP::chas.Move(Vec2(0.14, 0), 6.0f);
 
   // 等待小黄0号检测到可以抬前腿
   Seq::WaitUntil([&]()
@@ -756,8 +772,8 @@ void MeiLinArray::Climb_Up400(bool need_chase)
   });
 
   // 再走0.3秒，慢慢走，确保前端抵住
-  APP::chas.Move(Vec2(0.2, 0), 5.0f);
-  Seq::Wait(0.3f);
+  APP::chas.Move(Vec2(0.1, 0), 5.0f);
+  Seq::Wait(0.25f);
 
   // 停稳，抬腿
   APP::chas.Move(Vec2(0, 0), 2.0f);
@@ -765,7 +781,7 @@ void MeiLinArray::Climb_Up400(bool need_chase)
   APP::leg.F_Origin();
 
   // 抬腿的同时往前走
-  Seq::Wait(0.25f);
+  Seq::Wait(0.6f);
   
   /****   持续衰减的爆发移动速度加成  ****/
   APP::chas.Move(Vec2(1.0, 0), 3.0f);
