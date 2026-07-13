@@ -1262,7 +1262,7 @@ void Response_Button()
 
     // 重试直接去放块的逻辑
     static float last_trigger_time = 0;
-    if(MOD::farcon.button_second_half[4] == 1 && DWT_GetTimeline_Sec() - last_trigger_time > 1.0f)
+    if(MOD::farcon.button_first_half[4] == 1 && DWT_GetTimeline_Sec() - last_trigger_time > 1.0f)
     {
       last_trigger_time = DWT_GetTimeline_Sec();
       retry_put_L2_N4 = true;
@@ -1270,7 +1270,7 @@ void Response_Button()
       retry_put_L2_N5 = false;
       retry_put_L2_N6 = false;
     }
-    if(MOD::farcon.button_second_half[5] == 1 && DWT_GetTimeline_Sec() - last_trigger_time > 1.0f)
+    if(MOD::farcon.button_first_half[5] == 1 && DWT_GetTimeline_Sec() - last_trigger_time > 1.0f)
     {
       last_trigger_time = DWT_GetTimeline_Sec();
       retry_put_L2_N5 = true;
@@ -1278,7 +1278,7 @@ void Response_Button()
       retry_put_L2_N4 = false;
       retry_put_L2_N6 = false;
     }
-    if(MOD::farcon.button_second_half[6] == 1 && DWT_GetTimeline_Sec() - last_trigger_time > 1.0f)
+    if(MOD::farcon.button_first_half[6] == 1 && DWT_GetTimeline_Sec() - last_trigger_time > 1.0f)
     {
       last_trigger_time = DWT_GetTimeline_Sec();
       retry_put_L2_N6 = true;

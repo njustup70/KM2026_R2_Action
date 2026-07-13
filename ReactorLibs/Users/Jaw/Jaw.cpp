@@ -309,6 +309,9 @@ void Jaw::SoftPitchUp()
         _pitch_pos = pos;
         Seq::Wait(step_dt);
     }
+
+    // 最终要精确到达位置
+    _pitch_pos = targ_pitch_pos;
 }
 
 

@@ -48,7 +48,7 @@ void Action_of_Dege(StateCore *core)
   // Area2::mei_lin_array.FetchBlock(BlockHeight::DOWN200);
   // APP::leg.SetFrontPosSlow(-200.0f, 5.0f);
   // APP::leg.SetBackPosSlow(-200.0f, 5.0f);
-  // Area3::FetchBlockOnTheGround();
+  Area3::FetchBlockOnTheGround();
   // Area2::block_pos.GetIn(1);
   // Area2::mei_lin_array.Climb_Up200();
   APP::get_block.Put();

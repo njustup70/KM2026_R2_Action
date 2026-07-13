@@ -71,11 +71,11 @@ void CommCenter::Update()
         MOD::host_pc.SendSickData(MOD::sick.GetData().raw_frame);
     }
     // 发送SICK纠正指令
-    if(_is_send_sick_correction)
-    {
-        MOD::host_pc.SendSlamCorrectionCmd();
-        _is_send_sick_correction = false; // 重置标志位
-    }
+    // if(_is_send_sick_correction)
+    // {
+    //     MOD::host_pc.SendSlamCorrectionCmd();
+    //     _is_send_sick_correction = false; // 重置标志位
+    // }
 
     /*************** KFS values ****************/
     if(_send_kfs)
@@ -209,7 +209,7 @@ void CommCenter::DockRxCallback(uint8_t func_code, const uint8_t* payload, uint8
     {
         // 收到光通信了，允许关闭工控机偏置
         APP::jaw.LockHostPCBias();
-        
+
         // 0.5s内最多处理一次，避免对接偏置被过快重复触发
         static float last_trigger_time = -0.5f;
         const float now = DWT_GetTimeline_Sec();

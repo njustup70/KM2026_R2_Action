@@ -5,15 +5,15 @@
 
 MainLoop& APP::main_loop = MainLoop::GetInstance();
 
-// #define Challenge_Area12_EXPLORE
-#define Challenge_Area3_ARENA
+#define Challenge_Area12_EXPLORE
+//  #define Challenge_Area3_ARENA
 // #define Compete_KungfuMaster
 void ButtonLogics();
 void UpdateFarconSlamPos();
 
 float debug_cnt = 0;
 
-void MainLoop::Start()
+void MainLoop::Start()//////
 {
     test_led.Init(Hardware::tim_led, BSP::TIM::CH4);
     test_led.BiasFactor = Vec3(0.843f, 1.0f, 0.843f);
@@ -82,6 +82,8 @@ void MainLoop::Update()
 
     // 状态机启动前，就使能的按钮功能
     ButtonLogics();
+
+    UpdateFarconSlamPos();
 
     // 处理重试逻辑
     if (!graph_started) JudgeRetryFlags();

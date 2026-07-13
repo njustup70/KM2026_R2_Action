@@ -403,7 +403,8 @@ void FetchSpear_FromOrigin(uint8_t spear_id)
   Seq::Wait(0.25);
 
   // 然后抬起 Pitch爪子
-  APP::jaw.PitchUp();
+  // APP::jaw.PitchUp();
+  APP::jaw.SoftPitchUp();
 }
 
 /********************************************************************************/
@@ -459,7 +460,8 @@ void FetchSpear_FromDock(uint8_t spear_id)
   Seq::Wait(0.25);
 
   // 然后抬起 Pitch爪子
-  APP::jaw.PitchUp();
+  // APP::jaw.PitchUp();
+  APP::jaw.SoftPitchUp();
 }
 
 /********************************************************************************/
@@ -560,7 +562,8 @@ void FetchSpear_FromDock_Blue(uint8_t spear_id)
   Seq::Wait(0.25);
 
   // 然后抬起 Pitch爪子
-  APP::jaw.PitchUp();
+  // APP::jaw.PitchUp();
+  APP::jaw.SoftPitchUp();
 }
 
 /********************************************************************************/
@@ -603,5 +606,6 @@ void FetchSpear_FromOrigin_Blue(uint8_t spear_id)
   Seq::Wait(0.25);
 
   // 然后抬起 Pitch爪子
-  APP::jaw.PitchUp();
+  // APP::jaw.PitchUp();
+  APP::jaw.SoftPitchUp();
 }

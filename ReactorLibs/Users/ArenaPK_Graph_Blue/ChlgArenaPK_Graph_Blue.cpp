@@ -28,6 +28,10 @@ StateGraph Arena_PK_Graph_Blue("Arena_PK");
 static bool retry_go_wait = false;
 static bool dirct_go_wait = false;
 
+static bool retry_put_L2_N4 = false;
+static bool retry_put_L2_N5 = false;
+static bool retry_put_L2_N6 = false;
+
 static bool IR_Read(InfraredDetector& ir);
 static bool NIR_Read(InfraredDetector& ir);
 
@@ -39,6 +43,9 @@ static void Waiting_R1_Instru(StateCore *core);
 static void Fetch2_From_Mid(StateCore *core);
 static void Retry_Go_Wait(StateCore *core);
 static void Direct_Go_Wait(StateCore *core);
+
+static void Retry_to_Put(StateCore *core);
+void SickCorrect_Blue();
 
 // 从R1等待位置出发的状态函数
 static void Fetch_0_FromWait();
@@ -75,6 +82,8 @@ int ChallengeArenaPK_Graph_Blue()
   StateBlock& s_fetch_0_1_block = Arena_PK_Graph_Blue.AddState("fetch_0_1_block");
   // 直接去等待（从斜坡下的）
   StateBlock& s_dirct_gowait = Arena_PK_Graph_Blue.AddState("dir_gowait");
+  // 拿到两个块后，申请重试后直接去放二层的块
+  StateBlock& s_retry_to_put = Arena_PK_Graph_Blue.AddState("retry_to_put");
 
 
   /**----------     配置状态行为函数    ----------**/
@@ -86,6 +95,7 @@ int ChallengeArenaPK_Graph_Blue()
   s_dirct_gowait.StateAction = Direct_Go_Wait;
 
   s_fetch_0_1_block.StateAction = Fetch2_From_Mid;
+  s_retry_to_put.StateAction = Retry_to_Put;
 
   /**----------     进行状态间链接    ----------**/
   s_wait.LinkTo(&(s_wait.Complete), s_put_first_block);
@@ -98,6 +108,11 @@ int ChallengeArenaPK_Graph_Blue()
   s_wait.LinkTo(&dirct_go_wait, s_dirct_gowait);
   s_dirct_gowait.LinkTo(&(s_dirct_gowait.Complete), s_waiting_R1_instru);
 
+  // 重试直接去放块的链接
+  s_wait.LinkTo(&retry_put_L2_N4, s_retry_to_put);
+  s_wait.LinkTo(&retry_put_L2_N5, s_retry_to_put);
+  s_wait.LinkTo(&retry_put_L2_N6, s_retry_to_put);
+  s_retry_to_put.LinkTo(&s_retry_to_put.Complete, s_waiting_R1_instru);
 
   s_put_first_block.LinkTo(&(s_put_first_block.Complete), s_fetch_0_1_block);
   s_fetch_0_1_block.LinkTo(&(s_fetch_0_1_block.Complete), s_waiting_R1_instru);
@@ -171,6 +186,22 @@ void Waiting_for_Start(StateCore *core)
   {
     APP::monit.LogRespond("Direct to Wait.");
     dirct_go_wait = true;
+    return;
+  }
+  /***    重试并直接去放块    ***/
+  if(retry_put_L2_N4)
+  {
+    APP::monit.LogRespond("Retry to put L2_N4.");
+    return;
+  }
+  if(retry_put_L2_N5)
+  {
+    APP::monit.LogRespond("Retry to put L2_N5.");
+    return;
+  }
+  if(retry_put_L2_N6)
+  {
+    APP::monit.LogRespond("Retry to put L2_N6.");
     return;
   }
 
@@ -1165,6 +1196,30 @@ void Response_Button()
     //   last_belt_time = DWT_GetTimeline_Sec();
     // }
 
+    // 重试直接去放块的逻辑
+    static float last_retry_put_time = 0;
+    if(MOD::farcon.button_first_half[4] == 1 && DWT_GetTimeline_Sec() - last_retry_put_time > 1.0f)
+    {
+      last_retry_put_time = DWT_GetTimeline_Sec();
+      retry_put_L2_N4 = true;
+      retry_put_L2_N5 = false;
+      retry_put_L2_N6 = false;
+    }
+    if(MOD::farcon.button_first_half[5] == 1 && DWT_GetTimeline_Sec() - last_retry_put_time > 1.0f)
+    {
+      last_retry_put_time = DWT_GetTimeline_Sec();
+      retry_put_L2_N5 = true;
+      retry_put_L2_N4 = false;
+      retry_put_L2_N6 = false;
+    }
+    if(MOD::farcon.button_first_half[6] == 1 && DWT_GetTimeline_Sec() - last_retry_put_time > 1.0f)
+    {
+      last_retry_put_time = DWT_GetTimeline_Sec();
+      retry_put_L2_N6 = true;
+      retry_put_L2_N4 = false;
+      retry_put_L2_N5 = false;
+    }
+
     // // 处理放块
     // static float last_put_time = 0;
     // if(MOD::farcon.button_second_half[4] == 1 && DWT_GetTimeline_Sec() - last_put_time > 1.0f)
@@ -1318,6 +1373,104 @@ void Response_Button()
 
 //   APP::get_block.Store();
 // }
+
+// 根据重试后按的遥控器按键，选择直接去放哪个块（蓝区）
+void Retry_to_Put(StateCore *core)
+{
+  // 先走到擂台中央（蓝区路径 A23_B2）
+  MOVE::MoveToTargPos(PATH::A23_B2(), Vec3(0.01f, 0.01f, 0.01f));
+  SickCorrect_Blue();
+
+  // 放四号格子
+  if(retry_put_L2_N4)
+  {
+    retry_put_L2_N4 = false;
+    MOVE::MoveToTargGes(Vec3(10.21f, 0.80f, -1.571f));
+    APP::leg.SetFrontPos(-388);
+    APP::leg.SetBackPos(-380);
+    APP::get_block.Put();
+  }
+  // 放五号格子
+  else if(retry_put_L2_N5)
+  {
+    retry_put_L2_N5 = false;
+    MOVE::MoveToTargGes(Vec3(10.75f, 0.80f, -1.571f));
+    APP::leg.SetFrontPos(-388);
+    APP::leg.SetBackPos(-380);
+    APP::get_block.Put();
+  }
+  // 放六号格子
+  else if(retry_put_L2_N6)
+  {
+    retry_put_L2_N6 = false;
+    MOVE::MoveToTargGes(Vec3(11.29f, 0.80f, -1.571f));
+    APP::leg.SetFrontPos(-388);
+    APP::leg.SetBackPos(-380);
+    APP::get_block.Put();
+  }
+
+  core->GetCurState().Complete = true;
+}
+
+///@brief sick 对准九宫格（蓝区：yaw=-1.571）
+void SickCorrect_Blue()
+{
+  int sick_cnt = 0;
+  const float sick_kd = 0.25f;
+  const float sick_d_alpha = 0.7f;
+  float last_err_dist = APP::comm_center.sick_data_m[1] - APP::comm_center.sick_data_m[0];
+  float d_err_dist_filt = 0.0f;
+  uint32_t sick_log_tick = 0;
+
+  while (sick_cnt < 10)
+  {
+    float err_dist = APP::comm_center.sick_data_m[1] - APP::comm_center.sick_data_m[0];
+
+    if (fabs(err_dist) < 0.004f) sick_cnt++;
+    else sick_cnt = 0;
+
+    float d_err_dist = (err_dist - last_err_dist) / 0.005f;
+    d_err_dist_filt = d_err_dist_filt * sick_d_alpha + d_err_dist * (1.0f - sick_d_alpha);
+    float err_spd = err_dist * 1.0f - sick_kd * d_err_dist_filt;
+    last_err_dist = err_dist;
+
+    Vec2 sick_fix = Vec2(err_spd, 0.0f).Rotate(-System.position.z);
+
+    float sick_speed = sick_fix.Length();
+    if (sick_speed > 0.3f) sick_fix = sick_fix * (0.3f / sick_speed);
+
+    // 蓝区锁定 yaw = -1.5707
+    float yaw_err = -1.5707f - System.position.z;
+    Vec3 targ_body_vec = sick_fix.ToVec3();
+    targ_body_vec.z = yaw_err * 0.8f;
+
+    if (++sick_log_tick >= 20)
+    {
+      sick_log_tick = 0;
+      APP::monit.LogInfo("sf:e%.3f v%.3f s0%.3f s1%.3f",
+                         err_dist, err_spd,
+                         APP::comm_center.sick_data_m[0],
+                         APP::comm_center.sick_data_m[1]);
+    }
+
+    APP::chas.Move(targ_body_vec, 0.01f);
+    Seq::Wait(0.005f);
+  }
+
+  APP::monit.LogInfo("Finished sick fix. sick0:%.3f sick1:%.3f",
+                     APP::comm_center.sick_data_m[0], APP::comm_center.sick_data_m[1]);
+  APP::chas.Move(Vec3(0.0f, 0.0f, 0.0f), 0.25f);
+
+  int cnt = 0;
+  float _avg_x = 0.0f;
+  while (cnt < 10) { _avg_x += System.position.x; cnt++; }
+  _avg_x /= 10.0f;
+
+  float arena_x_bias = 10.75 - _avg_x;
+  APP::monit.LogInfo("[arena_bias]:%.3f", arena_x_bias);
+  System.SetPositionBias(Vec3(arena_x_bias, 0.0f, 0.0f));
+  Seq::Wait(0.5f);
+}
 
 bool IR_Read(InfraredDetector& ir)
 {
