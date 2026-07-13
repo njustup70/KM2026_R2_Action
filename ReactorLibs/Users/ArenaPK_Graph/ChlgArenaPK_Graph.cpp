@@ -28,9 +28,9 @@ StateGraph Arena_PK_Graph("Arena_PK");
 static bool retry_go_wait = false;
 static bool dirct_go_wait = false;
 
-static bool reset_put_L2_N4 = false;
-static bool reset_put_L2_N5 = false;
-static bool reset_put_L2_N6 = false;
+static bool retry_put_L2_N4 = false;
+static bool retry_put_L2_N5 = false;
+static bool retry_put_L2_N6 = false;
 
 static bool IR_Read(InfraredDetector& ir);
 static bool NIR_Read(InfraredDetector& ir);
@@ -48,6 +48,11 @@ static void Direct_Go_Wait(StateCore *core);
 static void Fetch_0_FromWait();
 static void Fetch_1_FromWait();
 static void Robot_Combine();
+
+// 申请重试直接去放块的函数
+static void Retry_to_Put(StateCore *core);
+
+void SickCorrect();
 
 Vec2 Arena_R2_KFS_FetchPos[2] = {
   Vec2(11.1, 3.555), Vec2(11.1, 2.835)
@@ -76,7 +81,8 @@ int ChallengeArenaPK_Graph()
   StateBlock& s_fetch_0_1_block = Arena_PK_Graph.AddState("fetch_0_1_block");
   // 直接去等待（从斜坡下的）
   StateBlock& s_dirct_gowait = Arena_PK_Graph.AddState("dir_gowait");
-  // 拿到两个块后，申请重试后直接去
+  // 拿到两个块后，申请重试后直接去放二层的块
+  StateBlock& s_retry_to_put = Arena_PK_Graph.AddState("retry_to_put");
 
   /**----------     配置状态行为函数    ----------**/
   s_wait.StateAction = Waiting_for_Start;
@@ -88,12 +94,19 @@ int ChallengeArenaPK_Graph()
   
   s_fetch_0_1_block.StateAction = Fetch2_From_Mid;
 
+  s_retry_to_put.StateAction = Retry_to_Put;
+
   /**----------     进行状态间链接    ----------**/
   s_wait.LinkTo(&(s_wait.Complete), s_put_first_block);
 
   // 重试的链接
   s_wait.LinkTo(&retry_go_wait, s_retry_gowait);
   s_retry_gowait.LinkTo(&(s_retry_gowait.Complete), s_waiting_R1_instru);
+
+  s_wait.LinkTo(&retry_put_L2_N4, s_retry_to_put);
+  s_wait.LinkTo(&retry_put_L2_N5, s_retry_to_put);
+  s_wait.LinkTo(&retry_put_L2_N6, s_retry_to_put);
+  s_retry_to_put.LinkTo(&s_retry_to_put.Complete, s_waiting_R1_instru);
   
   // 直接去等待的链接
   s_wait.LinkTo(&dirct_go_wait, s_dirct_gowait);
@@ -172,6 +185,22 @@ void Waiting_for_Start(StateCore *core)
   {
     APP::monit.LogRespond("Direct to Wait.");
     dirct_go_wait = true;
+    return;
+  }
+  /***    重试并直接去放块    ***/
+  if(retry_put_L2_N4)
+  {
+    APP::monit.LogRespond("Retry to put L2_N4.");
+    return;
+  }
+  if(retry_put_L2_N5)
+  {
+    APP::monit.LogRespond("Retry to put L2_N5.");
+    return;
+  }
+  if(retry_put_L2_N6)
+  {
+    APP::monit.LogRespond("Retry to put L2_N6.");
     return;
   }
 
@@ -1013,6 +1042,140 @@ void Robot_Combine()
   Seq::Wait(3600.0f);
 }
 
+// 根据重试后按的遥控器按键，选择直接去放哪个块
+void Retry_to_Put(StateCore *core)
+{
+  // 放四号格子
+  if(retry_put_L2_N4)
+  {
+    retry_put_L2_N4 = false;
+    MOVE::MoveToTargPos(PATH::A23_2(), Vec3(0.01f, 0.01f, 0.01f));
+    SickCorrect();
+    MOVE::MoveToTargGes(Vec3(10.21f, 5.20f, 1.571f));
+    // 抬起腿
+    APP::leg.SetFrontPos(-388);
+    APP::leg.SetBackPos(-380);
+    // 放块
+    APP::get_block.Put();
+  }
+
+  // 放五号格子
+  else if(retry_put_L2_N5)
+  {
+    retry_put_L2_N5 = false;
+    MOVE::MoveToTargPos(PATH::A23_2(), Vec3(0.01f, 0.01f, 0.01f));
+    SickCorrect();
+    // MOVE::MoveToTargGes(Vec3(10.21f, 5.20f, 1.571f));
+    // 抬起腿
+    APP::leg.SetFrontPos(-388);
+    APP::leg.SetBackPos(-380);
+    // 放块
+    APP::get_block.Put();
+
+  }
+
+  // 放六号格子
+  else if(retry_put_L2_N6)
+  {
+    retry_put_L2_N6 = false;
+    MOVE::MoveToTargPos(PATH::A23_2(), Vec3(0.01f, 0.01f, 0.01f));
+    SickCorrect();
+    MOVE::MoveToTargGes(Vec3(11.29f, 5.20f, 1.571f));
+    // 抬起腿
+    APP::leg.SetFrontPos(-388);
+    APP::leg.SetBackPos(-380);
+    // 放块
+    APP::get_block.Put();
+  }
+
+  core->GetCurState().Complete = true;
+}
+
+/**************************************  功能函数 **************************************/
+
+///@brief sick 对准九宫格
+void SickCorrect()
+{
+  // 锁定yaw角为1.571，同时平移直到两路西克激光基本相等
+  // APP::comm_center.sick_data_m[0] 约等于 APP::comm_center.sick_data_m[1];
+  int sick_cnt = 0;
+  const float sick_kd = 0.25f;
+  const float sick_d_alpha = 0.7f;
+  float last_err_dist = APP::comm_center.sick_data_m[1] - APP::comm_center.sick_data_m[0];
+  float d_err_dist_filt = 0.0f;
+  uint32_t sick_log_tick = 0;
+
+  while (sick_cnt < 10)
+  {
+    float err_dist = APP::comm_center.sick_data_m[1] - APP::comm_center.sick_data_m[0];
+
+    if (fabs(err_dist) < 0.004f)
+    {
+      sick_cnt++;
+    }
+    else
+      sick_cnt = 0;
+
+    float d_err_dist = (err_dist - last_err_dist) / 0.005f;
+    d_err_dist_filt = d_err_dist_filt * sick_d_alpha + d_err_dist * (1.0f - sick_d_alpha);
+    float err_spd = err_dist * 1.0f - sick_kd * d_err_dist_filt;
+    last_err_dist = err_dist;
+
+    Vec2 sick_fix = Vec2(err_spd, 0.0f).Rotate(-System.position.z);
+
+    // 速度保护：限制平移速度不超过0.3m/s
+    float sick_speed = sick_fix.Length();
+    if (sick_speed > 0.3f)
+    {
+      sick_fix = sick_fix * (0.3f / sick_speed);
+    }
+
+    // 锁定yaw角为 1.5707 rad，不用太强
+    float yaw_err = 1.5707f - System.position.z;
+    Vec3 targ_body_vec = sick_fix.ToVec3();
+    targ_body_vec.z = yaw_err * 0.8f;
+
+    if (++sick_log_tick >= 20)
+    {
+      sick_log_tick = 0;
+      APP::monit.LogInfo("sf:e%.3f v%.3f s0%.3f s1%.3f",
+                         err_dist,
+                         err_spd,
+                         APP::comm_center.sick_data_m[0],
+                         APP::comm_center.sick_data_m[1]);
+    }
+
+    APP::chas.Move(targ_body_vec, 0.01f);
+    Seq::Wait(0.005f); // 200hz更新频率
+  }
+
+  APP::monit.LogInfo("Finished sick fix. sick0:%.3f sick1:%.3f",
+                     APP::comm_center.sick_data_m[0], APP::comm_center.sick_data_m[1]);
+  APP::chas.Move(Vec3(0.0f, 0.0f, 0.0f), 0.25f);
+
+  // 此时西克已经校准坐标，我们利用西克修正最后一公里
+  // 计算九宫格前的定位误差
+  int cnt = 0;
+  float _avg_x = 0.0f;
+  while (cnt < 10)
+  {
+    _avg_x += System.position.x;
+    cnt++;
+  }
+  _avg_x /= 10.0f;
+
+  float arena_x_bias = 10.75 - _avg_x;
+
+  APP::monit.LogInfo("[arena_bias]:%.3f", arena_x_bias);
+
+  // 根据误差，进行最后的平移修正
+  System.SetPositionBias(Vec3(arena_x_bias, 0.0f, 0.0f));
+
+  Seq::Wait(0.5f);
+}
+
+
+
 
 
 
@@ -1097,11 +1260,31 @@ void Response_Button()
       APP::chas.Move(Vec3(0, 0, 0), 0.2f);
     }
 
+    // 重试直接去放块的逻辑
     static float last_trigger_time = 0;
     if(MOD::farcon.button_second_half[4] == 1 && DWT_GetTimeline_Sec() - last_trigger_time > 1.0f)
     {
       last_trigger_time = DWT_GetTimeline_Sec();
-      reset_put_L2_N4 = true;
+      retry_put_L2_N4 = true;
+      // 防误触，互斥
+      retry_put_L2_N5 = false;
+      retry_put_L2_N6 = false;
+    }
+    if(MOD::farcon.button_second_half[5] == 1 && DWT_GetTimeline_Sec() - last_trigger_time > 1.0f)
+    {
+      last_trigger_time = DWT_GetTimeline_Sec();
+      retry_put_L2_N5 = true;
+
+      retry_put_L2_N4 = false;
+      retry_put_L2_N6 = false;
+    }
+    if(MOD::farcon.button_second_half[6] == 1 && DWT_GetTimeline_Sec() - last_trigger_time > 1.0f)
+    {
+      last_trigger_time = DWT_GetTimeline_Sec();
+      retry_put_L2_N6 = true;
+
+      retry_put_L2_N4 = false;
+      retry_put_L2_N5 = false;
     }
     // static float last_trigger_time = 0;
     // if(MOD::farcon.button_second_half[7] == 1 && DWT_GetTimeline_Sec() - last_trigger_time > 1.0f)
