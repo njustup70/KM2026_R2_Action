@@ -1,8 +1,16 @@
 #include "VacuumClaw.hpp"
 #include "StateCore.hpp"
+#include "Get_Block.hpp"
 
 #define SNAP_TOTAL_POS  297000.0f // 总实际行程是 297227，逆时针开爪，爪闭合是正
 #define FETCH_PITCH_POS 300000.0f // 0 - 90° 的 code 值，转到 90° 是正的，回到零位是负的
+
+namespace
+{
+// 取块后的后台序列：0=空闲，1=等翻块，2=等收爪并交接给存块机构。
+static uint8_t return_and_store_act_id = 0;
+static float return_and_store_start_time = 0.0f;
+}
 
 VacuumClaw& APP::vac_claw = VacuumClaw::GetInstance();
 
@@ -17,10 +25,10 @@ void VacuumClaw::Start()
         .AsPosC()
         .ADRC_Womega(42.0f, 9.6f)
         .ADRC_Physic(1.0e-4f, 0.30f, 0.005f)
-        .ADRC_Limit(10.0f)
-        .SpdLimit(3000.0f)
-        .ADRC_MaxPlannedVel(3000.0f)
-        .ADRC_SOTF(0.05f)
+        .ADRC_Limit(12.0f)
+        .SpdLimit(5000.0f)
+        .ADRC_MaxPlannedVel(5000.0f)
+        .ADRC_SOTF(0.07f)
         .SetDt(0.002f)
         .Apply();
     motor_stretch.driver.Enable();
@@ -43,8 +51,8 @@ void VacuumClaw::Start()
         .ADRC_Womega(14.0f, 3.6f)
         .ADRC_Physic(1.75e-4f, 0.18f)
         .ADRC_Limit(5.0f)
-        .SpdLimit(5000.0f)
-        .ADRC_MaxPlannedVel(4800.0f)
+        .SpdLimit(7000.0f)
+        .ADRC_MaxPlannedVel(7000.0f)
         .ADRC_SOTF(0.008f)
         .SetDt(0.004f)
         .Apply();
@@ -152,6 +160,8 @@ void VacuumClaw::Update()
     //     is_back_debug = false;
     //     StretchBack();
     // }
+
+    _UpdateReturnAndStore();
 }
 
 void VacuumClaw::_UpdateStretchSlow()
@@ -232,7 +242,7 @@ void VacuumClaw::StretchOut_First()
     _stretch_slow.active = false;
     // pitch 竖直
     pitch_pos = pitch_origined_pos + FETCH_PITCH_POS;
-    // motor_pitch.SetPosVel(-pitch_pos, 1.5);    
+    
     stretch_pos = 190000;
 }
 
@@ -242,7 +252,7 @@ void VacuumClaw::StretchOut_Second()
     _stretch_slow.active = false;
     // stretch_pos = 252000;
     constexpr float target_pos = 255000.0f;
-    constexpr float code_per_sec = 255000.0f; // 目标变化速度，单位 code/s
+    constexpr float code_per_sec = 125000.0f; // 目标变化速度，单位 code/s
     constexpr float step_dt       = 0.002f;     // 每步间隔
 
     const float step_size = code_per_sec * step_dt;
@@ -317,6 +327,62 @@ void VacuumClaw::StretchBack()
     stretch_pos = 100.0; // 防堵转，给个略大于0的值
 }
 
+void VacuumClaw::ReturnAndStore(bool is_fetch_down200)
+{
+    if (return_and_store_act_id != 0)
+    {
+        APP::monit.LogWarning("ReturnAndStore is already running.");
+        return;
+    }
+
+    _stretch_slow.active = false;
+    APP::vac_claw.PitchBack();
+
+    if (is_fetch_down200)
+    {
+        // 还要额外再多翻一点
+        pitch_pos -= 1000;
+    }
+
+    return_and_store_start_time = DWT_GetTimeline_Sec();
+    return_and_store_act_id = 1;
+}
+
+void VacuumClaw::_UpdateReturnAndStore()
+{
+    switch (return_and_store_act_id)
+    {
+    case 0:
+        break;
+
+    case 1: // （等2.0秒）等到物块翻转离地后，再收爪并启动摩擦带
+        if (DWT_GetTimeline_Sec() - return_and_store_start_time >= 1.5f)
+        {
+            // stretch_pos = 100.0f; // 防堵转，给个略大于0的值
+            APP::vac_claw.StretchSlow(StretchPos::BACK, 0.75f);
+            APP::get_block._StartBelt();
+            return_and_store_act_id = 2;
+        }
+        break;
+
+    case 2: // 仅当摩擦带可承接物块后，才允许松爪、关泵
+        if (fabs(motor_stretch.driver.measure.total_angle - stretch_pos) < 500.0f)
+        {
+            OpenSnap();
+            APP::get_block.ClosePump();
+            APP::get_block.OpenPRV();
+            APP::get_block.Store();
+            return_and_store_act_id = 0;
+        }
+        break;
+
+    default:
+        APP::monit.LogError("ReturnAndStore invalid act id: %d", return_and_store_act_id);
+        return_and_store_act_id = 0;
+        break;
+    }
+}
+
 void VacuumClaw::Enable()
 {
     enabled = true;
@@ -368,6 +434,21 @@ void VacuumClaw::PitchOrigin()
 void VacuumClaw::PitchDown()
 {
     pitch_pos = pitch_origined_pos + FETCH_PITCH_POS;
+}
+
+void VacuumClaw::PitchBack()
+{
+    pitch_pos = pitch_origined_pos + 2000;
+}
+
+void VacuumClaw::SetPitchPos(float target_pos)
+{
+    pitch_pos = target_pos;
+}
+
+void VacuumClaw::SetPitchPosFromOrigin(float offset)
+{
+    pitch_pos = pitch_origined_pos + offset;
 }
 
 void VacuumClaw::_GetClawOrigin()

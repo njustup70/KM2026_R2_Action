@@ -483,16 +483,20 @@ void Goto_Area2(StateCore *core)
 
   // 首先，根据工控机的要求，走到相应的块的面前
   /// @note 精度要求被放低，目的是更快退出路径跟踪，进入下一环。
+  const bool need_fetch_at_entry = Area2::mei_lin_array.LockEntryFetchPlan();
   switch (Area2::mei_lin_array.enter_code)
   {
     case Area2Code::ENTER_0:
-      Area2::RunIntoArea2(PATH::A12_3(), Vec3(0.1f, 0.1f, 0.05f), true);
+      Area2::RunIntoArea2(PATH::A12_3(), Vec3(0.1f, 0.1f, 0.05f),
+       true, need_fetch_at_entry);
       break;
     case Area2Code::ENTER_1:
-      Area2::RunIntoArea2(PATH::A12_2(), Vec3(0.1f, 0.1f, 0.05f), false);
+      Area2::RunIntoArea2(PATH::A12_2(), Vec3(0.1f, 0.1f, 0.05f),
+       false, need_fetch_at_entry);
       break;
     case Area2Code::ENTER_2:
-      Area2::RunIntoArea2(PATH::A12_1(), Vec3(0.1f, 0.1f, 0.05f), true);
+      Area2::RunIntoArea2(PATH::A12_1(), Vec3(0.1f, 0.1f, 0.05f), 
+      true, need_fetch_at_entry);
       break;
     default:
       APP::monit.LogError("Invalid A2EnterCode!");

@@ -141,7 +141,15 @@ void MeiLinArray::Init()
 {
   _seq_len = 0;           // 已缓存的动作数
   _seq_ready = false;     // 序列收完标志
+  need_fetch_at_entry = false;
+  _entry_fetch_plan_locked = false;
   MOD::host_pc.Regist(0x91, Area2ActRxCallback);
+}
+
+bool MeiLinArray::LockEntryFetchPlan()
+{
+  _entry_fetch_plan_locked = true;
+  return need_fetch_at_entry;
 }
 
 void MeiLinArray::SetAction(const uint8_t *actions, int len)
@@ -347,11 +355,13 @@ static void FetchUp200()
   {
     return DWT_GetTimeline_Sec() - move_start >= 0.35f;
   });
+
   move_start = DWT_GetTimeline_Sec();
   MoveWhileAlignUntil(0.25f, 0.4f, 0.4f, [&]()
   {
     return DWT_GetTimeline_Sec() - move_start >= 0.15f;
   });
+
   MoveWhileAlignUntil(0.25f, 0.4f, 0.4f, [&]()
   {
     return IR_Read(APP::leg.detector[0]);
@@ -443,6 +453,9 @@ static void FetchDown200()
 void MeiLinArray::FetchBlock(BlockHeight height)
 {
   bool is_fetch_down200 = false;
+  const bool preextended = need_fetch_at_entry;
+  need_fetch_at_entry = false;
+
   switch (height)
   {
     case BlockHeight::UP200:
@@ -465,11 +478,6 @@ void MeiLinArray::FetchBlock(BlockHeight height)
 
   APP::monit.LogSpec("SkipAppro.");
   _skip_approach = true; // 已经靠上去了，标记跳过下一次 Climb 的重复抵靠动作
-  
-  // // 等稳定
-  // Seq::Wait(0.5f);
-  // APP::chas.Move(Vec2(0.2,0), 2.0f);
-  // Seq::Wait(1.0f);
 
   // 抬升先上去；后续 Store() 会从预抬升状态接管
   APP::get_block.LiftUp();
@@ -523,15 +531,27 @@ void MeiLinArray::FetchBlock(BlockHeight height)
   APP::chas.Move(Vec3(0, 0, 0), 0.01f);
   Seq::Wait(0.05f);
 
-  // 先开爪
-  APP::vac_claw.OpenSnap();
-  Seq::Wait(0.7f);
+  if (preextended)
+  {
+    APP::monit.LogInfo("claw already extended at entry");
+    Seq::WaitUntil([]()
+    {
+      return fabs(APP::vac_claw.motor_stretch.driver.measure.total_angle - APP::vac_claw.stretch_pos) < 150;
+    });
+  }
+  else
+  {
+    // 先开爪
+    APP::vac_claw.OpenSnap();
+    Seq::Wait(0.7f);
 
-  APP::monit.LogInfo("stretch out to fetch block");
-  // 再伸出
-  APP::vac_claw.StretchOut_First();
+    APP::monit.LogInfo("stretch out to fetch block");
+    
+    // 再伸出
+    APP::vac_claw.StretchOut_First();
 
-  Seq::Wait(1.5f);
+    Seq::Wait(1.5f);
+  }
 
   // 关爪子定心
   APP::vac_claw.CloseSnap();
@@ -554,26 +574,8 @@ void MeiLinArray::FetchBlock(BlockHeight height)
 
   // 等一会，再翻转物块，收回爪子
   Seq::Wait(0.8f);
-  APP::vac_claw.StretchBack();
-
-  if(is_fetch_down200)
-  {
-    APP::vac_claw.pitch_pos -= 1000; // 如果是取下200块，则翻的更过
-  }
-
-  APP::get_block._StartBelt();
-  
-  // 此时爪还抓着物块，但是取下200块的时候，泵不开物块会掉下来，所以等爪子收回摩擦带能碰着物块再开夹爪、关泵
-  Seq::WaitUntil([]()
-  {
-    return fabs(APP::vac_claw.motor_stretch.driver.measure.total_angle - APP::vac_claw.stretch_pos) < 150;
-  });
-
-  APP::vac_claw.OpenSnap();
-  APP::get_block.ClosePump();
-  APP::get_block.OpenPRV();
-
-  APP::get_block.Store();
+  // 后台执行翻块、收爪和入仓；FetchBlock 返回后可立即执行下一次上平台动作。
+  APP::vac_claw.ReturnAndStore(is_fetch_down200);
 
   // APP::get_block.ClosePRV();
 }
@@ -1246,7 +1248,15 @@ void MeiLinArray::Area2ActRxCallback(uint8_t func_code, const uint8_t *payload, 
   // 回复 ACK 告知上位机已收到
   MOD::host_pc.SendAck(Area2Code::ACK_DONE, 0);
 
-  if (self._seq[0] != self._seq[1]) self.need_extra_foreml_act = true;
+  self.need_extra_foreml_act = self._seq_len >= 2 && self._seq[0] != self._seq[1];
+  if (!self._entry_fetch_plan_locked)
+  {
+    self.need_fetch_at_entry = self.need_extra_foreml_act ||
+                               (self._seq_len > 2 &&
+                                (self._seq[2] == Area2Code::FETCH_UP200 ||
+                                 self._seq[2] == Area2Code::FETCH_UP400 ||
+                                 self._seq[2] == Area2Code::FETCH_DOWN200));
+  }
 
   self.host_a2act_recved = true;
 }
