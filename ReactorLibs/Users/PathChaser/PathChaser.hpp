@@ -165,6 +165,12 @@ class PathChaserType : public Application
     /// @brief 获取路径启动时的起点距离门限，单位m
     float GetPathStartGuardDist() const { return _path_start_guard_dist; }
 
+    /// @brief 设置时间参考路径末端刹车距离，单位m
+    void SetTimeEndSlowDist(float dist) { _time_end_slow_dist = dist; }
+
+    /// @brief 设置时间参考路径末端未完成时保留的最低修正速度，单位m/s
+    void SetTimeEndMinVel(float vel) { _time_end_min_vel = vel; }
+
     private:
 
     struct PathRef

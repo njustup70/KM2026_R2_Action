@@ -378,16 +378,20 @@ void Goto_Area2(StateCore *core)
   APP::main_loop.test_led.Lit(Color::White);
   APP::monit.LogInfo("entercode:%x", Area2::mei_lin_array.enter_code);
 
+  // 放宽路径末端刹车，让机器人带着余速退出 → 配合 Action 侧的闭环修正
+  // APP::path_chaser.SetTimeEndSlowDist(0.2f);
+  // APP::path_chaser.SetTimeEndMinVel(0.08f);
+
   switch (Area2::mei_lin_array.enter_code)
   {
     case Area2Code::ENTER_0:
-      Area2::RunIntoArea2(PATH::A12_3(), Vec3(0.015f, 0.015f, 0.015f), true);
+      Area2::RunIntoArea2(PATH::A12_3(), Vec3(0.1f, 0.1f, 0.05f), true);
       break;
     case Area2Code::ENTER_1:
-      Area2::RunIntoArea2(PATH::A12_2(), Vec3(0.015f, 0.015f, 0.015f), false);
+      Area2::RunIntoArea2(PATH::A12_2(), Vec3(0.1f, 0.1f, 0.05f), false);
       break;
     case Area2Code::ENTER_2:
-      Area2::RunIntoArea2(PATH::A12_1(), Vec3(0.015f, 0.015f, 0.015f), true);
+      Area2::RunIntoArea2(PATH::A12_1(), Vec3(0.1f, 0.1f, 0.05f), true);
       break;
     default:
       APP::monit.LogError("Invalid A2EnterCode!");
