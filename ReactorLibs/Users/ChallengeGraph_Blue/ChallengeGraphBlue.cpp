@@ -214,7 +214,6 @@ void Walk_Fetch(StateCore *core)
  */
 void Walk_To_Dock(StateCore *core)
 {
-  int track_mode_cnt = 0;
   // 走到对接点
   GotoDock_Blue(need_spear_id);
 
@@ -228,12 +227,6 @@ void Walk_To_Dock(StateCore *core)
   {
     Response_Button();
     Seq::Wait(0.01f);
-
-    track_mode_cnt++;
-    if(track_mode_cnt > 800) // 超过 8s 就锁死工控机发来的bias,但是保持光通信控制bias
-    {
-      APP::jaw.LockHostPCBias();
-    }
 
     if (APP::comm_center.IsDocked())
     {
@@ -285,9 +278,6 @@ void Walk_To_Dock(StateCore *core)
  */
 void Dock_Fetch_And_Back(StateCore *core)
 {
-  // 防止工控机发来的矛头偏移受场地光影响
-  int track_mode_cnt = 0;
-
   // 记录是否放弃对接（每次进入都默认为false）
   bool giveup_dock = false;
 
@@ -302,8 +292,9 @@ void Dock_Fetch_And_Back(StateCore *core)
   // 走到对接点
   GotoDock_Blue(need_spear_id);
 
-  // 进入对接模式
+  // 进入对接模式，允许工控机发送偏置
   APP::jaw.SetTrackMode(true);
+  APP::jaw.UnlockHostPCBias();
 
   APP::main_loop.test_led.Running(Color::Up_Yellow, 0.4f, 1.2f);
 
@@ -312,11 +303,6 @@ void Dock_Fetch_And_Back(StateCore *core)
   {
     Response_Button();
     Seq::Wait(0.01f);
-    track_mode_cnt++;
-    if(track_mode_cnt > 800)
-    {
-      APP::jaw.LockHostPCBias();
-    }
 
     if (APP::comm_center.IsDocked() || MOD::farcon.button_second_half[0] == 1)
     {

@@ -229,10 +229,11 @@ void Walk_Fetch(StateCore *core)
  ******************************************************************************/
 void Walk_To_Dock(StateCore *core)
 {
-  static int track_mode_cnt = 0;
   GotoDock(need_spear_id);
 
+  // 进入对接模式，允许工控机发送偏置
   APP::jaw.SetTrackMode(true);
+  APP::jaw.UnlockHostPCBias();
   APP::main_loop.test_led.Running(Color::Up_Yellow, 0.4f, 1.2f);
 
   // 等待遥控器或对接完成
@@ -240,12 +241,6 @@ void Walk_To_Dock(StateCore *core)
   {
     Response_Button();
     Seq::Wait(0.01f);
-
-    track_mode_cnt++;
-    if (track_mode_cnt > 800) // 超过 8s 锁死工控机视觉 offset
-    {
-      APP::jaw.LockHostPCBias();
-    }
 
     if (APP::comm_center.IsDocked()) break;
   }
@@ -290,7 +285,9 @@ void Dock_Fetch_And_Back(StateCore *core)
 
   // 返回对接点
   GotoDock(need_spear_id);
+  // 进入对接模式，允许工控机发送偏置
   APP::jaw.SetTrackMode(true);
+  APP::jaw.UnlockHostPCBias();
   APP::main_loop.test_led.Running(Color::Up_Yellow, 0.4f, 1.2f);
 
   while (true)
