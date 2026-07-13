@@ -42,7 +42,28 @@ private:
     void _GetClawOrigin();
     void _GetPitchOrigin();
     void _Update_GetOrigin();
+    void _UpdateStretchSlow();
+
+    struct StretchSlowState
+    {
+        bool active = false;
+        float start_pos = 0.0f;
+        float target_pos = 0.0f;
+        float start_time = 0.0f;
+        float duration = 0.0f;
+    };
+
+    StretchSlowState _stretch_slow;
 public:
+    enum class StretchPos
+    {
+        BACK,
+        OUT_MINI,
+        OUT_FIRST,
+        OUT,
+        OUT_SECOND,
+    };
+
 
     /// @brief 用于将水平夹爪伸出的电机
     MotorDJI motor_stretch;
@@ -76,6 +97,9 @@ public:
     void StretchOut_Second();
 
     void StretchOut_Mini();
+
+    /// @brief 使伸缩爪在指定时间内平滑移动到预设位置，不阻塞主逻辑
+    void StretchSlow(StretchPos stre_pos, float time);
 
     void OpenSnap();
 

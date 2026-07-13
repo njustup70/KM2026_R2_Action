@@ -18,9 +18,9 @@ void VacuumClaw::Start()
         .ADRC_Womega(42.0f, 9.6f)
         .ADRC_Physic(1.0e-4f, 0.30f, 0.005f)
         .ADRC_Limit(10.0f)
-        .SpdLimit(1000.0f)
-        .ADRC_MaxPlannedVel(800.0f)
-        .ADRC_SOTF(0.12f)
+        .SpdLimit(3000.0f)
+        .ADRC_MaxPlannedVel(3000.0f)
+        .ADRC_SOTF(0.05f)
         .SetDt(0.002f)
         .Apply();
     motor_stretch.driver.Enable();
@@ -95,6 +95,8 @@ void VacuumClaw::Update()
     }
     else
     {
+        _UpdateStretchSlow();
+
         // 控制前伸和收回
         motor_stretch.SetPos(stretch_pos); // 伸出为正
         motor_snap.SetPos(snap_pos); // 张开为负
@@ -152,6 +154,23 @@ void VacuumClaw::Update()
     // }
 }
 
+void VacuumClaw::_UpdateStretchSlow()
+{
+    if (!_stretch_slow.active) return;
+
+    float t = (DWT_GetTimeline_Sec() - _stretch_slow.start_time) / _stretch_slow.duration;
+    if (t >= 1.0f)
+    {
+        stretch_pos = _stretch_slow.target_pos;
+        _stretch_slow.active = false;
+        return;
+    }
+
+    if (t < 0.0f) t = 0.0f;
+    const float blend = t * t * (3.0f - 2.0f * t);
+    stretch_pos = _stretch_slow.start_pos + (_stretch_slow.target_pos - _stretch_slow.start_pos) * blend;
+}
+
 void VacuumClaw::_Update_GetOrigin()
 {
     // 先 pitch
@@ -177,6 +196,7 @@ void VacuumClaw::_Update_GetOrigin()
   */
 void VacuumClaw::StretchOut()
 {
+    _stretch_slow.active = false;
     pitch_pos = pitch_origined_pos + FETCH_PITCH_POS;
     // motor_pitch.SetPosVel(-pitch_pos, 1.5);
 
@@ -209,6 +229,7 @@ void VacuumClaw::StretchOut()
 // 取块第一步，先伸出一点，可以定心
 void VacuumClaw::StretchOut_First()
 {
+    _stretch_slow.active = false;
     // pitch 竖直
     pitch_pos = pitch_origined_pos + FETCH_PITCH_POS;
     // motor_pitch.SetPosVel(-pitch_pos, 1.5);    
@@ -218,10 +239,13 @@ void VacuumClaw::StretchOut_First()
 // 取块第二步，开泵了，继续伸出剩下部分
 void VacuumClaw::StretchOut_Second()
 {
+    _stretch_slow.active = false;
     // stretch_pos = 252000;
     constexpr float target_pos = 255000.0f;
-    constexpr float step_size  = 8800.0f;   // 每步增量
-    constexpr float step_dt    = 0.002f;       // 每步间隔
+    constexpr float code_per_sec = 255000.0f; // 目标变化速度，单位 code/s
+    constexpr float step_dt       = 0.002f;     // 每步间隔
+
+    const float step_size = code_per_sec * step_dt;
 
     for (float pos = 190000.0f + step_size; pos < target_pos; pos += step_size)
     {
@@ -237,6 +261,7 @@ void VacuumClaw::StretchOut_Second()
 ///@brief 三区取块的动作，只伸出15cm左右
 void VacuumClaw::StretchOut_Mini()
 {
+    _stretch_slow.active = false;
     // pitch 竖直
     pitch_pos = pitch_origined_pos + FETCH_PITCH_POS;
 
@@ -253,8 +278,35 @@ void VacuumClaw::StretchOut_Mini()
     stretch_pos = target_pos;
 }
 
+void VacuumClaw::StretchSlow(StretchPos stre_pos, float time)
+{
+    float target_pos = 0.0f;
+    switch (stre_pos)
+    {
+    case StretchPos::BACK:       target_pos = 100.0f; break;
+    case StretchPos::OUT_MINI:   target_pos = 105000.0f; break;
+    case StretchPos::OUT_FIRST:  target_pos = 190000.0f; break;
+    case StretchPos::OUT:        target_pos = 252000.0f; break;
+    case StretchPos::OUT_SECOND: target_pos = 255000.0f; break;
+    }
+
+    if (time <= 0.0f)
+    {
+        stretch_pos = target_pos;
+        _stretch_slow.active = false;
+        return;
+    }
+
+    _stretch_slow.active = true;
+    _stretch_slow.start_pos = stretch_pos;
+    _stretch_slow.target_pos = target_pos;
+    _stretch_slow.start_time = DWT_GetTimeline_Sec();
+    _stretch_slow.duration = time;
+}
+
 void VacuumClaw::StretchBack()
 {
+    _stretch_slow.active = false;
     pitch_pos = pitch_origined_pos + 2000; // 翻转物块，改成2006后好像不能翻的太过了
     // motor_pitch.SetPosVel(-pitch_pos, 1.7);
 
