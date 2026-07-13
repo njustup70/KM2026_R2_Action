@@ -193,7 +193,7 @@ void GetBlock::_InitLiftDm()
         _ConfigureLiftDmParamsOnce();
     }
     motor_dm_lift.SetVelLimit(LIFT_DM_SOFT_VEL_LIMIT);
-    motor_dm_lift.SetSuperAutoEnable(true, 500); // 始终开启，激进恢复：含故障清错+重使能
+    motor_dm_lift.SetSuperAutoEnable(true, 50); // 始终开启，激进恢复：含故障清错+重使能
     motor_dm_lift.Enable();
 }
 
