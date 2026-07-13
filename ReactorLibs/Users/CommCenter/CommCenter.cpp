@@ -207,6 +207,9 @@ void CommCenter::DockRxCallback(uint8_t func_code, const uint8_t* payload, uint8
 
     if(func_code == 0xC3)
     {
+        // 收到光通信了，允许关闭工控机偏置
+        APP::jaw.LockHostPCBias();
+        
         // 0.5s内最多处理一次，避免对接偏置被过快重复触发
         static float last_trigger_time = -0.5f;
         const float now = DWT_GetTimeline_Sec();
