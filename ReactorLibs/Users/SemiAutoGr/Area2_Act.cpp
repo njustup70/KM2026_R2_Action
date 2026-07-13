@@ -351,18 +351,18 @@ static void FetchUp200()
 
   // 往前缓慢移动，边前进边锁横向+yaw
   float move_start = DWT_GetTimeline_Sec();
-  MoveWhileAlignUntil(0.35f, 0.5f, 0.5f, [&]()
+  MoveWhileAlignUntil(0.5f, 0.5f, 0.5f, [&]()
   {
     return DWT_GetTimeline_Sec() - move_start >= 0.35f;
   });
 
   move_start = DWT_GetTimeline_Sec();
-  MoveWhileAlignUntil(0.25f, 0.4f, 0.4f, [&]()
+  MoveWhileAlignUntil(0.35f, 0.4f, 0.4f, [&]()
   {
-    return DWT_GetTimeline_Sec() - move_start >= 0.15f;
+    return DWT_GetTimeline_Sec() - move_start >= 0.25f;
   });
 
-  MoveWhileAlignUntil(0.25f, 0.4f, 0.4f, [&]()
+  MoveWhileAlignUntil(0.2f, 0.4f, 0.4f, [&]()
   {
     return IR_Read(APP::leg.detector[0]);
   });
@@ -387,16 +387,16 @@ static void FetchUp400()
 
   // 往前缓慢移动，边前进边锁横向+yaw
   float move_start = DWT_GetTimeline_Sec();
-  MoveWhileAlignUntil(0.35f, 0.5f, 0.5f, [&]()
+  MoveWhileAlignUntil(0.5f, 0.5f, 0.5f, [&]()
   {
     return DWT_GetTimeline_Sec() - move_start >= 0.35f;
   });
   move_start = DWT_GetTimeline_Sec();
-  MoveWhileAlignUntil(0.25f, 0.4f, 0.4f, [&]()
+  MoveWhileAlignUntil(0.35f, 0.4f, 0.4f, [&]()
   {
     return DWT_GetTimeline_Sec() - move_start >= 0.15f;
   });
-  MoveWhileAlignUntil(0.25f, 0.4f, 0.4f, [&]()
+  MoveWhileAlignUntil(0.2f, 0.4f, 0.4f, [&]()
   {
     return APP::leg.detector[0].Read();
   });
@@ -559,10 +559,10 @@ void MeiLinArray::FetchBlock(BlockHeight height)
   // 必须等爪子完全合上
   Seq::WaitUntil([]()
   {
-    return fabs(APP::vac_claw.motor_snap.driver.measure.total_angle - APP::vac_claw.snap_pos) < 1000;
+    return fabs(APP::vac_claw.motor_snap.driver.measure.total_angle - APP::vac_claw.snap_pos) < 5000;
   });  
 
-  Seq::Wait(0.5f);
+  // Seq::Wait(0.5f);
 
   // 等一会再小开爪
   // Seq::Wait(0.8f);
@@ -573,7 +573,7 @@ void MeiLinArray::FetchBlock(BlockHeight height)
   APP::vac_claw.StretchOut_Second();
 
   // 等一会，再翻转物块，收回爪子
-  Seq::Wait(0.8f);
+  Seq::Wait(0.5f);
   // 后台执行翻块、收爪和入仓；FetchBlock 返回后可立即执行下一次上平台动作。
   APP::vac_claw.ReturnAndStore(is_fetch_down200);
 
@@ -645,28 +645,30 @@ void MeiLinArray::Climb_Up200(bool need_chase)
       return (fabs(APP::leg.real_front_pos_mm - APP::leg.front_pos) < 10.0f) 
       && (fabs(APP::leg.real_back_pos_mm - APP::leg.back_pos) < 10.0f);
     });
+
+    // 往前缓慢移动，边前进边锁横向+yaw
+    float move_start = DWT_GetTimeline_Sec();
+    MoveWhileAlignUntil(0.5f, 0.5f, 0.5f, [&]()
+    {
+      return DWT_GetTimeline_Sec() - move_start >= 0.2f;
+    });
+    move_start = DWT_GetTimeline_Sec();
+    MoveWhileAlignUntil(0.4f, 0.4f, 0.4f, [&]()
+    {
+      return DWT_GetTimeline_Sec() - move_start >= 0.2f;
+    });
+    move_start = DWT_GetTimeline_Sec();
+    MoveWhileAlignUntil(0.28f, 0.3f, 0.3f, [&]()
+    {
+      return DWT_GetTimeline_Sec() - move_start >= 0.2f;
+    });
+    MoveWhileAlignUntil(0.14f, 0.2f, 0.2f, [&]()
+    {
+      return IR_Read(APP::leg.detector[0]);
+    });
   }
   
-  // 往前缓慢移动，边前进边锁横向+yaw
-  float move_start = DWT_GetTimeline_Sec();
-  MoveWhileAlignUntil(0.5f, 0.5f, 0.5f, [&]()
-  {
-    return DWT_GetTimeline_Sec() - move_start >= 0.2f;
-  });
-  move_start = DWT_GetTimeline_Sec();
-  MoveWhileAlignUntil(0.4f, 0.4f, 0.4f, [&]()
-  {
-    return DWT_GetTimeline_Sec() - move_start >= 0.2f;
-  });
-  move_start = DWT_GetTimeline_Sec();
-  MoveWhileAlignUntil(0.28f, 0.3f, 0.3f, [&]()
-  {
-    return DWT_GetTimeline_Sec() - move_start >= 0.2f;
-  });
-  MoveWhileAlignUntil(0.14f, 0.2f, 0.2f, [&]()
-  {
-    return IR_Read(APP::leg.detector[0]);
-  });
+  
 
   // 再走0.3秒，慢慢走，确保前端抵住
   APP::chas.Move(Vec2(0.1, 0), 5.0f);
@@ -676,19 +678,15 @@ void MeiLinArray::Climb_Up200(bool need_chase)
   APP::chas.Move(Vec2(0, 0), 2.0f);
   APP::leg.F_Origin();
 
-  // 抬腿的同时向前走（抬200mm约需要0.3秒）
-  Seq::Wait(0.3f);
+  // 抬腿的同时向前走（抬200mm约需要0.2秒）
+  Seq::Wait(0.2f);
 
   /****   持续衰减的爆发移动速度加成  ****/
-  APP::chas.Move(Vec2(1.0, 0), 3.0f);
-  Seq::Wait(0.2f);
-  APP::chas.Move(Vec2(0.8, 0), 3.0f);
-  Seq::Wait(0.15f);
-  APP::chas.Move(Vec2(0.6, 0), 3.0f);
-  Seq::Wait(0.15f);
+  APP::chas.Move(Vec2(0.5, 0), 3.0f);
+  Seq::Wait(0.3f);
   APP::chas.Move(Vec2(0.4, 0), 3.0f);
-  Seq::Wait(0.1f);
-  APP::chas.Move(Vec2(0.2, 0), 5.0f);
+  Seq::Wait(0.2f);
+  APP::chas.Move(Vec2(0.3, 0), 5.0f);
 
   // 防止小黄2号误检
   // Seq::Wait(0.1f);
@@ -759,21 +757,17 @@ void MeiLinArray::Climb_Up400(bool need_chase)
   float move_start = DWT_GetTimeline_Sec();
   MoveWhileAlignUntil(0.5f, 0.5f, 0.5f, [&]()
   {
-    return DWT_GetTimeline_Sec() - move_start >= 0.2f;
+    return DWT_GetTimeline_Sec() - move_start >= 0.3f;
   });
   move_start = DWT_GetTimeline_Sec();
   MoveWhileAlignUntil(0.4f, 0.4f, 0.4f, [&]()
   {
-    return DWT_GetTimeline_Sec() - move_start >= 0.2f;
+    return DWT_GetTimeline_Sec() - move_start >= 0.25f;
   });
   move_start = DWT_GetTimeline_Sec();
-  MoveWhileAlignUntil(0.28f, 0.3f, 0.3f, [&]()
+  MoveWhileAlignUntil(0.3f, 0.3f, 0.3f, [&]()
   {
     return DWT_GetTimeline_Sec() - move_start >= 0.2f;
-  });
-  MoveWhileAlignUntil(0.14f, 0.2f, 0.2f, [&]()
-  {
-    return IR_Read(APP::leg.detector[0]);
   });
 
   // 再走0.3秒，慢慢走，确保前端抵住
@@ -786,18 +780,14 @@ void MeiLinArray::Climb_Up400(bool need_chase)
   APP::leg.F_Origin();
 
   // 抬腿的同时往前走
-  Seq::Wait(0.6f);
+  Seq::Wait(0.4f);
   
   /****   持续衰减的爆发移动速度加成  ****/
-  APP::chas.Move(Vec2(1.0, 0), 3.0f);
-  Seq::Wait(0.2f);
-  APP::chas.Move(Vec2(0.8, 0), 3.0f);
-  Seq::Wait(0.15f);
-  APP::chas.Move(Vec2(0.6, 0), 3.0f);
-  Seq::Wait(0.15f);
+  APP::chas.Move(Vec2(0.5, 0), 3.0f);
+  Seq::Wait(0.3f);
   APP::chas.Move(Vec2(0.4, 0), 3.0f);
-  Seq::Wait(0.1f);
-  APP::chas.Move(Vec2(0.2, 0), 5.0f);
+  Seq::Wait(0.2f);
+  APP::chas.Move(Vec2(0.3, 0), 5.0f);
 
   // 防止小黄2号误检
   // Seq::Wait(0.2f);
@@ -857,7 +847,7 @@ void MeiLinArray::Decend_200(bool need_chase)
     APP::monit.LogInfo("Leg out skip");
 
     // 先缓慢向前走，边前进边锁横向+yaw
-    MoveWhileAlignUntil(0.4f, 0.5f, 0.5f, [&]()
+    MoveWhileAlignUntil(0.32f, 0.5f, 0.5f, [&]()
     {
       return NIR_Read(APP::leg.detector[0]);
     });
