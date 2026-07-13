@@ -155,6 +155,9 @@ public:
      */
     void CloseClaw();
 
+    // 缓慢抬爪，防止矛头碰掉
+    void SoftPitchUp();
+    
     void Enable();
     void Disable();
     
