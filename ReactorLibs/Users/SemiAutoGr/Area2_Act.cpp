@@ -141,7 +141,15 @@ void MeiLinArray::Init()
 {
   _seq_len = 0;           // 已缓存的动作数
   _seq_ready = false;     // 序列收完标志
+  need_fetch_at_entry = false;
+  _entry_fetch_plan_locked = false;
   MOD::host_pc.Regist(0x91, Area2ActRxCallback);
+}
+
+bool MeiLinArray::LockEntryFetchPlan()
+{
+  _entry_fetch_plan_locked = true;
+  return need_fetch_at_entry;
 }
 
 void MeiLinArray::SetAction(const uint8_t *actions, int len)
@@ -1261,11 +1269,14 @@ void MeiLinArray::Area2ActRxCallback(uint8_t func_code, const uint8_t *payload, 
   MOD::host_pc.SendAck(Area2Code::ACK_DONE, 0);
 
   self.need_extra_foreml_act = self._seq_len >= 2 && self._seq[0] != self._seq[1];
-  self.need_fetch_at_entry = self.need_extra_foreml_act ||
-                             (self._seq_len > 2 &&
-                              (self._seq[2] == Area2Code::FETCH_UP200 ||
-                               self._seq[2] == Area2Code::FETCH_UP400 ||
-                               self._seq[2] == Area2Code::FETCH_DOWN200));
+  if (!self._entry_fetch_plan_locked)
+  {
+    self.need_fetch_at_entry = self.need_extra_foreml_act ||
+                               (self._seq_len > 2 &&
+                                (self._seq[2] == Area2Code::FETCH_UP200 ||
+                                 self._seq[2] == Area2Code::FETCH_UP400 ||
+                                 self._seq[2] == Area2Code::FETCH_DOWN200));
+  }
 
   self.host_a2act_recved = true;
 }

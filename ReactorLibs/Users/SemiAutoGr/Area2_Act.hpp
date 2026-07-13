@@ -57,6 +57,9 @@ public:
 
   /// @brief 是否需要在梅林入口处取块，由下一次 FetchBlock 消费
   bool need_fetch_at_entry = false;
+  /// @brief 锁存本次进梅林的取块计划，防止后续重发序列重新置位
+  bool LockEntryFetchPlan();
+
 
   /// @brief 取下200的块后之后如果要进行转向，则要先收回前腿
   bool is_f_origin_before_turn = false; 
@@ -115,6 +118,7 @@ private:
   
 
   bool _is_enter_act = true; // 第一次接收0x80/0x81/0x82，进行对_seq[0]的判断，第二次进入就执行判断_seq[0]和_seq[1]是否相同的逻辑
+  bool _entry_fetch_plan_locked = false;
 
 };
 
