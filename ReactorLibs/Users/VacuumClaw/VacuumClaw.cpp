@@ -242,8 +242,9 @@ void VacuumClaw::StretchOut_First()
     _stretch_slow.active = false;
     // pitch 竖直
     pitch_pos = pitch_origined_pos + FETCH_PITCH_POS;
-    
-    stretch_pos = 190000;
+    // motor_pitch.SetPosVel(-pitch_pos, 1.5);    
+    // stretch_pos = 190000;
+    StretchSlow(StretchPos::OUT_FIRST, 1.0f);
 }
 
 // 取块第二步，开泵了，继续伸出剩下部分
@@ -252,7 +253,7 @@ void VacuumClaw::StretchOut_Second()
     _stretch_slow.active = false;
     // stretch_pos = 252000;
     constexpr float target_pos = 255000.0f;
-    constexpr float code_per_sec = 125000.0f; // 目标变化速度，单位 code/s
+    constexpr float code_per_sec = 85000.0f; // 目标变化速度，单位 code/s
     constexpr float step_dt       = 0.002f;     // 每步间隔
 
     const float step_size = code_per_sec * step_dt;
@@ -298,6 +299,7 @@ void VacuumClaw::StretchSlow(StretchPos stre_pos, float time)
     case StretchPos::OUT_FIRST:  target_pos = 190000.0f; break;
     case StretchPos::OUT:        target_pos = 252000.0f; break;
     case StretchPos::OUT_SECOND: target_pos = 255000.0f; break;
+    case StretchPos::OUT_GROUND: target_pos = 95000.0f; break;
     }
 
     if (time <= 0.0f)
@@ -321,10 +323,11 @@ void VacuumClaw::StretchBack()
     // motor_pitch.SetPosVel(-pitch_pos, 1.7);
 
     // 等物块被翻转过来
-    Seq::Wait(2.4f);
+    Seq::Wait(2.0f);
 
     // 收回
-    stretch_pos = 100.0; // 防堵转，给个略大于0的值
+    // stretch_pos = 100.0; // 防堵转，给个略大于0的值
+    StretchSlow(StretchPos::BACK, 1.5f);
 }
 
 void VacuumClaw::ReturnAndStore(bool is_fetch_down200)
