@@ -10,6 +10,8 @@ namespace
 // 取块后的后台序列：0=空闲，1=等翻块，2=等收爪并交接给存块机构。
 static uint8_t return_and_store_act_id = 0;
 static float return_and_store_start_time = 0.0f;
+static bool prepare_fetch_first_pending = false;
+static bool fetch_first_prepared = false;
 }
 
 VacuumClaw& APP::vac_claw = VacuumClaw::GetInstance();
@@ -162,6 +164,7 @@ void VacuumClaw::Update()
     // }
 
     _UpdateReturnAndStore();
+    _UpdatePrepareFetchFirst();
 }
 
 void VacuumClaw::_UpdateStretchSlow()
@@ -207,6 +210,8 @@ void VacuumClaw::_Update_GetOrigin()
 void VacuumClaw::StretchOut()
 {
     _stretch_slow.active = false;
+    prepare_fetch_first_pending = false;
+    fetch_first_prepared = false;
     pitch_pos = pitch_origined_pos + FETCH_PITCH_POS;
     // motor_pitch.SetPosVel(-pitch_pos, 1.5);
 
@@ -236,6 +241,28 @@ void VacuumClaw::StretchOut()
     stretch_pos = target_pos;
 }
 
+void VacuumClaw::PrepareFetchFirst()
+{
+    if (prepare_fetch_first_pending || fetch_first_prepared)
+    {
+        return;
+    }
+
+    prepare_fetch_first_pending = true;
+}
+
+bool VacuumClaw::IsFetchFirstReady() const
+{
+    return fetch_first_prepared &&
+           fabs(motor_stretch.driver.measure.total_angle - stretch_pos) < 150.0f;
+}
+
+void VacuumClaw::ClearFetchFirstPrepared()
+{
+    prepare_fetch_first_pending = false;
+    fetch_first_prepared = false;
+}
+
 // 取块第一步，先伸出一点，可以定心
 void VacuumClaw::StretchOut_First()
 {
@@ -243,7 +270,8 @@ void VacuumClaw::StretchOut_First()
     // pitch 竖直
     pitch_pos = pitch_origined_pos + FETCH_PITCH_POS;
     
-    stretch_pos = 190000;
+    // stretch_pos = 190000;
+    StretchSlow(StretchPos::OUT_FIRST, 0.7f);
 }
 
 // 取块第二步，开泵了，继续伸出剩下部分
@@ -336,6 +364,8 @@ void VacuumClaw::ReturnAndStore(bool is_fetch_down200)
     }
 
     _stretch_slow.active = false;
+    prepare_fetch_first_pending = false;
+    fetch_first_prepared = false;
     APP::vac_claw.PitchBack();
 
     if (is_fetch_down200)
@@ -381,6 +411,19 @@ void VacuumClaw::_UpdateReturnAndStore()
         return_and_store_act_id = 0;
         break;
     }
+}
+
+void VacuumClaw::_UpdatePrepareFetchFirst()
+{
+    if (!prepare_fetch_first_pending || return_and_store_act_id != 0)
+    {
+        return;
+    }
+
+    prepare_fetch_first_pending = false;
+    fetch_first_prepared = true;
+    OpenSnap();
+    StretchOut_First();
 }
 
 void VacuumClaw::Enable()

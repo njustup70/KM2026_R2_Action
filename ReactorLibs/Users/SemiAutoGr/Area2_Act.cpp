@@ -453,7 +453,7 @@ static void FetchDown200()
 void MeiLinArray::FetchBlock(BlockHeight height)
 {
   bool is_fetch_down200 = false;
-  const bool preextended = need_fetch_at_entry;
+  const bool preextended = need_fetch_at_entry || _fetch_first_prepared;
   need_fetch_at_entry = false;
 
   switch (height)
@@ -534,10 +534,22 @@ void MeiLinArray::FetchBlock(BlockHeight height)
   if (preextended)
   {
     APP::monit.LogInfo("claw already extended at entry");
-    Seq::WaitUntil([]()
+    if (_fetch_first_prepared)
     {
-      return fabs(APP::vac_claw.motor_stretch.driver.measure.total_angle - APP::vac_claw.stretch_pos) < 150;
-    });
+      Seq::WaitUntil([]()
+      {
+        return APP::vac_claw.IsFetchFirstReady();
+      });
+      APP::vac_claw.ClearFetchFirstPrepared();
+      _fetch_first_prepared = false;
+    }
+    else
+    {
+      Seq::WaitUntil([]()
+      {
+        return fabs(APP::vac_claw.motor_stretch.driver.measure.total_angle - APP::vac_claw.stretch_pos) < 150;
+      });
+    }
   }
   else
   {
@@ -559,7 +571,7 @@ void MeiLinArray::FetchBlock(BlockHeight height)
   // 必须等爪子完全合上
   Seq::WaitUntil([]()
   {
-    return fabs(APP::vac_claw.motor_snap.driver.measure.total_angle - APP::vac_claw.snap_pos) < 5000;
+    return fabs(APP::vac_claw.motor_snap.driver.measure.total_angle - APP::vac_claw.snap_pos) < 6000;
   });  
 
   // Seq::Wait(0.5f);
@@ -623,7 +635,7 @@ bool NIR_Read(InfraredDetector& ir)
  * @brief 二区行为之——上200
  * @details 内部区分需不需要取块
  */
-void MeiLinArray::Climb_Up200(bool need_chase)
+void MeiLinArray::Climb_Up200(bool need_chase, bool prepare_fetch)
 {
   // 记录起始位置
   APP::monit.LogInfo("Climb200:StartPos:(%.2f,%.2f)",
@@ -678,6 +690,16 @@ void MeiLinArray::Climb_Up200(bool need_chase)
 
   // 抬腿的同时向前走（抬200mm约需要0.2秒）
   Seq::Wait(0.2f);
+
+  if (prepare_fetch)
+  {
+    Seq::WaitUntil([]()
+    {
+      return fabs(APP::leg.real_front_pos_mm - APP::leg.front_pos) < 10.0f;
+    });
+    APP::vac_claw.PrepareFetchFirst();
+    _fetch_first_prepared = true;
+  }
 
   /****   持续衰减的爆发移动速度加成  ****/
   APP::chas.Move(Vec2(0.5, 0), 3.0f);
@@ -825,8 +847,14 @@ void MeiLinArray::Climb_Up400(bool need_chase)
      APP::comm_center.slam_pos.x, APP::comm_center.slam_pos.y);
 }
 
-void MeiLinArray::Decend_200(bool need_chase)
+void MeiLinArray::Decend_200(bool need_chase, bool prepare_fetch)
 {
+  if (prepare_fetch)
+  {
+    APP::vac_claw.PrepareFetchFirst();
+    _fetch_first_prepared = true;
+  }
+
   // 这里等腿完全放下才允许下200
   Seq::WaitUntil([=]()
   {
@@ -1164,10 +1192,16 @@ void MeiLinArray::ExecuteSequence()
 
     APP::monit.LogInfo("[MeiLin] Exec[%d/%d] = 0x%02X", i + 1, _seq_len, cmd);
 
+    const Area2Code next_cmd = (i + 1 < _seq_len) ? _seq[i + 1] : Area2Code::AREA_DONE;
+
     switch (cmd)
     {
-      case Area2Code::UP_200:        Climb_Up200(need_chase);                         break;
-      case Area2Code::DOWN_200:      Decend_200(need_chase);                          break;
+      case Area2Code::UP_200:
+        Climb_Up200(need_chase, next_cmd == Area2Code::FETCH_UP200);
+        break;
+      case Area2Code::DOWN_200:
+        Decend_200(need_chase, next_cmd == Area2Code::FETCH_DOWN200);
+        break;
       case Area2Code::UP_400:        Climb_Up400(need_chase);                         break;
       case Area2Code::DOWN_400:      Decend_400(need_chase);                          break;
       case Area2Code::TURN_CW:       TurnRight();                    break;

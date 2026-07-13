@@ -80,7 +80,7 @@ public:
    * @brief 二区行为之 上200
    * @details 内部区分需不需要取块
    */
-  void Climb_Up200(bool need_chase = true);
+  void Climb_Up200(bool need_chase = true, bool prepare_fetch = false);
 
   /**
    * @brief 二区行为之 上400
@@ -88,7 +88,7 @@ public:
    */
   void Climb_Up400(bool need_chase = true);
 
-  void Decend_200(bool need_chase = true);
+  void Decend_200(bool need_chase = true, bool prepare_fetch = false);
 
   void Decend_400(bool need_chase = true);
 
@@ -119,6 +119,7 @@ private:
 
   bool _is_enter_act = true; // 第一次接收0x80/0x81/0x82，进行对_seq[0]的判断，第二次进入就执行判断_seq[0]和_seq[1]是否相同的逻辑
   bool _entry_fetch_plan_locked = false;
+  bool _fetch_first_prepared = false;
 
 };
 

@@ -44,6 +44,7 @@ private:
     void _Update_GetOrigin();
     void _UpdateStretchSlow();
     void _UpdateReturnAndStore();
+    void _UpdatePrepareFetchFirst();
 
     struct StretchSlowState
     {
@@ -98,6 +99,15 @@ public:
      * @details 实际序列由 Update() 持续推进；调用后可立即继续底盘动作。
      */
     void ReturnAndStore(bool is_fetch_down200);
+
+    /// @brief 预先张开爪子并伸到取块第一段；若仍在入仓，入仓结束后自动执行
+    void PrepareFetchFirst();
+
+    /// @brief 预伸爪请求已执行，且爪子已到达第一段位置
+    bool IsFetchFirstReady() const;
+
+    /// @brief 当前取块已消费预伸爪状态
+    void ClearFetchFirstPrepared();
 
     // 取块第一步，先伸出一点，可以定心
     void StretchOut_First();
