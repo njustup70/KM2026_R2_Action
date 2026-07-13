@@ -334,6 +334,7 @@ static inline void MoveWhileAlignUntil(float forward_speed,
                         lateral_gain * adj.y,
                         yaw_gain * adj.z), move_duration);
     Seq::Wait(wait_dt);
+    
   }
 }
 
@@ -857,7 +858,7 @@ void MeiLinArray::Decend_200(bool need_chase)
     APP::monit.LogInfo("Leg out skip");
 
     // 先缓慢向前走，边前进边锁横向+yaw
-    MoveWhileAlignUntil(0.4f, 0.5f, 0.5f, [&]()
+    MoveWhileAlignUntil(0.32f, 0.5f, 0.5f, [&]()
     {
       return NIR_Read(APP::leg.detector[0]);
     });
@@ -1166,7 +1167,8 @@ void MeiLinArray::ExecuteSequence()
     /***    厕所    ***/
     if (need_extra_foreml_act && i == 2) continue;
 
-    bool need_chase = true;
+    // bool need_chase = true;
+    bool need_chase = false;
     if (i == _seq_len - 2) need_chase = false;
 
     uint8_t cmd = _seq[i];
