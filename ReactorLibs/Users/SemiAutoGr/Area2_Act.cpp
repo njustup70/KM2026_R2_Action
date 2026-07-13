@@ -314,9 +314,14 @@ static inline void MoveWhileAlignUntil(float forward_speed,
                                        float move_duration = 0.01f,
                                        float wait_dt = 0.005f)
 {
+  int debug_div_cnt = 0;
   while (!stop_pred())
   {
     Vec3 adj = GetAlignErr();
+    if ((debug_div_cnt++ % 20) == 0)
+    {
+      APP::monit.LogInfo("[MeiLin] adj=(%.3f, %.3f, %.3f)", adj.x, adj.y, adj.z);
+    }
     APP::chas.Move(Vec3(forward_speed,
                         lateral_gain * adj.y,
                         yaw_gain * adj.z), move_duration);
