@@ -153,6 +153,7 @@ private:
     void _LiftStop();
     void _LogLiftDmDiag(const char* tag);
     void _UpdateFSM();
+    void _FeedMoveBlocking(float target_pos, float code_per_sec);
     void _ReadSensors();
     bool _IsTimeout(float sec) const;
     // void _StartBelt();
