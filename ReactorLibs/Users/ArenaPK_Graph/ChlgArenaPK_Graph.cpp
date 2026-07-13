@@ -51,7 +51,7 @@ static void Robot_Combine();
 
 Vec2 Arena_R2_KFS_FetchPos[2] = {
   Vec2(11.1, 3.555), Vec2(11.1, 2.835)
-}; // 块之间间隔：0.175 + 0.175 + 0.37 = 0.72 m
+}; 
 
 Vec3 Arena_R2_L2_Mid_Ges(10.75f, 5.20f, 1.571f);
 // Vec2 Arena_R2_PutKFSPos[3] = {
