@@ -302,8 +302,8 @@ void Jaw::PitchUp()
 void Jaw::SoftPitchUp()
 {
     float targ_pitch_pos = _pitch_origin_code + 500;
-    constexpr float step_size = 50000;
-    constexpr float step_dt = 0.001;
+    constexpr float step_size = 6000;
+    constexpr float step_dt = 0.005;
     for(float pos = _pitch_pos + step_size; pos < targ_pitch_pos; pos += step_size)
     {
         _pitch_pos = pos;
@@ -314,7 +314,7 @@ void Jaw::SoftPitchUp()
 
 void Jaw::PitchDown()
 {
-    _pitch_pos = _pitch_origin_code + (JawConst::_pitch_max_travel_code / 2) - 4000;
+    _pitch_pos = _pitch_origin_code + (JawConst::_pitch_max_travel_code / 2) - 3500;
 }
 
 void Jaw::SetPos(float x_mm, float y_mm)
