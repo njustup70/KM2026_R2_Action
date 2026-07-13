@@ -14,6 +14,7 @@
 #include "std_math.hpp"
 #include "SemiAutoGr.hpp"
 #include "MainLoop.hpp"
+#include "bsp_dwt.hpp"
 
 MeiLin_BlockPos::MeiLin_BlockPos() = default;
 MeiLin_BlockPos& Area2::block_pos = MeiLin_BlockPos::GetInstance();
@@ -295,9 +296,32 @@ static Vec3 GetAlignErr()
   float sz = sinf(System.position.z);
   float cz = cosf(System.position.z);
 
+  float yaw_err = tyaw - System.position.z;
+  yaw_err = atan2f(sinf(yaw_err), cosf(yaw_err));
+
   return Vec3(0.0f,
               -sz * ex + cz * ey,
-              tyaw - System.position.z);
+              yaw_err);
+}
+
+/// @brief 持续前进，并在每个控制周期刷新梅林桩的横向和 yaw 修正
+/// @tparam StopPred 停止条件谓词，返回 true 时退出
+template <typename StopPred>
+static inline void MoveWhileAlignUntil(float forward_speed,
+                                       float lateral_gain,
+                                       float yaw_gain,
+                                       StopPred&& stop_pred,
+                                       float move_duration = 0.01f,
+                                       float wait_dt = 0.005f)
+{
+  while (!stop_pred())
+  {
+    Vec3 adj = GetAlignErr();
+    APP::chas.Move(Vec3(forward_speed,
+                        lateral_gain * adj.y,
+                        yaw_gain * adj.z), move_duration);
+    Seq::Wait(wait_dt);
+  }
 }
 
 // 取上200的块之前，先要抬腿抵住
@@ -313,15 +337,17 @@ static void FetchUp200()
   });
 
   // 往前缓慢移动，边前进边锁横向+yaw
-  Vec3 adj = GetAlignErr();
-  APP::chas.Move(Vec3(0.35f, 0.5f * adj.y, 0.5f * adj.z), 3.0f);
-  Seq::Wait(0.35f);
-  adj = GetAlignErr();
-  APP::chas.Move(Vec3(0.25f, 0.4f * adj.y, 0.4f * adj.z), 3.0f);
-  Seq::Wait(0.15f);
-
-  // 利用小黄0号确定位置，保证抵住
-  Seq::WaitUntil([&]()
+  float move_start = DWT_GetTimeline_Sec();
+  MoveWhileAlignUntil(0.35f, 0.5f, 0.5f, [&]()
+  {
+    return DWT_GetTimeline_Sec() - move_start >= 0.35f;
+  });
+  move_start = DWT_GetTimeline_Sec();
+  MoveWhileAlignUntil(0.25f, 0.4f, 0.4f, [&]()
+  {
+    return DWT_GetTimeline_Sec() - move_start >= 0.15f;
+  });
+  MoveWhileAlignUntil(0.25f, 0.4f, 0.4f, [&]()
   {
     return IR_Read(APP::leg.detector[0]);
   });
@@ -345,15 +371,17 @@ static void FetchUp400()
   Seq::Wait(0.5f);
 
   // 往前缓慢移动，边前进边锁横向+yaw
-  Vec3 adj = GetAlignErr();
-  APP::chas.Move(Vec3(0.35f, 0.5f * adj.y, 0.5f * adj.z), 3.0f);
-  Seq::Wait(0.35f);
-  adj = GetAlignErr();
-  APP::chas.Move(Vec3(0.25f, 0.4f * adj.y, 0.4f * adj.z), 3.0f);
-  Seq::Wait(0.15f);
-
-  // 等待小黄0号检测到可以抬前腿
-  Seq::WaitUntil([&]()
+  float move_start = DWT_GetTimeline_Sec();
+  MoveWhileAlignUntil(0.35f, 0.5f, 0.5f, [&]()
+  {
+    return DWT_GetTimeline_Sec() - move_start >= 0.35f;
+  });
+  move_start = DWT_GetTimeline_Sec();
+  MoveWhileAlignUntil(0.25f, 0.4f, 0.4f, [&]()
+  {
+    return DWT_GetTimeline_Sec() - move_start >= 0.15f;
+  });
+  MoveWhileAlignUntil(0.25f, 0.4f, 0.4f, [&]()
   {
     return APP::leg.detector[0].Read();
   });
@@ -368,16 +396,17 @@ static void FetchUp400()
 static void FetchDown200()
 {
   // 往前缓慢移动，边前进边锁横向+yaw
-  Vec3 adj = GetAlignErr();
-  APP::chas.Move(Vec3(0.25f, 0.5f * adj.y, 0.5f * adj.z), 7.0f);
-  Seq::Wait(0.35f);
-  
-  adj = GetAlignErr();
-  APP::chas.Move(Vec3(0.15f, 0.4f * adj.y, 0.4f * adj.z), 7.0f);
-  Seq::Wait(0.15f);
-
-  // 等待小黄0号检测到就减速
-  Seq::WaitUntil([&]()
+  float move_start = DWT_GetTimeline_Sec();
+  MoveWhileAlignUntil(0.25f, 0.5f, 0.5f, [&]()
+  {
+    return DWT_GetTimeline_Sec() - move_start >= 0.35f;
+  });
+  move_start = DWT_GetTimeline_Sec();
+  MoveWhileAlignUntil(0.15f, 0.4f, 0.4f, [&]()
+  {
+    return DWT_GetTimeline_Sec() - move_start >= 0.15f;
+  });
+  MoveWhileAlignUntil(0.15f, 0.4f, 0.4f, [&]()
   {
     return !APP::leg.detector[0].Read();
   });
@@ -612,21 +641,22 @@ void MeiLinArray::Climb_Up200(bool need_chase)
   }
   
   // 往前缓慢移动，边前进边锁横向+yaw
-  Vec3 adj = GetAlignErr();
-  APP::chas.Move(Vec3(0.5f,  0.5f * adj.y, 0.5f * adj.z), 3.0f);
-  Seq::Wait(0.2f);
-  adj = GetAlignErr();
-  APP::chas.Move(Vec3(0.4f,  0.4f * adj.y, 0.4f * adj.z), 3.0f);
-  Seq::Wait(0.2f);
-  adj = GetAlignErr();
-  APP::chas.Move(Vec3(0.28f, 0.3f * adj.y, 0.3f * adj.z), 3.0f);
-  Seq::Wait(0.2f);
-  adj = GetAlignErr();
-  APP::chas.Move(Vec3(0.14f, 0.2f * adj.y, 0.2f * adj.z), 6.0f);
-
-
-  // 等待小黄0号检测到可以抬前腿
-  Seq::WaitUntil([&]()
+  float move_start = DWT_GetTimeline_Sec();
+  MoveWhileAlignUntil(0.5f, 0.5f, 0.5f, [&]()
+  {
+    return DWT_GetTimeline_Sec() - move_start >= 0.2f;
+  });
+  move_start = DWT_GetTimeline_Sec();
+  MoveWhileAlignUntil(0.4f, 0.4f, 0.4f, [&]()
+  {
+    return DWT_GetTimeline_Sec() - move_start >= 0.2f;
+  });
+  move_start = DWT_GetTimeline_Sec();
+  MoveWhileAlignUntil(0.28f, 0.3f, 0.3f, [&]()
+  {
+    return DWT_GetTimeline_Sec() - move_start >= 0.2f;
+  });
+  MoveWhileAlignUntil(0.14f, 0.2f, 0.2f, [&]()
   {
     return IR_Read(APP::leg.detector[0]);
   });
@@ -719,20 +749,22 @@ void MeiLinArray::Climb_Up400(bool need_chase)
   }
 
   // 往前缓慢移动，直到抵靠到前端（手K曲线 + 横向+yaw闭环）
-  Vec3 adj = GetAlignErr();
-  APP::chas.Move(Vec3(0.5f,  0.5f * adj.y, 0.5f * adj.z), 3.0f);
-  Seq::Wait(0.2f);
-  adj = GetAlignErr();
-  APP::chas.Move(Vec3(0.4f,  0.4f * adj.y, 0.4f * adj.z), 3.0f);
-  Seq::Wait(0.2f);
-  adj = GetAlignErr();
-  APP::chas.Move(Vec3(0.28f, 0.3f * adj.y, 0.3f * adj.z), 3.0f);
-  Seq::Wait(0.2f);
-  adj = GetAlignErr();
-  APP::chas.Move(Vec3(0.14f, 0.2f * adj.y, 0.2f * adj.z), 6.0f);
-
-  // 等待小黄0号检测到可以抬前腿
-  Seq::WaitUntil([&]()
+  float move_start = DWT_GetTimeline_Sec();
+  MoveWhileAlignUntil(0.5f, 0.5f, 0.5f, [&]()
+  {
+    return DWT_GetTimeline_Sec() - move_start >= 0.2f;
+  });
+  move_start = DWT_GetTimeline_Sec();
+  MoveWhileAlignUntil(0.4f, 0.4f, 0.4f, [&]()
+  {
+    return DWT_GetTimeline_Sec() - move_start >= 0.2f;
+  });
+  move_start = DWT_GetTimeline_Sec();
+  MoveWhileAlignUntil(0.28f, 0.3f, 0.3f, [&]()
+  {
+    return DWT_GetTimeline_Sec() - move_start >= 0.2f;
+  });
+  MoveWhileAlignUntil(0.14f, 0.2f, 0.2f, [&]()
   {
     return IR_Read(APP::leg.detector[0]);
   });
@@ -818,11 +850,7 @@ void MeiLinArray::Decend_200(bool need_chase)
     APP::monit.LogInfo("Leg out skip");
 
     // 先缓慢向前走，边前进边锁横向+yaw
-    Vec3 adj = GetAlignErr();
-    APP::chas.Move(Vec3(0.4f, 0.5f * adj.y, 0.5f * adj.z), 7.0f);
-
-    // 等待小黄0号检测不到后，减速
-    Seq::WaitUntil([&]()
+    MoveWhileAlignUntil(0.4f, 0.5f, 0.5f, [&]()
     {
       return NIR_Read(APP::leg.detector[0]);
     });
@@ -901,12 +929,7 @@ void MeiLinArray::Decend_400(bool need_chase)
   APP::monit.LogInfo("Leg out skip");
 
   // 先缓慢向前走，边前进边锁横向+yaw
-  Vec3 adj = GetAlignErr();
-  APP::chas.Move(Vec3(0.25f, 0.5f * adj.y, 0.5f * adj.z), 6.0f);
-  Seq::Wait(0.25f);
-
-  // 等待小黄0号检测不到后，减速
-  Seq::WaitUntil([&]()
+  MoveWhileAlignUntil(0.25f, 0.5f, 0.5f, [&]()
   {
     return !APP::leg.detector[0].Read();
   });
