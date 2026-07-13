@@ -370,6 +370,21 @@ void VacuumClaw::PitchDown()
     pitch_pos = pitch_origined_pos + FETCH_PITCH_POS;
 }
 
+void VacuumClaw::PitchBack()
+{
+    pitch_pos = pitch_origined_pos + 2000;
+}
+
+void VacuumClaw::SetPitchPos(float target_pos)
+{
+    pitch_pos = target_pos;
+}
+
+void VacuumClaw::SetPitchPosFromOrigin(float offset)
+{
+    pitch_pos = pitch_origined_pos + offset;
+}
+
 void VacuumClaw::_GetClawOrigin()
 {
     static uint32_t runed_tick = 0;  

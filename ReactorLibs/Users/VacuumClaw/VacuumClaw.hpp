@@ -110,6 +110,12 @@ public:
 
     void PitchOrigin();
     void PitchDown();
+    void PitchBack();
+
+    /// @brief 直接设置 Pitch 电机的目标编码值
+    void SetPitchPos(float target_pos);
+    /// @brief 相对 Pitch 零位设置目标编码值
+    void SetPitchPosFromOrigin(float offset);
     
     /**
      * @brief 
