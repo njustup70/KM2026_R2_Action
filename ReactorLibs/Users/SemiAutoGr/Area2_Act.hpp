@@ -5,6 +5,7 @@
 #include "Chassis.hpp"
 #include "Lift_Leg.hpp"
 #include <cstdint>
+#include "VacuumClaw.hpp"
 
 extern const Vec2 MeiHuaForest_Pos[12];
 enum class BlockHeight : uint8_t
@@ -148,7 +149,7 @@ namespace Area2
 {
   /// @brief 进入二区的逻辑，会在路径的中点之后开始抬腿，预期1.5s完成
   template <size_t N>
-  static bool RunIntoArea2(const Path<N>& path, Vec3 tolerance, bool is_height400 = false)
+  static bool RunIntoArea2(const Path<N>& path, Vec3 tolerance, bool is_height400 = false, bool need_exfetch = false)
   {
       if (!APP::path_chaser.ChasePath(path, tolerance))
       {
@@ -158,27 +159,47 @@ namespace Area2
       uint32_t log_tick = 0;
 
       bool leg_lifted = false;
+      bool vac_claw_extended = false;
+
+      if (need_exfetch)
+      {
+          // 路径执行前，就先开爪
+          APP::vac_claw.OpenSnap();
+          // 放下爪子
+          APP::vac_claw.PitchDown();
+      }
 
       while (!APP::path_chaser.IsFinished())
       {
           Vec3 speed_vec = APP::path_chaser.GetCmdBody();
-          Vec3 world_vec = APP::path_chaser.GetCmdWorld();
+          // Vec3 world_vec = APP::path_chaser.GetCmdWorld();
           APP::chas.Move(speed_vec, 0.01f);
+
+          if (need_exfetch)
+          {
+            // 路径开始执行35%后，开始伸出爪子
+            if (!vac_claw_extended && APP::path_chaser.GetProgress() >= 0.35f)
+            {
+              vac_claw_extended = true;
+              // 伸出爪子。预期1s完成
+              APP::vac_claw.StretchSlow(VacuumClaw::StretchPos::OUT_FIRST, 1.0f);
+            }
+          }
 
           // 路径过半后开始缓慢抬腿，预期1.5s完成
           if (!leg_lifted && APP::path_chaser.GetProgress() >= 0.5f)
           {
-              leg_lifted = true;
-              int16_t lift_target = is_height400 ? -407 : -207;
-              APP::leg.SetFrontPosSlow(lift_target, 1.25f);
-              APP::leg.SetBackPosSlow(lift_target, 1.25f);
+            leg_lifted = true;
+            int16_t lift_target = is_height400 ? -407 : -207;
+            APP::leg.SetFrontPosSlow(lift_target, 1.25f);
+            APP::leg.SetBackPosSlow(lift_target, 1.25f);
           }
 
           if (++log_tick >= 20)
           {
-              log_tick = 0;
-              // APP::monit.LogInfo("world_vec(%.3f, %.3f, %.3f)",
-              //                    world_vec.x, world_vec.y, world_vec.z);
+            log_tick = 0;
+            // APP::monit.LogInfo("world_vec(%.3f, %.3f, %.3f)",
+            //                    world_vec.x, world_vec.y, world_vec.z);
           }
           Seq::Wait(0.005f); // 200hz更新频率
       }
