@@ -443,6 +443,9 @@ static void FetchDown200()
 void MeiLinArray::FetchBlock(BlockHeight height)
 {
   bool is_fetch_down200 = false;
+  const bool preextended = need_fetch_at_entry;
+  need_fetch_at_entry = false;
+
   switch (height)
   {
     case BlockHeight::UP200:
@@ -523,15 +526,26 @@ void MeiLinArray::FetchBlock(BlockHeight height)
   APP::chas.Move(Vec3(0, 0, 0), 0.01f);
   Seq::Wait(0.05f);
 
-  // 先开爪
-  APP::vac_claw.OpenSnap();
-  Seq::Wait(0.7f);
+  if (preextended)
+  {
+    APP::monit.LogInfo("claw already extended at entry");
+    Seq::WaitUntil([]()
+    {
+      return fabs(APP::vac_claw.motor_stretch.driver.measure.total_angle - APP::vac_claw.stretch_pos) < 150;
+    });
+  }
+  else
+  {
+    // 先开爪
+    APP::vac_claw.OpenSnap();
+    Seq::Wait(0.7f);
 
-  APP::monit.LogInfo("stretch out to fetch block");
-  // 再伸出
-  APP::vac_claw.StretchOut_First();
+    APP::monit.LogInfo("stretch out to fetch block");
+    // 再伸出
+    APP::vac_claw.StretchOut_First();
 
-  Seq::Wait(1.5f);
+    Seq::Wait(1.5f);
+  }
 
   // 关爪子定心
   APP::vac_claw.CloseSnap();
@@ -1246,7 +1260,12 @@ void MeiLinArray::Area2ActRxCallback(uint8_t func_code, const uint8_t *payload, 
   // 回复 ACK 告知上位机已收到
   MOD::host_pc.SendAck(Area2Code::ACK_DONE, 0);
 
-  if (self._seq[0] != self._seq[1]) self.need_extra_foreml_act = true;
+  self.need_extra_foreml_act = self._seq_len >= 2 && self._seq[0] != self._seq[1];
+  self.need_fetch_at_entry = self.need_extra_foreml_act ||
+                             (self._seq_len > 2 &&
+                              (self._seq[2] == Area2Code::FETCH_UP200 ||
+                               self._seq[2] == Area2Code::FETCH_UP400 ||
+                               self._seq[2] == Area2Code::FETCH_DOWN200));
 
   self.host_a2act_recved = true;
 }

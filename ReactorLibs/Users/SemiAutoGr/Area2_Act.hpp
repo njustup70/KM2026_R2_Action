@@ -55,6 +55,9 @@ public:
   /// @brief 判断是否有进入梅林前的动作
   bool need_extra_foreml_act = false;
 
+  /// @brief 是否需要在梅林入口处取块，由下一次 FetchBlock 消费
+  bool need_fetch_at_entry = false;
+
   /// @brief 取下200的块后之后如果要进行转向，则要先收回前腿
   bool is_f_origin_before_turn = false; 
 
@@ -149,7 +152,7 @@ namespace Area2
 {
   /// @brief 进入二区的逻辑，会在路径的中点之后开始抬腿，预期1.5s完成
   template <size_t N>
-  static bool RunIntoArea2(const Path<N>& path, Vec3 tolerance, bool is_height400 = false, bool need_exfetch = false)
+  static bool RunIntoArea2(const Path<N>& path, Vec3 tolerance, bool is_height400 = false, bool need_fetch_at_entry = false)
   {
       if (!APP::path_chaser.ChasePath(path, tolerance))
       {
@@ -161,7 +164,7 @@ namespace Area2
       bool leg_lifted = false;
       bool vac_claw_extended = false;
 
-      if (need_exfetch)
+      if (need_fetch_at_entry)
       {
           // 路径执行前，就先开爪
           APP::vac_claw.OpenSnap();
@@ -175,7 +178,7 @@ namespace Area2
           // Vec3 world_vec = APP::path_chaser.GetCmdWorld();
           APP::chas.Move(speed_vec, 0.01f);
 
-          if (need_exfetch)
+          if (need_fetch_at_entry)
           {
             // 路径开始执行35%后，开始伸出爪子
             if (!vac_claw_extended && APP::path_chaser.GetProgress() >= 0.35f)
