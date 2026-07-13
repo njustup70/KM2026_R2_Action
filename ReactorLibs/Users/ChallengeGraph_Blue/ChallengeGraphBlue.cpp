@@ -485,13 +485,13 @@ void Goto_Area2(StateCore *core)
   switch (Area2::mei_lin_array.enter_code)
   {
     case Area2Code::ENTER_0:
-      MOVE::MoveToTargPos(PATH::A12_B3());
+      Area2::RunIntoArea2(PATH::A12_B3(), Vec3(0.015f, 0.015f, 0.015f), true);
       break;
     case Area2Code::ENTER_1:
-      MOVE::MoveToTargPos(PATH::A12_B2());
+      Area2::RunIntoArea2(PATH::A12_B2(), Vec3(0.015f, 0.015f, 0.015f), false);
       break;
     case Area2Code::ENTER_2:
-      MOVE::MoveToTargPos(PATH::A12_B1());
+      Area2::RunIntoArea2(PATH::A12_B1(), Vec3(0.015f, 0.015f, 0.015f), true);
       break;
     default:
       APP::monit.LogError("Invalid A2EnterCode!");
