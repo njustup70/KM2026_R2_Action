@@ -18,9 +18,9 @@ void VacuumClaw::Start()
         .ADRC_Womega(42.0f, 9.6f)
         .ADRC_Physic(1.0e-4f, 0.30f, 0.005f)
         .ADRC_Limit(10.0f)
-        .SpdLimit(1000.0f)
-        .ADRC_MaxPlannedVel(800.0f)
-        .ADRC_SOTF(0.12f)
+        .SpdLimit(3000.0f)
+        .ADRC_MaxPlannedVel(3000.0f)
+        .ADRC_SOTF(0.05f)
         .SetDt(0.002f)
         .Apply();
     motor_stretch.driver.Enable();
@@ -220,8 +220,10 @@ void VacuumClaw::StretchOut_Second()
 {
     // stretch_pos = 252000;
     constexpr float target_pos = 255000.0f;
-    constexpr float step_size  = 8800.0f;   // 每步增量
-    constexpr float step_dt    = 0.002f;       // 每步间隔
+    constexpr float code_per_sec = 255000.0f; // 目标变化速度，单位 code/s
+    constexpr float step_dt       = 0.002f;     // 每步间隔
+
+    const float step_size = code_per_sec * step_dt;
 
     for (float pos = 190000.0f + step_size; pos < target_pos; pos += step_size)
     {
