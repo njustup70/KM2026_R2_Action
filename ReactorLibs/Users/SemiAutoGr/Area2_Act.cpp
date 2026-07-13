@@ -353,6 +353,7 @@ static void FetchDown200()
 /// @param 
 void MeiLinArray::FetchBlock(BlockHeight height)
 {
+  bool is_fetch_down200 = false;
   switch (height)
   {
     case BlockHeight::UP200:
@@ -364,6 +365,7 @@ void MeiLinArray::FetchBlock(BlockHeight height)
     break;
 
     case BlockHeight::DOWN200:
+      is_fetch_down200 = true;
       FetchDown200();
     break;
 
@@ -383,49 +385,49 @@ void MeiLinArray::FetchBlock(BlockHeight height)
   // 抬升先上去；后续 Store() 会从预抬升状态接管
   APP::get_block.LiftUp();
 
-  /**-----------------    关于小黄对准块的代码    ---------------------**/
+  // /**-----------------    关于小黄对准块的代码    ---------------------**/
 
-  // 有任何一边小黄能看到，都说明歪了
-  const float side_spd = 0.10f;
-  int align_cnt_ms = 0;
-  while (NIR_Read(APP::main_loop.mouthfetch_ir_left) || NIR_Read(APP::main_loop.mouthfetch_ir_right))
-  {
-    APP::monit.LogInfo("can't fetch block, need to correct");
-    bool left_seen = NIR_Read(APP::main_loop.mouthfetch_ir_left);
-    bool right_seen = NIR_Read(APP::main_loop.mouthfetch_ir_right);
-    Vec3 body_v = Vec3(0, 0, 0);
+  // // 有任何一边小黄能看到，都说明歪了
+  // const float side_spd = 0.10f;
+  // int align_cnt_ms = 0;
+  // while (NIR_Read(APP::main_loop.mouthfetch_ir_left) || NIR_Read(APP::main_loop.mouthfetch_ir_right))
+  // {
+  //   APP::monit.LogInfo("can't fetch block, need to correct");
+  //   bool left_seen = NIR_Read(APP::main_loop.mouthfetch_ir_left);
+  //   bool right_seen = NIR_Read(APP::main_loop.mouthfetch_ir_right);
+  //   Vec3 body_v = Vec3(0, 0, 0);
 
-    // 保持yaw角 为0 （正前方）
-    float yaw_err = 0.0f - System.position.z;
-    yaw_err = atan2f(sinf(yaw_err), cosf(yaw_err));
-    body_v.z = yaw_err * 1.2f;
+  //   // 保持yaw角 为0 （正前方）
+  //   float yaw_err = 0.0f - System.position.z;
+  //   yaw_err = atan2f(sinf(yaw_err), cosf(yaw_err));
+  //   body_v.z = yaw_err * 1.2f;
 
-    // 如果左边的小黄（红外）能读取到，向左平移，保持yaw角
-    if (left_seen && !right_seen)
-    {
-      body_v.y = side_spd;  // 向右平移
-    }
-    // 如果右边的小黄能读取到，向右平移，保持yaw角
-    else if (right_seen && !left_seen)
-    {
-      body_v.y = -side_spd;  // 向左平移
-    }
-    else
-    {
-      // 两边同时看到时，先只稳住姿态，避免横向来回抖
-      body_v.y = 0.0f;
-    }
+  //   // 如果左边的小黄（红外）能读取到，向左平移，保持yaw角
+  //   if (left_seen && !right_seen)
+  //   {
+  //     body_v.y = side_spd;  // 向右平移
+  //   }
+  //   // 如果右边的小黄能读取到，向右平移，保持yaw角
+  //   else if (right_seen && !left_seen)
+  //   {
+  //     body_v.y = -side_spd;  // 向左平移
+  //   }
+  //   else
+  //   {
+  //     // 两边同时看到时，先只稳住姿态，避免横向来回抖
+  //     body_v.y = 0.0f;
+  //   }
 
-    APP::chas.Move(body_v, 0.006f);
-    Seq::Wait(0.005f);
+  //   APP::chas.Move(body_v, 0.006f);
+  //   Seq::Wait(0.005f);
 
-    align_cnt_ms += 5;
-    if (align_cnt_ms >= 2000)   // 最多对准时间：2s
-    {
-      APP::monit.LogError("[Area2] mouthfetch align timeout.");
-      break;
-    }
-  }
+  //   align_cnt_ms += 5;
+  //   if (align_cnt_ms >= 2000)   // 最多对准时间：2s
+  //   {
+  //     APP::monit.LogError("[Area2] mouthfetch align timeout.");
+  //     break;
+  //   }
+  // }
 
   /**----------------------------------------------------**/
 
@@ -464,6 +466,11 @@ void MeiLinArray::FetchBlock(BlockHeight height)
   // 等一会，再翻转物块，收回爪子
   Seq::Wait(0.8f);
   APP::vac_claw.StretchBack();
+
+  if(is_fetch_down200)
+  {
+    APP::vac_claw.pitch_pos -= 1000; // 如果是取下200块，则翻的更过
+  }
 
   APP::get_block._StartBelt();
   
