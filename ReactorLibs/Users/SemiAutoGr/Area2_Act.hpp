@@ -172,8 +172,6 @@ namespace Area2
       {
           // 路径执行前，就先开爪
           APP::vac_claw.OpenSnap();
-          // 放下爪子
-          APP::vac_claw.PitchDown();
       }
 
       while (!APP::path_chaser.IsFinished())
@@ -184,22 +182,22 @@ namespace Area2
 
           if (need_fetch_at_entry)
           {
-            // 路径开始执行35%后，开始伸出爪子
-            if (!vac_claw_extended && APP::path_chaser.GetProgress() >= 0.35f)
+            // 路径开始执行75%后，开始伸出爪子
+            if (!vac_claw_extended && APP::path_chaser.GetProgress() >= 0.75f)
             {
               vac_claw_extended = true;
-              // 伸出爪子。预期1s完成
-              APP::vac_claw.StretchSlow(VacuumClaw::StretchPos::OUT_FIRST, 1.0f);
+              // 伸出爪子。预期0.75s完成
+              APP::vac_claw.StretchSlow(VacuumClaw::StretchPos::OUT_FIRST, 0.75f);
             }
           }
 
-          // 路径过半后开始缓慢抬腿，预期1.5s完成
+          // 路径过半后开始缓慢抬腿，预期1s完成
           if (!leg_lifted && APP::path_chaser.GetProgress() >= 0.5f)
           {
             leg_lifted = true;
             int16_t lift_target = is_height400 ? -407 : -207;
-            APP::leg.SetFrontPosSlow(lift_target, 1.25f);
-            APP::leg.SetBackPosSlow(lift_target, 1.25f);
+            APP::leg.SetFrontPosSlow(lift_target, 1.0f);
+            APP::leg.SetBackPosSlow(lift_target, 1.0f);
           }
 
           if (++log_tick >= 20)
@@ -210,6 +208,9 @@ namespace Area2
           }
           Seq::Wait(0.005f); // 200hz更新频率
       }
+
+      // 等到全都做完了，然后才放下爪子
+      APP::vac_claw.PitchDown();
 
       APP::monit.LogOK("RunIntoArea2 completed.");
       return true;
