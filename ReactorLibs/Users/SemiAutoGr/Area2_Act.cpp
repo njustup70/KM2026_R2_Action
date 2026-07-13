@@ -54,7 +54,7 @@ void MeiLin_BlockPos::GetIn(int block_id)
   if(block_id >= 0 && block_id <= 11)
   {
     _cur_block_id = block_id;
-    _first_move = true;  // 标记下一次 Forward 是"进入"而非"前进"
+    _pending_first_entry = true;  // 标记仍在出口平台，首次 Forward 只翻转标志不前进
   }
 }
 
@@ -65,10 +65,10 @@ uint8_t MeiLin_BlockPos::GetCurId()
 
 void MeiLin_BlockPos::Forward()
 {
-  if (_first_move)
+  if (_pending_first_entry)
   {
-    // 第一次：刚进入梅林，已经由 GetIn 设好了 ID，不前进
-    _first_move = false;
+    // 第一次踏上梅林桩：GetIn 已设好 ID，只需翻转标志确认进入，不更新块 ID
+    _pending_first_entry = false;
     return;
   }
   constexpr int COLS = 3;
@@ -252,6 +252,54 @@ void MeiLinArray::ChaseCurrentGrid_BLUE()
   APP::monit.LogInfo("[MeiLin] ChaseGrid arrived at id=%d", id);
 }
 
+/// @return 车身系修正向量，x 恒为 0（前向由调用方手动赋值），
+///         y=横向闭环修正（世界系位置误差投影到车身左侧），
+///         z=偏航闭环修正（rad）
+static Vec3 GetAlignErr()
+{
+  uint8_t id = Area2::block_pos.GetCurId();
+  Vec2   tgt;
+  float  tyaw;
+
+  if (Area2::block_pos.IsBeforeFirstEntry())
+  {
+    // 尚未踏上梅林桩，仍处于出口平台，使用出口坐标
+    uint8_t export_idx = id;  // GetIn 传入的 id 即出口位索引 (0/1/2)
+    if (Area2::mei_lin_array.is_blue)
+    {
+      tgt  = MeiHuaForest_Pos_Export_BLUE[export_idx];
+    }
+    else
+    {
+      tgt  = MeiHuaForest_Pos_Export[export_idx];
+    }
+    tyaw = 0.0f;  // 出口平台统一面朝 +X
+  }
+  else
+  {
+    // 已在梅林内部，使用块中心坐标
+    if (Area2::mei_lin_array.is_blue)
+    {
+      tgt  = MeiHuaForest_Pos_BLUE[id];
+      tyaw = Area2::block_pos.GetTargetYaw_BLUE();
+    }
+    else
+    {
+      tgt  = MeiHuaForest_Pos[id];
+      tyaw = Area2::block_pos.GetTargetYaw();
+    }
+  }
+
+  float ex = tgt.x - System.position.x;
+  float ey = tgt.y - System.position.y;
+  float sz = sinf(System.position.z);
+  float cz = cosf(System.position.z);
+
+  return Vec3(0.0f,
+              -sz * ex + cz * ey,
+              tyaw - System.position.z);
+}
+
 // 取上200的块之前，先要抬腿抵住
 static void FetchUp200()
 {
@@ -264,10 +312,12 @@ static void FetchUp200()
     && fabs(APP::leg.real_back_pos_mm - APP::leg.back_pos) < 6 );
   });
 
-  // 往前缓慢移动，直到抵靠到前端
-  APP::chas.Move(Vec2(0.35, 0), 3.0f);
+  // 往前缓慢移动，边前进边锁横向+yaw
+  Vec3 adj = GetAlignErr();
+  APP::chas.Move(Vec3(0.35f, 0.5f * adj.y, 0.5f * adj.z), 3.0f);
   Seq::Wait(0.35f);
-  APP::chas.Move(Vec2(0.25, 0), 3.0f);
+  adj = GetAlignErr();
+  APP::chas.Move(Vec3(0.25f, 0.4f * adj.y, 0.4f * adj.z), 3.0f);
   Seq::Wait(0.15f);
 
   // 利用小黄0号确定位置，保证抵住
@@ -276,11 +326,11 @@ static void FetchUp200()
     return IR_Read(APP::leg.detector[0]);
   });
 
-  // 再走0.3秒，慢慢走，确保前端抵住
+  // 再走0.3秒，慢慢走，确保前端抵住（物理接触，不需闭环）
   APP::chas.Move(Vec2(0.2, 0), 1.0f);
   Seq::Wait(0.3f);
 
-  APP::chas.Move(Vec2(0.0f, 0.0f), 1.0f);  
+  APP::chas.Move(Vec2(0.0f, 0.0f), 1.0f);
 }
 
 // 取上400的块之前，先要抬腿抵住
@@ -294,10 +344,12 @@ static void FetchUp400()
 
   Seq::Wait(0.5f);
 
-  // 往前缓慢移动，直到抵靠到前端
-  APP::chas.Move(Vec2(0.35, 0), 3.0f);
+  // 往前缓慢移动，边前进边锁横向+yaw
+  Vec3 adj = GetAlignErr();
+  APP::chas.Move(Vec3(0.35f, 0.5f * adj.y, 0.5f * adj.z), 3.0f);
   Seq::Wait(0.35f);
-  APP::chas.Move(Vec2(0.25, 0), 3.0f);
+  adj = GetAlignErr();
+  APP::chas.Move(Vec3(0.25f, 0.4f * adj.y, 0.4f * adj.z), 3.0f);
   Seq::Wait(0.15f);
 
   // 等待小黄0号检测到可以抬前腿
@@ -306,19 +358,22 @@ static void FetchUp400()
     return APP::leg.detector[0].Read();
   });
 
-  // 再走0.3秒，慢慢走，确保前端抵住
+  // 再走0.3秒，慢慢走，确保前端抵住（物理接触，不需闭环）
   APP::chas.Move(Vec2(0.2, 0), 1.0f);
   Seq::Wait(0.3f);
 
-  APP::chas.Move(Vec2(0.0f, 0.0f), 1.0f);  
+  APP::chas.Move(Vec2(0.0f, 0.0f), 1.0f);
 }
 
 static void FetchDown200()
 {
-  // 往前缓慢移动，直到抵靠到前端
-  APP::chas.Move(Vec2(0.25, 0), 7.0f);
+  // 往前缓慢移动，边前进边锁横向+yaw
+  Vec3 adj = GetAlignErr();
+  APP::chas.Move(Vec3(0.25f, 0.5f * adj.y, 0.5f * adj.z), 7.0f);
   Seq::Wait(0.35f);
-  APP::chas.Move(Vec2(0.15, 0), 7.0f);
+  
+  adj = GetAlignErr();
+  APP::chas.Move(Vec3(0.15f, 0.4f * adj.y, 0.4f * adj.z), 7.0f);
   Seq::Wait(0.15f);
 
   // 等待小黄0号检测到就减速
@@ -556,14 +611,18 @@ void MeiLinArray::Climb_Up200(bool need_chase)
     });
   }
   
-  // 往前缓慢移动，直到抵靠到前端
-  APP::chas.Move(Vec2(0.5, 0), 3.0f);
+  // 往前缓慢移动，边前进边锁横向+yaw
+  Vec3 adj = GetAlignErr();
+  APP::chas.Move(Vec3(0.5f,  0.5f * adj.y, 0.5f * adj.z), 3.0f);
   Seq::Wait(0.2f);
-  APP::chas.Move(Vec2(0.4, 0), 3.0f);
+  adj = GetAlignErr();
+  APP::chas.Move(Vec3(0.4f,  0.4f * adj.y, 0.4f * adj.z), 3.0f);
   Seq::Wait(0.2f);
-  APP::chas.Move(Vec2(0.28, 0), 3.0f);
+  adj = GetAlignErr();
+  APP::chas.Move(Vec3(0.28f, 0.3f * adj.y, 0.3f * adj.z), 3.0f);
   Seq::Wait(0.2f);
-  APP::chas.Move(Vec2(0.14, 0), 6.0f);
+  adj = GetAlignErr();
+  APP::chas.Move(Vec3(0.14f, 0.2f * adj.y, 0.2f * adj.z), 6.0f);
 
 
   // 等待小黄0号检测到可以抬前腿
@@ -659,14 +718,18 @@ void MeiLinArray::Climb_Up400(bool need_chase)
     });
   }
 
-  // 往前缓慢移动，直到抵靠到前端（手K曲线）
-  APP::chas.Move(Vec2(0.5, 0), 3.0f);
+  // 往前缓慢移动，直到抵靠到前端（手K曲线 + 横向+yaw闭环）
+  Vec3 adj = GetAlignErr();
+  APP::chas.Move(Vec3(0.5f,  0.5f * adj.y, 0.5f * adj.z), 3.0f);
   Seq::Wait(0.2f);
-  APP::chas.Move(Vec2(0.4, 0), 3.0f);
+  adj = GetAlignErr();
+  APP::chas.Move(Vec3(0.4f,  0.4f * adj.y, 0.4f * adj.z), 3.0f);
   Seq::Wait(0.2f);
-  APP::chas.Move(Vec2(0.28, 0), 3.0f);
+  adj = GetAlignErr();
+  APP::chas.Move(Vec3(0.28f, 0.3f * adj.y, 0.3f * adj.z), 3.0f);
   Seq::Wait(0.2f);
-  APP::chas.Move(Vec2(0.14, 0), 6.0f);
+  adj = GetAlignErr();
+  APP::chas.Move(Vec3(0.14f, 0.2f * adj.y, 0.2f * adj.z), 6.0f);
 
   // 等待小黄0号检测到可以抬前腿
   Seq::WaitUntil([&]()
@@ -754,8 +817,9 @@ void MeiLinArray::Decend_200(bool need_chase)
   {
     APP::monit.LogInfo("Leg out skip");
 
-    // 先缓慢向前走
-    APP::chas.Move(Vec2(0.4, 0), 7.0f);
+    // 先缓慢向前走，边前进边锁横向+yaw
+    Vec3 adj = GetAlignErr();
+    APP::chas.Move(Vec3(0.4f, 0.5f * adj.y, 0.5f * adj.z), 7.0f);
 
     // 等待小黄0号检测不到后，减速
     Seq::WaitUntil([&]()
@@ -836,10 +900,11 @@ void MeiLinArray::Decend_400(bool need_chase)
   
   APP::monit.LogInfo("Leg out skip");
 
-  // 先缓慢向前走
-  APP::chas.Move(Vec2(0.25, 0), 6.0f);
+  // 先缓慢向前走，边前进边锁横向+yaw
+  Vec3 adj = GetAlignErr();
+  APP::chas.Move(Vec3(0.25f, 0.5f * adj.y, 0.5f * adj.z), 6.0f);
   Seq::Wait(0.25f);
-  
+
   // 等待小黄0号检测不到后，减速
   Seq::WaitUntil([&]()
   {

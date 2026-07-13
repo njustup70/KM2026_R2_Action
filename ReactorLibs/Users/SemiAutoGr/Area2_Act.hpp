@@ -129,6 +129,9 @@ public:
   float GetTargetYaw_BLUE();
   uint8_t GetCurId(); // 获取当前梅林ID，供外部进行姿态校准
 
+  /// @brief 机器人是否尚未真正踏上第一块梅林桩（仍在出口平台）
+  /// @details GetIn() 后为 true，第一次 Forward() 后变为 false
+  bool IsBeforeFirstEntry() const { return _pending_first_entry; }
 
 private:
   bool IR_Read(InfraredDetector& ir);
@@ -136,7 +139,7 @@ private:
   
   uint8_t _forward = 0;
   uint8_t _left = 0;
-  bool _first_move = true;  // ← 首次 Forward 只落位不前进
+  bool _pending_first_entry = true;  // true=仍在出口平台未踏上梅林桩，首次 Forward() 只翻转标志不前进
   uint8_t _cur_block_id = 0; // 当前所在的梅林块编号
   // uint8_t _cur_block_id[3][4];
 };
