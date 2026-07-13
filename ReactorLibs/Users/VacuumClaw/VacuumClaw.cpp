@@ -1,8 +1,16 @@
 #include "VacuumClaw.hpp"
 #include "StateCore.hpp"
+#include "Get_Block.hpp"
 
 #define SNAP_TOTAL_POS  297000.0f // 总实际行程是 297227，逆时针开爪，爪闭合是正
 #define FETCH_PITCH_POS 300000.0f // 0 - 90° 的 code 值，转到 90° 是正的，回到零位是负的
+
+namespace
+{
+// 取块后的后台序列：0=空闲，1=等翻块，2=等收爪并交接给存块机构。
+static uint8_t return_and_store_act_id = 0;
+static float return_and_store_start_time = 0.0f;
+}
 
 VacuumClaw& APP::vac_claw = VacuumClaw::GetInstance();
 
@@ -152,6 +160,8 @@ void VacuumClaw::Update()
     //     is_back_debug = false;
     //     StretchBack();
     // }
+
+    _UpdateReturnAndStore();
 }
 
 void VacuumClaw::_UpdateStretchSlow()
@@ -315,6 +325,62 @@ void VacuumClaw::StretchBack()
 
     // 收回
     stretch_pos = 100.0; // 防堵转，给个略大于0的值
+}
+
+void VacuumClaw::ReturnAndStore(bool is_fetch_down200)
+{
+    if (return_and_store_act_id != 0)
+    {
+        APP::monit.LogWarning("ReturnAndStore is already running.");
+        return;
+    }
+
+    _stretch_slow.active = false;
+    APP::vac_claw.PitchBack();
+
+    if (is_fetch_down200)
+    {
+        // 还要额外再多翻一点
+        pitch_pos -= 1000;
+    }
+
+    return_and_store_start_time = DWT_GetTimeline_Sec();
+    return_and_store_act_id = 1;
+}
+
+void VacuumClaw::_UpdateReturnAndStore()
+{
+    switch (return_and_store_act_id)
+    {
+    case 0:
+        break;
+
+    case 1: // （等2.0秒）等到物块翻转离地后，再收爪并启动摩擦带
+        if (DWT_GetTimeline_Sec() - return_and_store_start_time >= 1.5f)
+        {
+            // stretch_pos = 100.0f; // 防堵转，给个略大于0的值
+            APP::vac_claw.StretchSlow(StretchPos::BACK, 0.75f);
+            APP::get_block._StartBelt();
+            return_and_store_act_id = 2;
+        }
+        break;
+
+    case 2: // 仅当摩擦带可承接物块后，才允许松爪、关泵
+        if (fabs(motor_stretch.driver.measure.total_angle - stretch_pos) < 500.0f)
+        {
+            OpenSnap();
+            APP::get_block.ClosePump();
+            APP::get_block.OpenPRV();
+            APP::get_block.Store();
+            return_and_store_act_id = 0;
+        }
+        break;
+
+    default:
+        APP::monit.LogError("ReturnAndStore invalid act id: %d", return_and_store_act_id);
+        return_and_store_act_id = 0;
+        break;
+    }
 }
 
 void VacuumClaw::Enable()

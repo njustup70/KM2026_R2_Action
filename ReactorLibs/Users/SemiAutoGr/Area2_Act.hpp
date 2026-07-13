@@ -57,9 +57,9 @@ public:
 
   /// @brief 是否需要在梅林入口处取块，由下一次 FetchBlock 消费
   bool need_fetch_at_entry = false;
+
   /// @brief 锁存本次进梅林的取块计划，防止后续重发序列重新置位
   bool LockEntryFetchPlan();
-
 
   /// @brief 取下200的块后之后如果要进行转向，则要先收回前腿
   bool is_f_origin_before_turn = false; 

@@ -355,11 +355,13 @@ static void FetchUp200()
   {
     return DWT_GetTimeline_Sec() - move_start >= 0.35f;
   });
+
   move_start = DWT_GetTimeline_Sec();
   MoveWhileAlignUntil(0.25f, 0.4f, 0.4f, [&]()
   {
     return DWT_GetTimeline_Sec() - move_start >= 0.15f;
   });
+
   MoveWhileAlignUntil(0.25f, 0.4f, 0.4f, [&]()
   {
     return IR_Read(APP::leg.detector[0]);
@@ -476,11 +478,6 @@ void MeiLinArray::FetchBlock(BlockHeight height)
 
   APP::monit.LogSpec("SkipAppro.");
   _skip_approach = true; // 已经靠上去了，标记跳过下一次 Climb 的重复抵靠动作
-  
-  // // 等稳定
-  // Seq::Wait(0.5f);
-  // APP::chas.Move(Vec2(0.2,0), 2.0f);
-  // Seq::Wait(1.0f);
 
   // 抬升先上去；后续 Store() 会从预抬升状态接管
   APP::get_block.LiftUp();
@@ -549,6 +546,7 @@ void MeiLinArray::FetchBlock(BlockHeight height)
     Seq::Wait(0.7f);
 
     APP::monit.LogInfo("stretch out to fetch block");
+    
     // 再伸出
     APP::vac_claw.StretchOut_First();
 
@@ -576,26 +574,8 @@ void MeiLinArray::FetchBlock(BlockHeight height)
 
   // 等一会，再翻转物块，收回爪子
   Seq::Wait(0.8f);
-  APP::vac_claw.StretchBack();
-
-  if(is_fetch_down200)
-  {
-    APP::vac_claw.pitch_pos -= 1000; // 如果是取下200块，则翻的更过
-  }
-
-  APP::get_block._StartBelt();
-  
-  // 此时爪还抓着物块，但是取下200块的时候，泵不开物块会掉下来，所以等爪子收回摩擦带能碰着物块再开夹爪、关泵
-  Seq::WaitUntil([]()
-  {
-    return fabs(APP::vac_claw.motor_stretch.driver.measure.total_angle - APP::vac_claw.stretch_pos) < 150;
-  });
-
-  APP::vac_claw.OpenSnap();
-  APP::get_block.ClosePump();
-  APP::get_block.OpenPRV();
-
-  APP::get_block.Store();
+  // 后台执行翻块、收爪和入仓；FetchBlock 返回后可立即执行下一次上平台动作。
+  APP::vac_claw.ReturnAndStore(is_fetch_down200);
 
   // APP::get_block.ClosePRV();
 }

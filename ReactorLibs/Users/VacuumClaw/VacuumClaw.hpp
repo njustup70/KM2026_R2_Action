@@ -43,6 +43,7 @@ private:
     void _GetPitchOrigin();
     void _Update_GetOrigin();
     void _UpdateStretchSlow();
+    void _UpdateReturnAndStore();
 
     struct StretchSlowState
     {
@@ -90,6 +91,13 @@ public:
      * @details 水平收回，同时Pitch变为竖直状态，用于夹取的snap电机关闭
      */
     void StretchBack();
+
+    /**
+     * @brief 启动取块后的翻转、收爪和存块序列（非阻塞）
+     * @param is_fetch_down200 下200块需要额外翻转，避免物块卡滞
+     * @details 实际序列由 Update() 持续推进；调用后可立即继续底盘动作。
+     */
+    void ReturnAndStore(bool is_fetch_down200);
 
     // 取块第一步，先伸出一点，可以定心
     void StretchOut_First();
