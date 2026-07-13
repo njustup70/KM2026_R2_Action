@@ -666,14 +666,12 @@ void MeiLinArray::Climb_Up200(bool need_chase)
     {
       return IR_Read(APP::leg.detector[0]);
     });
+
+    // 再走0.3秒，慢慢走，确保前端抵住
+    APP::chas.Move(Vec2(0.1, 0), 5.0f);
+    Seq::Wait(0.25f);
   }
   
-  
-
-  // 再走0.3秒，慢慢走，确保前端抵住
-  APP::chas.Move(Vec2(0.1, 0), 5.0f);
-  Seq::Wait(0.25f);
-
   // 停稳，抬腿
   APP::chas.Move(Vec2(0, 0), 2.0f);
   APP::leg.F_Origin();
@@ -751,28 +749,28 @@ void MeiLinArray::Climb_Up400(bool need_chase)
       return (fabs(APP::leg.real_front_pos_mm - APP::leg.front_pos) < 10.0f) 
       && (fabs(APP::leg.real_back_pos_mm - APP::leg.back_pos) < 10.0f);
     });
+
+    // 往前缓慢移动，直到抵靠到前端（手K曲线 + 横向+yaw闭环）
+    float move_start = DWT_GetTimeline_Sec();
+    MoveWhileAlignUntil(0.5f, 0.5f, 0.5f, [&]()
+    {
+      return DWT_GetTimeline_Sec() - move_start >= 0.3f;
+    });
+    move_start = DWT_GetTimeline_Sec();
+    MoveWhileAlignUntil(0.4f, 0.4f, 0.4f, [&]()
+    {
+      return DWT_GetTimeline_Sec() - move_start >= 0.25f;
+    });
+    move_start = DWT_GetTimeline_Sec();
+    MoveWhileAlignUntil(0.3f, 0.3f, 0.3f, [&]()
+    {
+      return DWT_GetTimeline_Sec() - move_start >= 0.2f;
+    });
+
+    // 再走0.3秒，慢慢走，确保前端抵住
+    APP::chas.Move(Vec2(0.1, 0), 5.0f);
+    Seq::Wait(0.25f);
   }
-
-  // 往前缓慢移动，直到抵靠到前端（手K曲线 + 横向+yaw闭环）
-  float move_start = DWT_GetTimeline_Sec();
-  MoveWhileAlignUntil(0.5f, 0.5f, 0.5f, [&]()
-  {
-    return DWT_GetTimeline_Sec() - move_start >= 0.3f;
-  });
-  move_start = DWT_GetTimeline_Sec();
-  MoveWhileAlignUntil(0.4f, 0.4f, 0.4f, [&]()
-  {
-    return DWT_GetTimeline_Sec() - move_start >= 0.25f;
-  });
-  move_start = DWT_GetTimeline_Sec();
-  MoveWhileAlignUntil(0.3f, 0.3f, 0.3f, [&]()
-  {
-    return DWT_GetTimeline_Sec() - move_start >= 0.2f;
-  });
-
-  // 再走0.3秒，慢慢走，确保前端抵住
-  APP::chas.Move(Vec2(0.1, 0), 5.0f);
-  Seq::Wait(0.25f);
 
   // 停稳，抬腿
   APP::chas.Move(Vec2(0, 0), 2.0f);
