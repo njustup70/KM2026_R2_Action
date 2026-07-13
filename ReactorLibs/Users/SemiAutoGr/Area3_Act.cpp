@@ -68,8 +68,9 @@ void Area3::FetchBlockOnTheGround()
   // APP::get_block.Store();
 
   // 再伸出一点
-  APP::vac_claw.stretch_pos = 93000;
-  // Seq::Wait(0.9f);
+  // APP::vac_claw.stretch_pos = 93000;
+  APP::vac_claw.StretchSlow(VacuumClaw::StretchPos::OUT_GROUND, 0.5);
+  Seq::Wait(0.6f);
   // 先翻转一点达妙
   APP::vac_claw.PitchOrigin();
 
@@ -84,7 +85,9 @@ void Area3::FetchBlockOnTheGround()
   Seq::Wait(2.2f);
 
   // 收回
-  APP::vac_claw.stretch_pos = 600.0; // 防堵转，给个略大于0的值
+  // APP::vac_claw.stretch_pos = 600.0; // 防堵转，给个略大于0的值
+  APP::vac_claw.StretchSlow(VacuumClaw::StretchPos::BACK, 1.0);
+
   // 等着完全收回
   Seq::WaitUntil([]()
   {
