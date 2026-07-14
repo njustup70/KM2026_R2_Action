@@ -248,6 +248,13 @@ void Walk_To_Dock(StateCore *core)
     {
       break;
     }
+
+    if(not_cut_off_retry)
+    {
+      APP::main_loop.retry_id = 1;
+      not_cut_off_retry = false;
+      return;
+    }
   }
 
   // 灯带：进度条
@@ -336,8 +343,9 @@ void Dock_Fetch_And_Back(StateCore *core)
     }
     if(not_cut_off_retry)
     {
+      APP::main_loop.retry_id = 1;
       not_cut_off_retry = false;
-      break;
+      return;
     }
   }
 
@@ -357,6 +365,14 @@ void Dock_Fetch_And_Back(StateCore *core)
     {
       wait_time_s += 0.05f;
       wait_progress = wait_time_s / 12.0f;
+
+      if(not_cut_off_retry)
+      {
+        APP::main_loop.retry_id = 1;
+        not_cut_off_retry = false;
+        return;
+      }
+
       Seq::Wait(0.05f);
     }
 

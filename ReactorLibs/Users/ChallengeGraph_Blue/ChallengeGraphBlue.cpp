@@ -232,6 +232,13 @@ void Walk_To_Dock(StateCore *core)
     {
       break;
     }
+
+    if(not_cut_off_retry)
+    {
+      APP::main_loop.retry_id = 1;
+      not_cut_off_retry = false;
+      return;
+    }    
   }
 
   // 灯带：进度条
@@ -325,7 +332,9 @@ void Dock_Fetch_And_Back(StateCore *core)
     // 如果请求不断电重试，直接跳出，由状态机转移到 s_wait
     if(not_cut_off_retry)
     {
-      break;
+      APP::main_loop.retry_id = 1;
+      not_cut_off_retry = false;
+      return;
     }
   }
 
@@ -380,10 +389,12 @@ void Dock_Fetch_And_Back(StateCore *core)
       }
 
       // 如果请求不断电重试，直接跳出，由状态机转移到 s_wait
-      if(not_cut_off_retry)
-      {
-        break;
-      }
+    if(not_cut_off_retry)
+    {
+      APP::main_loop.retry_id = 1;
+      not_cut_off_retry = false;
+      return;
+    }
     }
 
     // 灯带：进度条
