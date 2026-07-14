@@ -32,6 +32,8 @@ static bool retry_put_L2_N4 = false;
 static bool retry_put_L2_N5 = false;
 static bool retry_put_L2_N6 = false;
 
+static bool _sick_bias_got = false;
+
 static int a3_act_id = 0;
 
 static bool IR_Read(InfraredDetector& ir);
@@ -222,11 +224,11 @@ void Waiting_for_Start(StateCore *core)
   // 灯带：滚动
   APP::main_loop.test_led.Running(Color::Up_Purpor * 0.75f, 0.5f, 1.0f);
 
-  // 走到等待点
-  MOVE::MoveToTargGes(Vec3(11.38f, 2.1f, 0.0f));
+  // // 走到等待点
+  // MOVE::MoveToTargGes(Vec3(11.38f, 2.1f, 0.0f));
 
-  // 走到对接点
-  MOVE::MoveToTargGes(Vec3(10.1f, 2.1f, -1.571f));
+  // // 走到对接点
+  // MOVE::MoveToTargGes(Vec3(10.1f, 2.1f, -1.571f));
 
   // 进入R1等待状态
   core->GetCurState().Complete = true;
@@ -248,23 +250,23 @@ void Direct_Go_Wait(StateCore *core)
   // 灯带：滚动
   APP::main_loop.test_led.Running(Color::Up_Purpor * 0.75f, 0.5f, 1.0f);
 
-  // 小抬一点腿
-  APP::leg.SetFrontPos(-50.0f);
-  APP::leg.SetBackPos(-50.0f);
-  Seq::Wait(0.3f);
+  // // 小抬一点腿
+  // APP::leg.SetFrontPos(-50.0f);
+  // APP::leg.SetBackPos(-50.0f);
+  // Seq::Wait(0.3f);
 
-    // 先把块抬起来
-  // APP::get_block.LiftUp();
+  //   // 先把块抬起来
+  // // APP::get_block.LiftUp();
 
-  // // 首先走上斜坡
-  // MOVE::MoveToTargGes(Vec3(8.72f, 0.79f, 0.0f));
-  // MOVE::MoveToTargGes(Vec3(11.38f, 0.77f, 0.0f));
+  // // // 首先走上斜坡
+  // // MOVE::MoveToTargGes(Vec3(8.72f, 0.79f, 0.0f));
+  // // MOVE::MoveToTargGes(Vec3(11.38f, 0.77f, 0.0f));
 
-  // 走到等待点
-  MOVE::MoveToTargGes(Vec3(11.38f, 2.1f, 0.0f));
+  // // 走到等待点
+  // MOVE::MoveToTargGes(Vec3(11.38f, 2.1f, 0.0f));
 
-  // 走到对接点
-  MOVE::MoveToTargGes(Vec3(10.1f, 2.1f, -1.571f));
+  // // 走到对接点
+  // MOVE::MoveToTargGes(Vec3(10.1f, 2.1f, -1.571f));
 
   // 进入R1等待状态
   core->GetCurState().Complete = true;
@@ -323,78 +325,82 @@ void Put_First_Block(StateCore *core)
 
   // 锁定yaw角为1.571，同时平移直到两路西克激光基本相等
   // APP::comm_center.sick_data_m[0] 约等于 APP::comm_center.sick_data_m[1];
-  int sick_cnt = 0;
-  const float sick_kd = 0.25f;
-  const float sick_d_alpha = 0.7f;
-  float last_err_dist = APP::comm_center.sick_data_m[1] - APP::comm_center.sick_data_m[0];
-  float d_err_dist_filt = 0.0f;
-  uint32_t sick_log_tick = 0;
 
-  while (sick_cnt < 10)
+  if (!_sick_bias_got)
   {
-    float err_dist = APP::comm_center.sick_data_m[1] - APP::comm_center.sick_data_m[0];
+    int sick_cnt = 0;
+    const float sick_kd = 0.25f;
+    const float sick_d_alpha = 0.7f;
+    float last_err_dist = APP::comm_center.sick_data_m[1] - APP::comm_center.sick_data_m[0];
+    float d_err_dist_filt = 0.0f;
+    uint32_t sick_log_tick = 0;
 
-    if (fabs(err_dist) < 0.004f)
+    while (sick_cnt < 10)
     {
-      sick_cnt++;
+      float err_dist = APP::comm_center.sick_data_m[1] - APP::comm_center.sick_data_m[0];
+
+      if (fabs(err_dist) < 0.004f)
+      {
+        sick_cnt++;
+      }
+      else
+        sick_cnt = 0;
+
+      float d_err_dist = (err_dist - last_err_dist) / 0.005f;
+      d_err_dist_filt = d_err_dist_filt * sick_d_alpha + d_err_dist * (1.0f - sick_d_alpha);
+      float err_spd = err_dist * 1.0f - sick_kd * d_err_dist_filt;
+      last_err_dist = err_dist;
+
+      Vec2 sick_fix = Vec2(err_spd, 0.0f).Rotate(-System.position.z);
+
+      // 速度保护：限制平移速度不超过0.3m/s
+      float sick_speed = sick_fix.Length();
+      if (sick_speed > 0.3f)
+      {
+        sick_fix = sick_fix * (0.3f / sick_speed);
+      }
+
+      // 锁定yaw角为 1.5707 rad，不用太强
+      float yaw_err = 1.5707f - System.position.z;
+      Vec3 targ_body_vec = sick_fix.ToVec3();
+      targ_body_vec.z = yaw_err * 0.8f;
+
+      if (++sick_log_tick >= 20)
+      {
+        sick_log_tick = 0;
+        APP::monit.LogInfo("sf:e%.3f v%.3f s0%.3f s1%.3f",
+                          err_dist,
+                          err_spd,
+                          APP::comm_center.sick_data_m[0],
+                          APP::comm_center.sick_data_m[1]);
+      }
+
+      APP::chas.Move(targ_body_vec, 0.01f);
+      Seq::Wait(0.005f); // 200hz更新频率
     }
-    else
-      sick_cnt = 0;
 
-    float d_err_dist = (err_dist - last_err_dist) / 0.005f;
-    d_err_dist_filt = d_err_dist_filt * sick_d_alpha + d_err_dist * (1.0f - sick_d_alpha);
-    float err_spd = err_dist * 1.0f - sick_kd * d_err_dist_filt;
-    last_err_dist = err_dist;
+    APP::monit.LogInfo("Finished sick fix. sick0:%.3f sick1:%.3f",
+                      APP::comm_center.sick_data_m[0], APP::comm_center.sick_data_m[1]);
+    APP::chas.Move(Vec3(0.0f, 0.0f, 0.0f), 0.25f);
 
-    Vec2 sick_fix = Vec2(err_spd, 0.0f).Rotate(-System.position.z);
-
-    // 速度保护：限制平移速度不超过0.3m/s
-    float sick_speed = sick_fix.Length();
-    if (sick_speed > 0.3f)
+    // 此时西克已经校准坐标，我们利用西克修正最后一公里
+    // 计算九宫格前的定位误差
+    int cnt = 0;
+    float _avg_x = 0.0f;
+    while (cnt < 10)
     {
-      sick_fix = sick_fix * (0.3f / sick_speed);
+      _avg_x += System.position.x;
+      cnt++;
     }
+    _avg_x /= 10.0f;
 
-    // 锁定yaw角为 1.5707 rad，不用太强
-    float yaw_err = 1.5707f - System.position.z;
-    Vec3 targ_body_vec = sick_fix.ToVec3();
-    targ_body_vec.z = yaw_err * 0.8f;
+    float arena_x_bias = 10.75 - _avg_x;
 
-    if (++sick_log_tick >= 20)
-    {
-      sick_log_tick = 0;
-      APP::monit.LogInfo("sf:e%.3f v%.3f s0%.3f s1%.3f",
-                         err_dist,
-                         err_spd,
-                         APP::comm_center.sick_data_m[0],
-                         APP::comm_center.sick_data_m[1]);
-    }
+    APP::monit.LogInfo("[arena_bias]:%.3f", arena_x_bias);
 
-    APP::chas.Move(targ_body_vec, 0.01f);
-    Seq::Wait(0.005f); // 200hz更新频率
+    // 根据误差，进行最后的平移修正
+    System.SetPositionBias(Vec3(arena_x_bias, 0.0f, 0.0f));
   }
-
-  APP::monit.LogInfo("Finished sick fix. sick0:%.3f sick1:%.3f",
-                     APP::comm_center.sick_data_m[0], APP::comm_center.sick_data_m[1]);
-  APP::chas.Move(Vec3(0.0f, 0.0f, 0.0f), 0.25f);
-
-  // 此时西克已经校准坐标，我们利用西克修正最后一公里
-  // 计算九宫格前的定位误差
-  int cnt = 0;
-  float _avg_x = 0.0f;
-  while (cnt < 10)
-  {
-    _avg_x += System.position.x;
-    cnt++;
-  }
-  _avg_x /= 10.0f;
-
-  float arena_x_bias = 10.75 - _avg_x;
-
-  APP::monit.LogInfo("[arena_bias]:%.3f", arena_x_bias);
-
-  // 根据误差，进行最后的平移修正
-  System.SetPositionBias(Vec3(arena_x_bias, 0.0f, 0.0f));
 
   Seq::Wait(0.5f);
 
@@ -414,7 +420,7 @@ void Put_First_Block(StateCore *core)
   APP::get_block.Push();
 
   // 等待放块完成
-  Seq::Wait(1.0f);
+  Seq::Wait(5.0f);
 
   // // 等待遥控器的出发指令
   // while(MOD::farcon.button_second_half[0] != 1)
@@ -501,7 +507,7 @@ static void Fetch2_From_Mid(StateCore *core)
   Seq::Wait(2.0f);
 
   // 返回重试点
-  MOVE::MoveToTargGes(Vec3(11.6f, 5.6f, -1.571f));
+  MOVE::MoveToTargGes(Vec3(11.55f, 0.6f, 1.571f));
 
   // 至此：完成所有R2的全自动逻辑，进入R1的指令等待状态
   core->GetCurState().Complete = true;
@@ -766,6 +772,15 @@ void Waiting_R1_Instru(StateCore *core)
  */
 void Waiting_Human_Instru(StateCore *core)
 {
+  while(MOD::farcon.button_second_half[0] != 1)
+  {
+    Response_Button();
+    Seq::Wait(0.01f);
+    if(a3_act_id != 0)
+    {
+      break;
+    }
+  }
   /**
    * @brief 根据R1的指令，路由至不同状态
    * 

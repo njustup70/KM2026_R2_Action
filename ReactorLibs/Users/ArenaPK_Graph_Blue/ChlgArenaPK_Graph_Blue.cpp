@@ -32,6 +32,8 @@ static bool retry_put_L2_N4 = false;
 static bool retry_put_L2_N5 = false;
 static bool retry_put_L2_N6 = false;
 
+static int a3_act_id = 0;
+
 static bool IR_Read(InfraredDetector& ir);
 static bool NIR_Read(InfraredDetector& ir);
 
@@ -44,7 +46,8 @@ static void Fetch2_From_Mid(StateCore *core);
 static void Retry_Go_Wait(StateCore *core);
 static void Direct_Go_Wait(StateCore *core);
 
-static void Retry_to_Put(StateCore *core);
+static void Retry_to_Put();
+static void Waiting_Human_Instru(StateCore *core);
 void SickCorrect_Blue();
 
 // 从R1等待位置出发的状态函数
@@ -83,19 +86,19 @@ int ChallengeArenaPK_Graph_Blue()
   // 直接去等待（从斜坡下的）
   StateBlock& s_dirct_gowait = Arena_PK_Graph_Blue.AddState("dir_gowait");
   // 拿到两个块后，申请重试后直接去放二层的块
-  StateBlock& s_retry_to_put = Arena_PK_Graph_Blue.AddState("retry_to_put");
+  // StateBlock& s_retry_to_put = Arena_PK_Graph_Blue.AddState("retry_to_put");
 
 
   /**----------     配置状态行为函数    ----------**/
   s_wait.StateAction = Waiting_for_Start;
   s_put_first_block.StateAction = Put_First_Block;
-  s_waiting_R1_instru.StateAction = Waiting_R1_Instru;
+  s_waiting_R1_instru.StateAction = Waiting_Human_Instru;
 
   s_retry_gowait.StateAction = Retry_Go_Wait;
   s_dirct_gowait.StateAction = Direct_Go_Wait;
 
   s_fetch_0_1_block.StateAction = Fetch2_From_Mid;
-  s_retry_to_put.StateAction = Retry_to_Put;
+  // s_retry_to_put.StateAction = Retry_to_Put;
 
   /**----------     进行状态间链接    ----------**/
   s_wait.LinkTo(&(s_wait.Complete), s_put_first_block);
@@ -109,10 +112,10 @@ int ChallengeArenaPK_Graph_Blue()
   s_dirct_gowait.LinkTo(&(s_dirct_gowait.Complete), s_waiting_R1_instru);
 
   // 重试直接去放块的链接
-  s_wait.LinkTo(&retry_put_L2_N4, s_retry_to_put);
-  s_wait.LinkTo(&retry_put_L2_N5, s_retry_to_put);
-  s_wait.LinkTo(&retry_put_L2_N6, s_retry_to_put);
-  s_retry_to_put.LinkTo(&s_retry_to_put.Complete, s_wait);
+  // s_wait.LinkTo(&retry_put_L2_N4, s_retry_to_put);
+  // s_wait.LinkTo(&retry_put_L2_N5, s_retry_to_put);
+  // s_wait.LinkTo(&retry_put_L2_N6, s_retry_to_put);
+  // s_retry_to_put.LinkTo(&s_retry_to_put.Complete, s_wait);
 
   s_put_first_block.LinkTo(&(s_put_first_block.Complete), s_fetch_0_1_block);
   s_fetch_0_1_block.LinkTo(&(s_fetch_0_1_block.Complete), s_waiting_R1_instru);
@@ -224,10 +227,10 @@ void Waiting_for_Start(StateCore *core)
   APP::main_loop.test_led.Running(Color::Up_Purpor * 0.75f, 0.5f, 1.0f);
 
   // 走到等待点（蓝区 y: 6-2.1=3.9）
-  MOVE::MoveToTargGes(Vec3(11.38f, 3.9f, 0.0f));
+  // MOVE::MoveToTargGes(Vec3(11.38f, 3.9f, 0.0f));
 
   // 走到对接点（蓝区：y=3.9, 朝向变为 +1.571）
-  MOVE::MoveToTargGes(Vec3(10.1f, 3.9f, 1.571f));
+  // MOVE::MoveToTargGes(Vec3(10.1f, 3.9f, 1.571f));
 
   // 进入R1等待状态
   core->GetCurState().Complete = true;
@@ -250,9 +253,9 @@ void Direct_Go_Wait(StateCore *core)
   APP::main_loop.test_led.Running(Color::Up_Purpor * 0.75f, 0.5f, 1.0f);
 
   // 小抬一点腿
-  APP::leg.SetFrontPos(-50.0f);
-  APP::leg.SetBackPos(-50.0f);
-  Seq::Wait(0.3f);
+  // APP::leg.SetFrontPos(-50.0f);
+  // APP::leg.SetBackPos(-50.0f);
+  // Seq::Wait(0.3f);
 
     // 先把块抬起来
   // APP::get_block.LiftUp();
@@ -262,10 +265,10 @@ void Direct_Go_Wait(StateCore *core)
   // MOVE::MoveToTargGes(Vec3(11.38f, 5.23f, 0.0f));
 
   // 走到等待点（蓝区 y: 6-2.1=3.9）
-  MOVE::MoveToTargGes(Vec3(11.38f, 3.9f, 0.0f));
+  // MOVE::MoveToTargGes(Vec3(11.38f, 3.9f, 0.0f));
 
   // 走到对接点（蓝区：y=3.9, 朝向变为 +1.571）
-  MOVE::MoveToTargGes(Vec3(10.1f, 3.9f, 1.571f));
+  // MOVE::MoveToTargGes(Vec3(10.1f, 3.9f, 1.571f));
 
   // 进入R1等待状态
   core->GetCurState().Complete = true;
@@ -418,14 +421,14 @@ void Put_First_Block(StateCore *core)
   APP::get_block.Push();
 
   // 等待放块完成
-  Seq::Wait(1.0f);
+  Seq::Wait(5.0f);
 
-  // 等待遥控器的出发指令
-  while(MOD::farcon.button_second_half[0] != 1)
-  {
-    Response_Button();
-    Seq::Wait(0.01f);
-  }
+  // // 等待遥控器的出发指令
+  // while(MOD::farcon.button_second_half[0] != 1)
+  // {
+  //   Response_Button();
+  //   Seq::Wait(0.01f);
+  // }
 
   // 走到等待点，等待R1命令
   core->GetCurState().Complete = true;
@@ -492,8 +495,8 @@ static void Fetch2_From_Mid(StateCore *core)
   // 等待取块完成
   Seq::Wait(2.0f);
 
-  // 返回等待点（光通信朝向 R1）（蓝区：y=3.9, heading=1.571）
-  MOVE::MoveToTargGes(Vec3(10.1f, 3.9f, 1.571f));
+  // 返回重试点
+  MOVE::MoveToTargGes(Vec3(11.55f, 5.56f, 1.571f));
 
   // 至此：完成所有R2的全自动逻辑，进入R1的指令等待状态
   core->GetCurState().Complete = true;
@@ -677,61 +680,52 @@ static void PutBlock_L2(uint8_t id)
  * @note 这个函数里如果没有阻塞，那么根据状态机的设计，这个状态将会以 200Hz 循环
  * @param core
  */
-void Waiting_R1_Instru(StateCore *core)
+void Waiting_Human_Instru(StateCore *core)
 {
-  /**
-   * @brief 根据R1的指令，路由至不同状态
-   *
-   */
-  auto code = APP::comm_center.Get_R1_InstruCode();
-  if (code == Area3ActCode::Idle)
-    return;  // 无指令，跳过下面的等待和做动作
-
-  // 灯带：进度条
-  float wait_progress = 0.0f;
-  APP::main_loop.test_led.ProgBar(Color::Up_Yellow, &wait_progress);
-
-  // 等待 6 秒
-  float wait_time_s = 0.0f;
-  while (wait_time_s < 6.0f)
+  while(MOD::farcon.button_second_half[0] != 1)
   {
-    wait_time_s += 0.05f;
-    wait_progress = wait_time_s / 6.0f;
-    Seq::Wait(0.05f);
+    Response_Button();
+    Seq::Wait(0.01f);
+    if(a3_act_id != 0)
+    {
+      break;
+    }
   }
+  if (a3_act_id == 0)
+    return;
 
-  switch (code)
+  switch (a3_act_id)
   {
-    case Area3ActCode::Put_L2_N4_Block:
+    case 4:
     {
-      PutBlock_L2(0);
+      Retry_to_Put();
       break;
     }
-    case Area3ActCode::Put_L2_N5_Block:
-    {
-      PutBlock_L2(1);
+    case 5:
+    {      
+      Retry_to_Put();
       break;
     }
-    case Area3ActCode::Put_L2_N6_Block:
+    case 6:
     {
-      PutBlock_L2(2);
+      Retry_to_Put();
       break;
     }
-    case Area3ActCode::Put_L3:
+    case 7:
     {
       break;
     }
-    case Area3ActCode::Combine:
+    case 8:
     {
       Robot_Combine();
       break;
     }
-    case Area3ActCode::Fetch_GroundBlock_0:
+    case 1:
     {
       Fetch_0_FromWait();
       break;
     }
-    case Area3ActCode::Fetch_GroundBlock_1:
+    case 2:
     {
       Fetch_1_FromWait();
       break;
@@ -741,14 +735,16 @@ void Waiting_R1_Instru(StateCore *core)
       break;
     }
   }
-  // 清除，防止重复执行
-  APP::comm_center.Reset_R1_InstruCode();
+  a3_act_id = 0;
 }
 
 /*******************************************************************************/
 
 void Fetch_0_FromWait()
 {
+  MOVE::MoveToTargGes(Vec3(11.38, 4.8, 0.0f));
+  MOVE::MoveToTargGes(Vec3(11.17, 3.9, 0.0f));
+
   // 走到第一个块跟前（蓝区取块位置）
   MOVE::MoveToTargGes(Vec3(Arena_R2_KFS_FetchPos_Blue[0].x, Arena_R2_KFS_FetchPos_Blue[0].y, 0.0));
 
@@ -773,6 +769,8 @@ void Fetch_0_FromWait()
 
 void Fetch_1_FromWait()
 {
+  MOVE::MoveToTargGes(Vec3(11.38, 4.8, 0.0f));
+  MOVE::MoveToTargGes(Vec3(11.17, 3.9, 0.0f));
   // 走到第二个块跟前（蓝区取块位置）
   MOVE::MoveToTargGes(Vec3(Arena_R2_KFS_FetchPos_Blue[1].x, Arena_R2_KFS_FetchPos_Blue[1].y, 0.0));
 
@@ -1196,6 +1194,7 @@ void Response_Button()
       retry_put_L2_N4 = true;
       retry_put_L2_N5 = false;
       retry_put_L2_N6 = false;
+      a3_act_id = 4;
     }
     if(MOD::farcon.button_first_half[5] == 1 && DWT_GetTimeline_Sec() - last_retry_put_time > 1.0f)
     {
@@ -1203,6 +1202,7 @@ void Response_Button()
       retry_put_L2_N5 = true;
       retry_put_L2_N4 = false;
       retry_put_L2_N6 = false;
+      a3_act_id = 5;
     }
     if(MOD::farcon.button_first_half[6] == 1 && DWT_GetTimeline_Sec() - last_retry_put_time > 1.0f)
     {
@@ -1210,6 +1210,18 @@ void Response_Button()
       retry_put_L2_N6 = true;
       retry_put_L2_N4 = false;
       retry_put_L2_N5 = false;
+      a3_act_id = 6;
+    }
+
+    if(MOD::farcon.button_first_half[1] == 1 && DWT_GetTimeline_Sec() - last_trigger_time > 1.0f)
+    {
+      last_trigger_time = DWT_GetTimeline_Sec();
+      a3_act_id = 1;
+    }
+    if(MOD::farcon.button_first_half[2] == 1 && DWT_GetTimeline_Sec() - last_trigger_time > 1.0f)
+    {
+      last_trigger_time = DWT_GetTimeline_Sec();
+      a3_act_id = 2;
     }
 
     // // 处理放块
@@ -1367,7 +1379,7 @@ void Response_Button()
 // }
 
 // 根据重试后按的遥控器按键，选择直接去放哪个块（蓝区）
-void Retry_to_Put(StateCore *core)
+void Retry_to_Put()
 {
   // 先走到擂台中央（蓝区路径 A23_B2）
   MOVE::MoveToTargPos(PATH::A23_B_Retry(), Vec3(0.01f, 0.01f, 0.01f));
@@ -1415,8 +1427,6 @@ void Retry_to_Put(StateCore *core)
 
   // 返回重试区
   MOVE::MoveToTargPos(PATH::A32_B_RetryBack(), Vec3(0.01f, 0.01f, 0.01f));
-
-  core->GetCurState().Complete = true;
 }
 
 ///@brief sick 对准九宫格（蓝区：yaw=-1.571）
