@@ -53,7 +53,7 @@ static void Area2_HostAction(StateCore *core);
 static void Walk_into_Area3(StateCore *core);
 // 三区
 static void Put_First_Block(StateCore *core);
-static void Wait_R1_Instru(StateCore *core);
+static void Wait_Human_Instru(StateCore *core);
 // 重试
 static void Retry_Direct_ToArea2(StateCore *core);
 static void Retry_Comm_Error(StateCore *core);
@@ -114,7 +114,7 @@ int Config_SemiAutoStateGraph()
   s_walk_a2_to_a3.StateAction = Walk_into_Area3;
 
   s_put_first.StateAction  = Put_First_Block;
-  s_wait_r1.StateAction    = Wait_R1_Instru;
+  s_wait_r1.StateAction    = Wait_Human_Instru;
 
   s_retry_dirctA2.StateAction  = Retry_Direct_ToArea2;
   s_retry_comm_err.StateAction = Retry_Comm_Error;
