@@ -210,7 +210,7 @@ namespace Area2
       }
 
       // 等到全都做完了，然后才放下爪子
-      APP::vac_claw.PitchDown();
+      if (need_fetch_at_entry) APP::vac_claw.PitchDown();
 
       APP::monit.LogOK("RunIntoArea2 completed.");
       return true;
