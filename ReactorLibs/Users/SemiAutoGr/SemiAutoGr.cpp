@@ -20,6 +20,8 @@
 #include "a12_1.hpp"
 
 static void Response_Button();
+static void Area3_SickFix();
+
 static bool IR_Read(InfraredDetector& ir);
 static bool NIR_Read(InfraredDetector& ir);
 
@@ -442,58 +444,7 @@ void Walk_into_Area3(StateCore *core)
   MOVE::MoveToTargPos(PATH::A23_2(), Vec3(0.01f, 0.01f, 0.01f));
   MOVE::MoveToTargGes(Arena_R2_L2_Mid_Ges);
 
-  // 西克激光对准
-  Seq::Wait(0.25f);
-  int sick_cnt = 0;
-  const float sick_kd = 0.25f;
-  const float sick_d_alpha = 0.7f;
-  float last_err_dist = APP::comm_center.sick_data_m[1] - APP::comm_center.sick_data_m[0];
-  float d_err_dist_filt = 0.0f;
-  uint32_t sick_log_tick = 0;
-
-  while (sick_cnt < 10)
-  {
-    float err_dist = APP::comm_center.sick_data_m[1] - APP::comm_center.sick_data_m[0];
-    if (fabs(err_dist) < 0.004f) sick_cnt++;
-    else sick_cnt = 0;
-
-    float d_err_dist = (err_dist - last_err_dist) / 0.005f;
-    d_err_dist_filt = d_err_dist_filt * sick_d_alpha + d_err_dist * (1.0f - sick_d_alpha);
-    float err_spd = err_dist * 1.0f - sick_kd * d_err_dist_filt;
-    last_err_dist = err_dist;
-
-    Vec2 sick_fix = Vec2(err_spd, 0.0f).Rotate(-System.position.z);
-    float sick_speed = sick_fix.Length();
-    if (sick_speed > 0.3f) sick_fix = sick_fix * (0.3f / sick_speed);
-
-    float yaw_err = 1.5707f - System.position.z;
-    Vec3 targ_body_vec = sick_fix.ToVec3();
-    targ_body_vec.z = yaw_err * 0.8f;
-
-    if (++sick_log_tick >= 20)
-    {
-      sick_log_tick = 0;
-      APP::monit.LogInfo("sf:e%.3f v%.3f s0%.3f s1%.3f",
-                         err_dist, err_spd,
-                         APP::comm_center.sick_data_m[0],
-                         APP::comm_center.sick_data_m[1]);
-    }
-    APP::chas.Move(targ_body_vec, 0.01f);
-    Seq::Wait(0.005f);
-  }
-
-  APP::monit.LogInfo("Finished sick fix. s0:%.3f s1:%.3f",
-                     APP::comm_center.sick_data_m[0], APP::comm_center.sick_data_m[1]);
-  APP::chas.Move(Vec3(0, 0, 0), 0.25f);
-
-  // 西克校准后修正坐标
-  int cnt = 0;
-  float _avg_x = 0.0f;
-  while (cnt < 10) { _avg_x += System.position.x; cnt++; Seq::Wait(0.005f); }
-  _avg_x /= 10.0f;
-  float arena_x_bias = 10.75f - _avg_x;
-  APP::monit.LogInfo("[arena_bias]:%.3f", arena_x_bias);
-  System.SetPositionBias(Vec3(arena_x_bias, 0.0f, 0.0f));
+  Area3_SickFix();
 
   Seq::Wait(0.5f);
 
@@ -537,13 +488,6 @@ void Put_First_Block(StateCore *core)
 
   Seq::Wait(1.5f);
 
-  // 确认
-  // while (MOD::farcon.button_second_half[0] != 1)
-  // {
-  //   Response_Button();
-  //   Seq::Wait(0.01f);
-  // }
-
   core->GetCurState().Complete = true;
 }
 
@@ -578,77 +522,6 @@ static void PutBlock_L2(uint8_t id)
 
   // 等待到达
   APP::monit.LogInfo("Forward is Arena.");
-
-  // 西克校准：根据id确定目标偏移量
-  // 几何关系：坐标偏移a时，一边激光近a、另一边远a，差值变化2a
-  // N4(左,id=0): X=10.21，偏移0.54m，sick[1]-sick[0]目标为+1.08
-  // N5(中,id=1): X=10.75，居中，sick[1]-sick[0]目标为0
-  // N6(右,id=2): X=11.29，偏移0.54m，sick[1]-sick[0]目标为-1.08
-  // float sick_target = 0.0f;
-  // if (id == 0)
-  //   sick_target = 1.08f;
-  // else if (id == 2)
-  //   sick_target = -1.08f;
-
-  // // 等待，保障稳定性
-  // Seq::Wait(0.25f);
-
-  // // 锁定yaw角为1.571，同时平移直到两路西克激光差值与目标一致
-  // int sick_cnt = 0;
-  // const float sick_kd = 0.25f;
-  // const float sick_d_alpha = 0.7f;
-  // float last_err_dist = APP::comm_center.sick_data_m[1] - APP::comm_center.sick_data_m[0] - sick_target;
-  // float d_err_dist_filt = 0.0f;
-  // uint32_t sick_log_tick = 0;
-
-  // while (sick_cnt < 10)
-  // {
-  //   float err_dist = APP::comm_center.sick_data_m[1] - APP::comm_center.sick_data_m[0] - sick_target;
-
-  //   if (fabs(err_dist) < 0.004f)
-  //   {
-  //     sick_cnt++;
-  //   }
-  //   else
-  //     sick_cnt = 0;
-
-  //   float d_err_dist = (err_dist - last_err_dist) / 0.005f;
-  //   d_err_dist_filt = d_err_dist_filt * sick_d_alpha + d_err_dist * (1.0f - sick_d_alpha);
-  //   float err_spd = err_dist * 1.0f - sick_kd * d_err_dist_filt;
-  //   last_err_dist = err_dist;
-
-  //   Vec2 sick_fix = Vec2(err_spd, 0.0f).Rotate(-System.position.z);
-
-  //   // 速度保护：限制平移速度不超过0.3m/s
-  //   float sick_speed = sick_fix.Length();
-  //   if (sick_speed > 0.3f)
-  //   {
-  //     sick_fix = sick_fix * (0.3f / sick_speed);
-  //   }
-
-  //   // 锁定yaw角为 1.5707 rad，不用太强
-  //   float yaw_err = 1.5707f - System.position.z;
-  //   Vec3 targ_body_vec = sick_fix.ToVec3();
-  //   targ_body_vec.z = yaw_err * 0.8f;
-
-  //   if (++sick_log_tick >= 20)
-  //   {
-  //     sick_log_tick = 0;
-  //     APP::monit.LogInfo("sf:e%.3f v%.3f s0%.3f s1%.3f t%.3f",
-  //                        err_dist,
-  //                        err_spd,
-  //                        APP::comm_center.sick_data_m[0],
-  //                        APP::comm_center.sick_data_m[1],
-  //                        sick_target);
-  //   }
-
-  //   APP::chas.Move(targ_body_vec, 0.01f);
-  //   Seq::Wait(0.005f); // 200hz更新频率
-  // }
-
-  // APP::monit.LogInfo("Finished sick fix. sick0:%.3f sick1:%.3f id:%d",
-  //                    APP::comm_center.sick_data_m[0], APP::comm_center.sick_data_m[1], id);
-  // APP::chas.Move(Vec3(0.0f, 0.0f, 0.0f), 0.25f);
 
   Seq::Wait(0.5f);
 
@@ -863,93 +736,6 @@ void Robot_Combine()
   }
   Seq::Wait(1.0f);
   APP::main_loop.test_led.TempBlink(Color::Orange, 3, 0.3f);
-  
-  // 然后，使用西克确认坐标（车体左边的那一路）
-  // 锁定yaw角为1.571，保持世界y坐标不变。同时平移，直到左路西克约等于1.64（误差小于0.005m）
-  // int sick_cnt = 0;
-  // const float sick_kd = 0.25f;
-  // const float sick_d_alpha = 0.7f;
-  // const float sick_target = 1.64f;
-  // float last_err_dist = APP::comm_center.sick_data_m[0] - sick_target;
-  // float d_err_dist_filt = 0.0f;
-  // uint32_t sick_log_tick = 0;
-
-  // while (sick_cnt < 10)
-  // {
-  //   float err_dist = APP::comm_center.sick_data_m[0] - sick_target;
-
-  //   if (fabs(err_dist) < 0.005f)
-  //   {
-  //     sick_cnt++;
-  //   }
-  //   else
-  //     sick_cnt = 0;
-
-  //   float d_err_dist = (err_dist - last_err_dist) / 0.005f;
-  //   d_err_dist_filt = d_err_dist_filt * sick_d_alpha + d_err_dist * (1.0f - sick_d_alpha);
-  //   float err_spd = err_dist * 1.0f - sick_kd * d_err_dist_filt;
-  //   last_err_dist = err_dist;
-
-  //   // 车体侧向平移（body y），在 yaw=1.571 时对应世界 x 方向，保持世界y不变
-  //   Vec2 sick_fix = Vec2(-err_spd, 0.0f).Rotate(-System.position.z);
-
-  //   // 速度保护：限制平移速度不超过0.2m/s
-  //   float sick_speed = sick_fix.Length();
-  //   if (sick_speed > 0.2f)
-  //   {
-  //     sick_fix = sick_fix * (0.2f / sick_speed);
-  //   }
-
-  //   // 锁定yaw角为 1.571 rad
-  //   float yaw_err = 1.571f - System.position.z;
-  //   Vec3 targ_body_vec = sick_fix.ToVec3();
-  //   targ_body_vec.z = yaw_err * 0.8f;
-
-  //   if (++sick_log_tick >= 20)
-  //   {
-  //     sick_log_tick = 0;
-  //     APP::monit.LogInfo("sf:e%.3f v%.3f s0%.3f",
-  //                        err_dist,
-  //                        err_spd,
-  //                        APP::comm_center.sick_data_m[0]);
-  //   }
-
-  //   APP::chas.Move(targ_body_vec, 0.01f);
-  //   Seq::Wait(0.005f); // 200hz更新频率
-  // }
-
-  // APP::monit.LogInfo("Finished sick fix. sick0:%.3f",
-  //                    APP::comm_center.sick_data_m[0]);
-  // APP::chas.Move(Vec3(0.0f, 0.0f, 0.0f), 0.25f);
-
-  // // 遥控器确认
-  // while (MOD::farcon.button_second_half[0] != 1)
-  // {
-  //   Response_Button();
-  //   Seq::Wait(0.01f);
-  // }
-  // Seq::Wait(1.0f);
-  // APP::main_loop.test_led.TempBlink(Color::Orange, 3, 0.3f);
-
-  // // 西克完成校准后，认准现在的x坐标
-  // int cnt = 0;
-  // float _avg_x = 0.0f;
-  // while (cnt < 10)
-  // {
-  //   _avg_x += System.position.x;
-  //   cnt++;
-  //   Seq::Wait(0.05f);
-  // }
-  // _avg_x /= float(cnt);
-
-  // // 遥控器确认
-  // while (MOD::farcon.button_second_half[0] != 1)
-  // {
-  //   Response_Button();
-  //   Seq::Wait(0.01f);
-  // }
-  // Seq::Wait(1.0f);
-  // APP::main_loop.test_led.TempBlink(Color::Orange, 3, 0.3f);
 
   // 抬腿
   APP::leg.SetFrontPos(-375);
@@ -968,25 +754,9 @@ void Robot_Combine()
 
   APP::main_loop.test_led.TempBlink(Color::Orange, 3, 0.3f);
 
-  // 向y正方向走，同时锁定x为_avg_x，yaw角为1.571，直到小黄0号看到障碍
+  // 向 y 正方向走，同时锁定 x 为_avg_x，yaw 角为1.571，直到小黄0号看到障碍
   while (true)
   {
-    // float x_err = _avg_x - System.position.x;
-    // float yaw_err = 1.571f - System.position.z;
-
-    // Vec2 targ_world_vec(0.0f, 0.03f); // 向 y 正方向走
-    // targ_world_vec.x = x_err * 0.7f;       // 锁定x
-
-    // // 转到车体坐标系下
-    // Vec2 targ_body_vec = targ_world_vec.Rotate(-System.position.z);
-
-    // // 锁定yaw角
-    // Vec3 final_body_vec = targ_body_vec.ToVec3();
-    // final_body_vec.z = yaw_err * 0.8f;
-
-    // APP::chas.Move(final_body_vec, 0.01f);
-    
-
     // -------直接向前走-------- // 
     float yaw_err = 1.571f - System.position.z;
     APP::chas.Move(Vec3(0.2f, 0.0f, yaw_err * 1.0f), 0.006f);
@@ -1140,6 +910,65 @@ static void Response_Button()
     vel.z = -map_axis(MOD::farcon.jys_value[0]) * max_velo;
 
     APP::chas.Move(vel, 0.2f);
+}
+
+void Area3_SickFix()
+{
+  static bool _sick_fixed = false;
+
+  if (_sick_fixed) return;
+
+  Seq::Wait(0.25f);
+  int sick_cnt = 0;
+  const float sick_kd = 0.25f;
+  const float sick_d_alpha = 0.7f;
+  float last_err_dist = APP::comm_center.sick_data_m[1] - APP::comm_center.sick_data_m[0];
+  float d_err_dist_filt = 0.0f;
+  uint32_t sick_log_tick = 0;
+
+  while (sick_cnt < 10)
+  {
+    float err_dist = APP::comm_center.sick_data_m[1] - APP::comm_center.sick_data_m[0];
+    if (fabs(err_dist) < 0.004f) sick_cnt++;
+    else sick_cnt = 0;
+
+    float d_err_dist = (err_dist - last_err_dist) / 0.005f;
+    d_err_dist_filt = d_err_dist_filt * sick_d_alpha + d_err_dist * (1.0f - sick_d_alpha);
+    float err_spd = err_dist * 1.0f - sick_kd * d_err_dist_filt;
+    last_err_dist = err_dist;
+
+    Vec2 sick_fix = Vec2(err_spd, 0.0f).Rotate(-System.position.z);
+    float sick_speed = sick_fix.Length();
+    if (sick_speed > 0.3f) sick_fix = sick_fix * (0.3f / sick_speed);
+
+    float yaw_err = 1.5707f - System.position.z;
+    Vec3 targ_body_vec = sick_fix.ToVec3();
+    targ_body_vec.z = yaw_err * 0.8f;
+
+    if (++sick_log_tick >= 20)
+    {
+      sick_log_tick = 0;
+      APP::monit.LogInfo("sf:e%.3f v%.3f s0%.3f s1%.3f",
+                         err_dist, err_spd,
+                         APP::comm_center.sick_data_m[0],
+                         APP::comm_center.sick_data_m[1]);
+    }
+    APP::chas.Move(targ_body_vec, 0.01f);
+    Seq::Wait(0.005f);
+  }
+
+  APP::monit.LogInfo("Finished sick fix. s0:%.3f s1:%.3f",
+                     APP::comm_center.sick_data_m[0], APP::comm_center.sick_data_m[1]);
+  APP::chas.Move(Vec3(0, 0, 0), 0.25f);
+
+  int cnt = 0;
+  float avg_x = 0.0f;
+  while (cnt < 10) { avg_x += System.position.x; cnt++; Seq::Wait(0.005f); }
+  avg_x /= 10.0f;
+  float arena_x_bias = 10.75f - avg_x;
+  _sick_fixed = true;
+  APP::monit.LogInfo("[arena_bias]:%.3f", arena_x_bias);
+  System.SetPositionBias(Vec3(arena_x_bias, 0.0f, 0.0f));
 }
 
 /*═══════════════════════════════════════════════════════════════════════════════
