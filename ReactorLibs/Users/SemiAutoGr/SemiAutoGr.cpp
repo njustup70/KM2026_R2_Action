@@ -39,6 +39,7 @@ static bool retry_fetch_spear = false;      // 软重试：重新去取对应矛
 
 static bool retry_dir_area2 = false; // 重试：是否需要直接进入二区
 static bool retry_comm_err = false; // 重试：是否需要重新请求工控机发送动作序
+static bool retry_area3 = false;    // 重试：从三区重试点开始等待放块指令
 
 // ── 状态函数声明 ──
 static void Waiting_for_Start(StateCore *core);
@@ -147,6 +148,7 @@ int Config_SemiAutoStateGraph()
   // ── 重试流程 ──
   s_wait.LinkTo(&retry_dir_area2, s_retry_dirctA2);
   s_wait.LinkTo(&retry_comm_err, s_retry_comm_err);
+  s_wait.LinkTo(&retry_area3, s_wait_r1);
   s_retry_dirctA2.LinkTo(&s_retry_dirctA2.Complete, s_goto_area2);
   s_retry_comm_err.LinkTo(&s_retry_comm_err.Complete, s_goto_area2);
 
@@ -217,6 +219,12 @@ void Waiting_for_Start(StateCore *core)
   {
     APP::monit.LogRespond("Retry: Comm Error.");
     retry_comm_err = true;
+    return;
+  }
+  else if (APP::main_loop.retry_id == 3)
+  {
+    APP::monit.LogRespond("Retry: Area3 retry point.");
+    retry_area3 = true;
     return;
   }
 
@@ -684,6 +692,8 @@ void RetryZone_PutL2(uint8_t id)
  */
 void Wait_Human_Instru(StateCore *core)
 {
+  retry_area3 = false;
+
   /// @brief 根据操作手的指令，路由至不同状态
   Area3ActCode code = Area3ActCode::Idle;
 
