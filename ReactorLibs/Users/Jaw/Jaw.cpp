@@ -317,7 +317,7 @@ void Jaw::SoftPitchUp()
 
 void Jaw::PitchDown()
 {
-    _pitch_pos = _pitch_origin_code + (JawConst::_pitch_max_travel_code / 2) - 3500;
+    _pitch_pos = _pitch_origin_code + (JawConst::_pitch_max_travel_code / 2) - 3600;
 }
 
 void Jaw::SetPos(float x_mm, float y_mm)
