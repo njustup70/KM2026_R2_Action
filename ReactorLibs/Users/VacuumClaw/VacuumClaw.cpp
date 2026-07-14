@@ -359,7 +359,7 @@ void VacuumClaw::_UpdateReturnAndStore()
         break;
 
     case 1: // （等2.0秒）等到物块翻转离地后，再收爪并启动摩擦带
-        if (DWT_GetTimeline_Sec() - return_and_store_start_time >= 1.5f)
+        if (DWT_GetTimeline_Sec() - return_and_store_start_time >= 2.0f)
         {
             // stretch_pos = 100.0f; // 防堵转，给个略大于0的值
             APP::vac_claw.StretchSlow(StretchPos::BACK, 0.75f);
