@@ -416,6 +416,7 @@ void VacuumClaw::CloseSnap()
 {
     if (_snap_origined)
         snap_pos = _snap_origin_code - 102000 + 233040; // 可以刚好定心但不会带动物块
+        // snap_pos = _snap_origin_code - 102000 + 212560; // 可以刚好定心但不会带动物块
     else
         APP::monit.LogWarning("Unorigined snapclaw!");
 }
