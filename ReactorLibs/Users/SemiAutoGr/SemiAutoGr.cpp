@@ -886,7 +886,7 @@ void Retry_Direct_ToArea2(StateCore *core)
 {
   retry_dir_area2 = false;
 
-  MOVE::MoveToTargGes(Vec3(1.3f, 1.0f, -1.5707f));
+  MOVE::MoveToTargGes(Vec3(1.3f, 5.0f, -1.5707f));
   core->GetCurState().Complete = true;
 }
 
