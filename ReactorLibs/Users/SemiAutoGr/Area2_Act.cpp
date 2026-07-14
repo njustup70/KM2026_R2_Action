@@ -26,6 +26,26 @@ MeiLinArray& Area2::mei_lin_array = MeiLinArray::GetInstance();
 static bool IR_Read(InfraredDetector& ir);
 static bool NIR_Read(InfraredDetector& ir);
 
+/// @brief 用入口动作码更新当前梅林出口 ID，供入口对齐使用
+static bool SetCurrentEntry(Area2Code enter_code)
+{
+  switch (enter_code)
+  {
+    case Area2Code::ENTER_0:
+      Area2::block_pos.GetIn(0);
+      return true;
+    case Area2Code::ENTER_1:
+      Area2::block_pos.GetIn(1);
+      return true;
+    case Area2Code::ENTER_2:
+      Area2::block_pos.GetIn(2);
+      return true;
+    default:
+      APP::monit.LogError("Error EnterCode: 0x%02X", enter_code);
+      return false;
+  }
+}
+
 /************************* MeiLin_BlockPos 类 **************************/
 const Vec2 MeiHuaForest_Pos[12] = {
   Vec2(3.8, 1.8), Vec2(3.8, 3), Vec2(3.8, 4.2),
@@ -1089,6 +1109,9 @@ void MeiLinArray::HandleClimbAct()
           APP::monit.LogError("Area2 Second ActionCode: 0x%02X Error!",_seq[1]);
         break;
       }
+
+      // 已经退回并移动到第二个入口，之后的上台动作才应对齐第二个入口。
+      SetCurrentEntry(_seq[1]);
     }
   }
 }
@@ -1155,24 +1178,9 @@ void MeiLinArray::ExecuteSequence()
     APP::monit.LogInfo("%s", seq_log);
   }
 
-  switch (_seq[1])
-  {
-    case 0x80:
-      Area2::block_pos.GetIn(0);
-    break;
-
-    case 0x81:
-      Area2::block_pos.GetIn(1);
-    break;
-
-    case 0x82:
-      Area2::block_pos.GetIn(2);
-    break;
-
-    default:
-      APP::monit.LogError("Error EnterCode: 0x%x02", _seq[1]);
-    break;
-  }
+  // 首个入口动作（取块/抵靠）必须对齐 _seq[0]；若两个入口不同，
+  // HandleClimbAct 会在完成后退和横移后再切换到 _seq[1]。
+  SetCurrentEntry(_seq[0]);
   
 
   APP::monit.LogInfo("[MeiLin] Sequence received, %d actions.", _seq_len);
