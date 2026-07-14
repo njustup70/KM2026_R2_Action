@@ -1416,8 +1416,11 @@ void Retry_to_Put()
     APP::get_block.Put();
   }
 
-  // 等块放完
-  Seq::Wait(5.0f);
+  // 等块放完。不能死等，因为put有时候是先抬升再放出去
+  Seq::WaitUntil([]()
+  {
+    return !APP::get_block.IsBusy();
+  });
 
   // 放腿
   APP::leg.F_AlmostOrigin();

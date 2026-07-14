@@ -1188,7 +1188,11 @@ void Retry_to_Put()
     APP::get_block.Put();
   }
   // 等块放完
-  Seq::Wait(5.0f);
+  Seq::WaitUntil([]()
+  {
+    return !APP::get_block.IsBusy();
+  });
+  Seq::Wait(1.0f);
 
   // 放腿
   APP::leg.F_AlmostOrigin();
