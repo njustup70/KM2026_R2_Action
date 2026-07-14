@@ -899,7 +899,7 @@ void Retry_Comm_Error(StateCore *core)
 {
   retry_comm_err = false;
 
-  MOVE::MoveToTargGes(Vec3(0.8f, 1.3f, 0.0f));
+  MOVE::MoveToTargGes(Vec3(0.8f, 4.7f, 1.5707f));
 
   Seq::WaitUntil([]() { return APP::comm_center.IsKFSSeqRecved(); });
 
