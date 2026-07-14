@@ -617,7 +617,7 @@ void Put_First_Block(StateCore *core)
 //   }
 // }
 
-void RetryZone_PutL2(uint8_t id)
+void RetryZone_PutL2_Blue(uint8_t id)
 {
   // 走到中心点
   MOVE::MoveToTargPos(PATH::A23_B_Retry(), Vec3(0.01f, 0.01f, 0.01f));
@@ -726,17 +726,17 @@ void Wait_Human_Instru(StateCore *core)
   {
     case Area3ActCode::Put_L2_N4_Block:
     {
-      RetryZone_PutL2(0);
+      RetryZone_PutL2_Blue(0);
       break;
     }
     case Area3ActCode::Put_L2_N5_Block:
     {      
-      RetryZone_PutL2(1);
+      RetryZone_PutL2_Blue(1);
       break;
     }
     case Area3ActCode::Put_L2_N6_Block:
     {
-      RetryZone_PutL2(2);
+      RetryZone_PutL2_Blue(2);
       break;
     }
     case Area3ActCode::Put_L3:
