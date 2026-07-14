@@ -60,7 +60,7 @@ void GetBlock::Start()
       .ADRC_Limit(8.0f)
       .SpdLimit(11000.0f)
       .ADRC_MaxPlannedVel(10500.0f)
-      .ADRC_SOTF(0.1f)
+      .ADRC_SOTF(0.07f)
       .SetDt(0.001)
       .Apply();
   motor_2006_feed.driver.Enable();
