@@ -46,6 +46,7 @@ static void Waiting_for_Start(StateCore *core);
 static void Walk_Fetch(StateCore *core);
 static void Walk_To_Dock(StateCore *core);
 // static void Dock_Fetch_And_Back(StateCore *core);
+
 // 二区
 static void Goto_Area2(StateCore *core);
 static void Area2_HostAction(StateCore *core);
@@ -53,7 +54,7 @@ static void Area2_HostAction(StateCore *core);
 static void Walk_into_Area3(StateCore *core);
 // 三区
 static void Put_First_Block(StateCore *core);
-static void Wait_R1_Instru(StateCore *core);
+static void Wait_Human_Instru(StateCore *core);
 // 重试
 static void Retry_Direct_ToArea2(StateCore *core);
 static void Retry_Comm_Error(StateCore *core);
@@ -61,8 +62,6 @@ static void Retry_ChasDisabled(StateCore *core);
 
 
 // 从R1等待位置出发的状态函数
-static void Fetch_0_FromWait();
-static void Fetch_1_FromWait();
 static void Robot_Combine();
 
 static Vec2 Arena_R2_KFS_FetchPos[2] = {
@@ -114,7 +113,7 @@ int Config_SemiAutoStateGraph()
   s_walk_a2_to_a3.StateAction = Walk_into_Area3;
 
   s_put_first.StateAction  = Put_First_Block;
-  s_wait_r1.StateAction    = Wait_R1_Instru;
+  s_wait_r1.StateAction    = Wait_Human_Instru;
 
   s_retry_dirctA2.StateAction  = Retry_Direct_ToArea2;
   s_retry_comm_err.StateAction = Retry_Comm_Error;
@@ -484,9 +483,22 @@ void Put_First_Block(StateCore *core)
   }
 
   APP::monit.LogSpec("Put At:%.2f, %.2f", System.position.x, System.position.y);
-  APP::get_block.Push();
 
-  Seq::Wait(5.0f);
+  APP::get_block.Put();
+  Seq::WaitUntil([]()
+  {
+    return !APP::get_block.IsBusy();
+  }, 15.0f);
+
+  Seq::Wait(1.0f);
+
+  // 收腿后返回三区重试点，准备接收后续操作手指令
+  APP::leg.F_AlmostOrigin();
+  APP::leg.B_AlmostOrigin();
+
+  // 先回九宫格中点，保证回撤路径的起点一致
+  MOVE::MoveToTargGes(Vec3(10.75f, 5.20f, 1.571f));
+  MOVE::MoveToTargPos(PATH::A32_RetryBack(), Vec3(0.01f, 0.01f, 0.01f));
 
   core->GetCurState().Complete = true;
 }
@@ -644,7 +656,11 @@ void RetryZone_PutL2(uint8_t id)
   }
 
   // 等块放完
-  Seq::Wait(7.0f);
+  Seq::WaitUntil([]()
+  {
+    return !APP::get_block.IsBusy();
+  });
+  Seq::Wait(1.0f);
 
   // 放腿
   APP::leg.F_AlmostOrigin();
