@@ -449,7 +449,7 @@ void Walk_into_Area3(StateCore *core)
   APP::leg.B_Origin();
 
   // 跑到九宫格第二层中间位置
-  MOVE::MoveToTargPos(PATH::A23_2(), Vec3(0.01f, 0.01f, 0.01f));
+  MOVE::MoveToTargPos(PATH::A23_2(), Vec3(0.15f, 0.15f, 0.1f));
   MOVE::MoveToTargGes(Arena_R2_L2_Mid_Ges);
 
   Area3_SickFix();
