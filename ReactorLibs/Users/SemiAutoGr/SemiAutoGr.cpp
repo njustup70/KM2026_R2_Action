@@ -884,6 +884,8 @@ void Robot_Combine()
  ******************************************************************************/
 void Retry_Direct_ToArea2(StateCore *core)
 {
+  retry_dir_area2 = false;
+
   MOVE::MoveToTargGes(Vec3(1.3f, 1.0f, -1.5707f));
   core->GetCurState().Complete = true;
 }
@@ -894,6 +896,8 @@ void Retry_Direct_ToArea2(StateCore *core)
  ******************************************************************************/
 void Retry_Comm_Error(StateCore *core)
 {
+  retry_comm_err = false;
+
   MOVE::MoveToTargGes(Vec3(0.8f, 1.3f, 0.0f));
 
   Seq::WaitUntil([]() { return APP::comm_center.IsKFSSeqRecved(); });
