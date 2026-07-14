@@ -32,6 +32,9 @@ static uint8_t need_spear_id = 0;
 static bool fetch_again = false;    // 是否需要再次取矛头
 static bool move_to_area2 = false;  // 是否可以移动到二区了
 
+static bool soft_retry_chasdisable = false; // 软重试：底盘失能状态
+static bool retry_fetch_spear = false;      // 软重试：重新去取对应矛头
+
 static bool retry_dir_area2 = false; // 重试：是否需要直接进入二区
 static bool retry_comm_err = false; // 重试：是否需要重新请求工控机发送动作序
 
@@ -40,7 +43,7 @@ static void Waiting_for_Start(StateCore *core);
 // 一区
 static void Walk_Fetch(StateCore *core);
 static void Walk_To_Dock(StateCore *core);
-static void Dock_Fetch_And_Back(StateCore *core);
+// static void Dock_Fetch_And_Back(StateCore *core);
 // 二区
 static void Goto_Area2(StateCore *core);
 static void Area2_HostAction(StateCore *core);
@@ -52,6 +55,8 @@ static void Wait_R1_Instru(StateCore *core);
 // 重试
 static void Retry_Direct_ToArea2(StateCore *core);
 static void Retry_Comm_Error(StateCore *core);
+static void Retry_ChasDisabled(StateCore *core);
+
 
 // 从R1等待位置出发的状态函数
 static void Fetch_0_FromWait();
@@ -74,7 +79,7 @@ int Config_SemiAutoStateGraph()
   // 一区
   StateBlock& s_area1_f1   = SemiAutoGr.AddState("area1_f1");      // 取第一个矛头
   StateBlock& s_area1_td   = SemiAutoGr.AddState("area1_td");      // 走到对接点
-  StateBlock& s_dock_fetch = SemiAutoGr.AddState("dock_fetch");   // 对接取矛并返回
+  // StateBlock& s_dock_fetch = SemiAutoGr.AddState("dock_fetch");   // 对接取矛并返回
 
   // 二区
   StateBlock& s_goto_area2     = SemiAutoGr.AddState("goto_area2");     // 走进二区（梅林跟前）
@@ -87,16 +92,19 @@ int Config_SemiAutoStateGraph()
   StateBlock& s_put_first  = SemiAutoGr.AddState("put_first");         // 放第一个块
   StateBlock& s_wait_r1    = SemiAutoGr.AddState("wait_r1");           // 等待R1指令
 
-  // 重试
+  // 重试 （含软重试）
   StateBlock& s_retry_dirctA2  = SemiAutoGr.AddState("retry_dircA2");   // 重试：直接进二区
   StateBlock& s_retry_comm_err = SemiAutoGr.AddState("retry_comm_err"); // 重试：光通信异常
+
+  // 用于拖动车辆的底盘失能状态
+  StateBlock& s_chas_disabled = SemiAutoGr.AddState("chas_disa");
 
   /************************ 状态函数绑定 ************************/
   s_wait.StateAction = Waiting_for_Start;
 
   s_area1_f1.StateAction   = Walk_Fetch;
   s_area1_td.StateAction   = Walk_To_Dock;
-  s_dock_fetch.StateAction = Dock_Fetch_And_Back;
+  // s_dock_fetch.StateAction = Dock_Fetch_And_Back;
 
   s_goto_area2.StateAction    = Goto_Area2;
   s_area2_hostact.StateAction = Area2_HostAction;
@@ -108,16 +116,24 @@ int Config_SemiAutoStateGraph()
 
   s_retry_dirctA2.StateAction  = Retry_Direct_ToArea2;
   s_retry_comm_err.StateAction = Retry_Comm_Error;
+  s_chas_disabled.StateAction = Retry_ChasDisabled;
 
   /************************ 状态链接 ************************/
   // ── 正常流程 ──
   s_wait.LinkTo(&s_wait.Complete, s_area1_f1);       // 等待完成 → 取矛头
   s_area1_f1.LinkTo(&s_area1_f1.Complete, s_area1_td); // 取完 → 去对接
-  s_area1_td.LinkTo(&s_area1_td.Complete, s_dock_fetch); // 对接完成 → 对接取矛
+  s_area1_td.LinkTo(&s_area1_td.Complete, s_goto_area2); // 对接完成 → 对接取矛
+
+  // 对接时，可通过遥控器软“重试”，进入底盘失能状态。便于拖车。
+  s_area1_td.LinkTo(&soft_retry_chasdisable, s_chas_disabled);
+  s_chas_disabled.LinkTo(&retry_fetch_spear, s_area1_f1);
+  s_chas_disabled.LinkTo(&retry_dir_area2, s_retry_dirctA2);
+
+
 
   // dock_fetch 分支：继续取矛 或 进二区
-  s_dock_fetch.LinkTo(&fetch_again, s_dock_fetch);
-  s_dock_fetch.LinkTo(&move_to_area2, s_goto_area2);
+  // s_dock_fetch.LinkTo(&fetch_again, s_dock_fetch);
+  // s_dock_fetch.LinkTo(&move_to_area2, s_goto_area2);
 
   // 二区 → 三区
   s_goto_area2.LinkTo(&s_goto_area2.Complete, s_area2_hostact);
@@ -216,8 +232,12 @@ void Walk_Fetch(StateCore *core)
   APP::leg.SetBackPos(-5);
   APP::main_loop.test_led.GradientFlow(Color::Up_Purpor * 0.65f, Color::Up_Yellow * 0.65f, 1.0f);
 
-  // 取矛头，第一个取 2 号，后续由光通信决定
-  need_spear_id = 2;
+  // 正常流程取 2 号；软重试流程使用操作手在 Retry_ChasDisabled 中确认的编号。
+  if (!retry_fetch_spear)
+  {
+    need_spear_id = 2;
+  }
+  retry_fetch_spear = false;
   FetchSpear_FromOrigin(need_spear_id);
 
   core->GetCurState().Complete = true;
@@ -243,6 +263,15 @@ void Walk_To_Dock(StateCore *core)
     Seq::Wait(0.01f);
 
     if (APP::comm_center.IsDocked()) break;
+
+    // 一个遥控器逻辑，按下某个按键后，进入“软重试”逻辑。目的是这样就可以不用R1通信，也能进入二区了。
+    if (MOD::farcon.button_first_half[4] == 1)
+    {
+      // 软重试灯
+      APP::main_loop.test_led.GradientFlow(Color::Up_Purpor * 0.85f, Color::Up_Yellow * 0.85f, 0.65f);
+      soft_retry_chasdisable = true;
+      return;
+    }
   }
 
   // 灯带：进度条
@@ -251,12 +280,22 @@ void Walk_To_Dock(StateCore *core)
 
   APP::jaw.OpenClaw();
 
-  // 等待 6 秒
+  // 等待 12 秒
   float wait_time_s = 0.0f;
-  while (wait_time_s < 6.0f)
+  while (wait_time_s < 12.0f)
   {
     wait_time_s += 0.05f;
-    wait_progress = wait_time_s / 6.0f;
+    wait_progress = wait_time_s / 12.0f;
+
+    // 一个软重试逻辑，同上。放在这里，这样对接完成后也能触发
+    if (MOD::farcon.button_first_half[4] == 1)
+    {
+      // 软重试灯：
+      APP::main_loop.test_led.GradientFlow(Color::Up_Purpor * 0.85f, Color::Up_Yellow * 0.85f, 0.65f);
+      soft_retry_chasdisable = true;
+      return;
+    }
+
     Seq::Wait(0.05f);
   }
 
@@ -264,102 +303,66 @@ void Walk_To_Dock(StateCore *core)
   APP::jaw.SetPosCode(APP::jaw._hori_origin_code - JawConst::_hori_max_travel_code / 2,
                       APP::jaw._vert_origin_code - 200000);
 
-  APP::monit.LogInfo("Fetch and Dock again.");
-  need_spear_id++;
+  APP::monit.LogInfo("Finish Dock.");
   APP::comm_center.ClearDockFlag();
 
   core->GetCurState().Complete = true;
 }
 
-
 /*******************************************************************************
- *  @brief 一区：从对接点取矛头并返回
+ * @brief 逻辑分支：如果使用重试
+ * @note 在这个状态中，车辆的底盘是完全失能的。要想脱离这个状态，只能通过遥控器按键进行选择式跳脱
  ******************************************************************************/
-void Dock_Fetch_And_Back(StateCore *core)
+void Retry_ChasDisabled(StateCore *core)
 {
-  bool giveup_dock = false;
-  fetch_again = false;
+  soft_retry_chasdisable = false;
+  retry_dir_area2 = false;
+  need_spear_id = 0;
 
-  APP::main_loop.test_led.Running(Color::Up_Yellow, 0.4f, 1.2f);
-  FetchSpear_FromDock(need_spear_id);
-
-  // 返回对接点
-  GotoDock(need_spear_id);
-  // 进入对接模式，允许工控机发送偏置
-  APP::jaw.SetTrackMode(true);
-  APP::jaw.UnlockHostPCBias();
-  APP::main_loop.test_led.Running(Color::Up_Yellow, 0.4f, 1.2f);
-
-  while (true)
+  // 如果按下该按钮，进入一个再不跳出的循环，直到跳出状态
+  if (MOD::farcon.button_second_half[2] == 1)
   {
-    Response_Button();
-    Seq::Wait(0.01f);
-
-    if (APP::comm_center.IsDocked() || MOD::farcon.button_second_half[0] == 1)
+    float cooldown = 0.0f;
+    // 灯带分成六段；已亮段数等于当前选择的矛头编号加一。
+    APP::main_loop.test_led.Segment(6);
+    while (MOD::farcon.button_second_half[0] != 1)
     {
-      APP::jaw.OpenClaw();
-      break;
-    }
-    if (APP::comm_center.IsDockGiveUp())
-    {
-      giveup_dock = true;
-      break;
-    }
-  }
+      // 再次按下按键，就能选择取哪个矛头了
+      if (MOD::farcon.button_second_half[2] == 1 && DWT_GetTimeline_Sec() - cooldown > 0.35f)
+      {
+        need_spear_id++;
+        if (need_spear_id > 5) need_spear_id = 0;
+        
+        // 根据选择的矛头编号，显示不同的颜色
+        for (uint8_t i = 0; i < 6; ++i)
+        {
+          if (i <= need_spear_id)
+          {
+            APP::main_loop.test_led.SegLit(i, (i % 2 == 0) ? Color::Yellow : Color::Green);
+          }
+          else
+          {
+            APP::main_loop.test_led.SegLit(i, Color(0.0f, 0.0f, 0.0f));
+          }
+        }
 
-  APP::jaw.SetTrackMode(false);
+        cooldown = DWT_GetTimeline_Sec();
+      }
 
-  // 区分：是否还要再取一个矛头
-  if (need_spear_id < 2 && !giveup_dock)
-  {
-    float wait_progress = 0.0f;
-    APP::main_loop.test_led.ProgBar(Color::Up_Yellow, &wait_progress);
-    float t = 0.0f;
-    while (t < 12.0f)
-    { 
-      t += 0.05f; 
-      wait_progress = t / 12.0f; 
-      Seq::Wait(0.05f); 
-    }
-
-    if (!giveup_dock)
-      APP::jaw.SetPosCode(APP::jaw._hori_origin_code - JawConst::_hori_max_travel_code / 2,
-                          APP::jaw._vert_origin_code - 200000);
-
-    need_spear_id++;
-    APP::comm_center.ClearDockFlag();
-    fetch_again = true;
-    APP::monit.LogInfo("Go Fetch Again.");
-  }
-  else
-  {
-    APP::comm_center.ClearDockFlag();
-    Seq::Wait(0.5f);
-    APP::main_loop.test_led.Running(Color::Orange, 0.4f, 1.2f);
-
-    while (true)
-    {
-      Response_Button();
       Seq::Wait(0.01f);
-      if (APP::comm_center.IsDocked() || MOD::farcon.button_second_half[0] == 1
-          || APP::comm_center.IsDockGiveUp())
-        break;
     }
 
-    float wait_progress = 0.0f;
-    APP::main_loop.test_led.ProgBar(Color::Up_Yellow, &wait_progress);
-    float t = 0.0f;
-    while (t < 6.0f)
-    { 
-      t += 0.05f; 
-      wait_progress = t / 6.0f; 
-      Seq::Wait(0.05f); 
-    }
+    // 选择完成，进入取矛头流程
+    retry_fetch_spear = true;
+    return;
+  }
 
-    APP::comm_center.ClearDockFlag();
-    fetch_again = false;
-    move_to_area2 = true;
-    APP::monit.LogInfo("Go to Climb.");
+  // 如果按下该按钮，直接进入二区，参考 Retry_Direct_ToArea2
+  if (MOD::farcon.button_second_half[3] == 1)
+  {
+    APP::monit.LogRespond("Retry: Direct to Area2.");
+    retry_dir_area2 = true;
+    return;
   }
 }
 
@@ -377,10 +380,6 @@ void Goto_Area2(StateCore *core)
 
   APP::main_loop.test_led.Lit(Color::White);
   APP::monit.LogInfo("entercode:%x", Area2::mei_lin_array.enter_code);
-
-  // 放宽路径末端刹车，让机器人带着余速退出 → 配合 Action 侧的闭环修正
-  // APP::path_chaser.SetTimeEndSlowDist(0.2f);
-  // APP::path_chaser.SetTimeEndMinVel(0.08f);
 
   switch (Area2::mei_lin_array.enter_code)
   {
