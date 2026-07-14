@@ -313,6 +313,10 @@ void ButtonLogics()
 
 void UpdateFarconSlamPos()
 {
+    static int div_cnt = 0;
+    if (++div_cnt < 20) return;  // 200Hz → 10Hz
+    div_cnt = 0;
+
     uint8_t slam_pos[13];
     Vec3 pos_packet;
 

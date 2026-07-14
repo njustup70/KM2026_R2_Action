@@ -189,17 +189,17 @@ void Waiting_for_Start(StateCore *core)
     return;
   }
   /***    重试并直接去放块    ***/
-  if(retry_put_L2_N4)
+  else if(retry_put_L2_N4)
   {
     APP::monit.LogRespond("Retry to put L2_N4.");
     return;
   }
-  if(retry_put_L2_N5)
+  else if(retry_put_L2_N5)
   {
     APP::monit.LogRespond("Retry to put L2_N5.");
     return;
   }
-  if(retry_put_L2_N6)
+  else if(retry_put_L2_N6)
   {
     APP::monit.LogRespond("Retry to put L2_N6.");
     return;
@@ -1238,37 +1238,37 @@ void Response_Button()
     //   last_put_time = DWT_GetTimeline_Sec();
     // }
 
-    /**************   均为左半按键  *************/
-    // 抬腿
-    if (MOD::farcon.button_first_half[0] == 1)
-    {
-      APP::leg.SetFrontPosSlow(-100.0f, 1.0f);
-      APP::leg.SetBackPosSlow(-100.0f, 1.0f);
-    }
+    // /**************   均为左半按键  *************/
+    // // 抬腿
+    // if (MOD::farcon.button_first_half[0] == 1)
+    // {
+    //   APP::leg.SetFrontPosSlow(-100.0f, 1.0f);
+    //   APP::leg.SetBackPosSlow(-100.0f, 1.0f);
+    // }
 
-    // 收回前腿
-    if (MOD::farcon.button_first_half[1] == 1)
-    {
-      APP::leg.SetFrontPosSlow(-4, 5.0f);
-    }
+    // // 收回前腿
+    // if (MOD::farcon.button_first_half[1] == 1)
+    // {
+    //   APP::leg.SetFrontPosSlow(-4, 5.0f);
+    // }
 
-    // 收回后腿
-    if (MOD::farcon.button_first_half[2] == 1)
-    {
-      APP::leg.SetBackPosSlow(-4, 5.0f);
-    }
+    // // 收回后腿
+    // if (MOD::farcon.button_first_half[2] == 1)
+    // {
+    //   APP::leg.SetBackPosSlow(-4, 5.0f);
+    // }
 
-    // 一起收回
-    if (MOD::farcon.button_first_half[3] == 1)
-    {
-      APP::leg.SetFrontPosSlow(-4, 5.0f);
-      APP::leg.SetBackPosSlow(-4, 5.0f);
-    }
+    // // 一起收回
+    // if (MOD::farcon.button_first_half[3] == 1)
+    // {
+    //   APP::leg.SetFrontPosSlow(-4, 5.0f);
+    //   APP::leg.SetBackPosSlow(-4, 5.0f);
+    // }
 
-    if(MOD::farcon.button_first_half[6] == 1)
-    {
-      APP::get_block.Put();
-    }
+    // if(MOD::farcon.button_first_half[6] == 1)
+    // {
+    //   APP::get_block.Put();
+    // }
 
     // if(MOD::farcon.button_first_half[7] == 1)
     // {

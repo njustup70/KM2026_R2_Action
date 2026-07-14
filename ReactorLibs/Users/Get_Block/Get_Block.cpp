@@ -18,8 +18,8 @@ static constexpr float T_LIFT_DIAG_LOG = 0.5f; // 抬升动作中周期性诊断
 static constexpr float T_FEED = 10.0f;
 static constexpr float BELT_RPM = 17.0f;
 static constexpr float DM_BELT_VEL = 17.0f;
-static constexpr float LIFT_UP_VEL = -100.0f;             // 现有位置模式中向上为负，速度沿用该方向
-static constexpr float LIFT_DOWN_VEL = 100.0f;            // 下行目标速度，正方向
+static constexpr float LIFT_UP_VEL = -132.0f;             // 现有位置模式中向上为负，速度沿用该方向
+static constexpr float LIFT_DOWN_VEL = 132.0f;            // 下行目标速度，正方向
 static constexpr float LIFT_STOP_VEL = 0.0f;              // 停止速度指令，用于限位/超时/中止
 static constexpr float LIFT_DM_SOFT_VEL_LIMIT = 160.0f;   // MCU侧SetVel限幅，每次启动生效
 static constexpr float LIFT_DM_HARD_VEL_LIMIT = 160.0f;   // 电调MAX_SPD寄存器限幅，需一次性保存
@@ -200,7 +200,7 @@ void GetBlock::_ConfigureLiftDmParamsOnce()
 {
   APP::monit.LogWarning("[GetBlock] CONFIG_LIFT_DM_PARAMS_ONCE enabled!");
   APP::monit.LogWarning("[GetBlock] Writing lift DM params. Set flag false after one boot.");
-  motor_dm_lift.SetFeedbackRange(3.14159f, 100.0f, 5.0f);
+  motor_dm_lift.SetFeedbackRange(3.14159f, 10.0f, 5.0f);
   motor_dm_lift.Set_Hard_VelLimit(LIFT_DM_HARD_VEL_LIMIT);
   motor_dm_lift.Disable();
   DWT_DelayMs(50.0f);
@@ -793,7 +793,8 @@ void GetBlock::_UpdateFSM()
       // // 首次进入时启动慢速推块（2秒平滑推出）
       // if (!_feed_slow.active)
       //     FeedMoveSlow(-_feed_pos_extend, 1.2f);
-      _FeedMoveBlocking(-_feed_pos_extend, 1186666.0f);
+    //   _FeedMoveBlocking(-_feed_pos_extend, 1186666.0f);
+        motor_2006_feed.SetPos(-_feed_pos_extend);
       if (_FeedNear(-_feed_pos_extend))
       {
         _upper = false;
@@ -816,7 +817,8 @@ void GetBlock::_UpdateFSM()
       // // 首次进入时启动慢速收回（1.5秒平滑收回）
       // if (!_feed_slow.active)
       //     FeedMoveSlow(-_feed_pos_retract, 0.4f);
-      _FeedMoveBlocking(-_feed_pos_retract, 3560000);
+    //   _FeedMoveBlocking(-_feed_pos_retract, 3560000);
+            motor_2006_feed.SetPos(-_feed_pos_retract);
       if (_FeedNear(-_feed_pos_retract)) // 慢速完成    
       {
         if (_storing_b2)
