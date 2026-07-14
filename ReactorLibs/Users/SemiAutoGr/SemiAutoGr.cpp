@@ -69,7 +69,7 @@ static Vec2 Arena_R2_KFS_FetchPos[2] = {
   Vec2(11.1, 3.555), Vec2(11.1, 2.835)
 }; 
 // 放中间九宫格块的位置
-static Vec3 Arena_R2_L2_Mid_Ges(10.75f, 5.20f, 1.571f);
+static Vec3 Arena_R2_L2_Mid_Ges(10.75f, 5.10f, 1.571f);
 
 
 int Config_SemiAutoStateGraph()
@@ -449,7 +449,7 @@ void Walk_into_Area3(StateCore *core)
   APP::leg.B_Origin();
 
   // 跑到九宫格第二层中间位置
-  MOVE::MoveToTargPos(PATH::A23_2(), Vec3(0.15f, 0.15f, 0.1f));
+  MOVE::MoveToTargPos(PATH::A23_2(), Vec3(0.2f, 0.2f, 0.1f));
   MOVE::MoveToTargGes(Arena_R2_L2_Mid_Ges);
 
   Area3_SickFix();
@@ -479,12 +479,12 @@ void Put_First_Block(StateCore *core)
   if (APP::get_block.IsBlockPresent())
   {
     APP::monit.LogInfo("Middle block exists, move to right");
-    MOVE::MoveToTargGes(Vec3(11.29f, 5.20f, 1.571f));
+    MOVE::MoveToTargGes(Vec3(11.29f, 5.10f, 1.571f));
 
     if (APP::get_block.IsBlockPresent())
     {
       APP::monit.LogInfo("Right block also exists, move to left");
-      MOVE::MoveToTargGes(Vec3(10.21f, 5.20f, 1.571f));
+      MOVE::MoveToTargGes(Vec3(10.21f, 5.10f, 1.571f));
 
       if (APP::get_block.IsBlockPresent())
         APP::monit.LogInfo("All three have blocks, need combine!");
@@ -629,7 +629,7 @@ void RetryZone_PutL2(uint8_t id)
       // 抬起腿
       APP::leg.SetFrontPos(-388);
       APP::leg.SetBackPos(-380);
-      MOVE::MoveToTargGes(Vec3(10.21f, 5.15f, 1.571f));
+      MOVE::MoveToTargGes(Vec3(10.21f, 5.10f, 1.571f));
       Seq::Wait(0.5f);
       // 放块
       APP::get_block.Put();
@@ -640,7 +640,7 @@ void RetryZone_PutL2(uint8_t id)
       // 抬起腿
       APP::leg.SetFrontPos(-388);
       APP::leg.SetBackPos(-380);
-      MOVE::MoveToTargGes(Vec3(10.75f, 5.15f, 1.571f));
+      MOVE::MoveToTargGes(Vec3(10.75f, 5.10f, 1.571f));
       Seq::Wait(0.5f);
       // 放块
       APP::get_block.Put();
@@ -651,7 +651,7 @@ void RetryZone_PutL2(uint8_t id)
       // 抬起腿
       APP::leg.SetFrontPos(-388);
       APP::leg.SetBackPos(-380);
-      MOVE::MoveToTargGes(Vec3(11.29f, 5.15f, 1.571f));
+      MOVE::MoveToTargGes(Vec3(11.29f, 5.10f, 1.571f));
       Seq::Wait(0.5f);
       // 放块
       APP::get_block.Put();
