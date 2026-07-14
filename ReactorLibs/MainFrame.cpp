@@ -19,6 +19,7 @@
 #include "optical_comm.hpp"
 #include "VacuumClaw.hpp"
 #include "SemiAutoGr.hpp"
+#include "SemiAutoGr_Blue.hpp"
 
 #include "ChallengeGraph.hpp"
 #include "ChallengeGraphBlue.hpp"
@@ -169,7 +170,7 @@ void MainFrameCpp()
 
   // 注册主赛
   APP::main_loop.Compete_KM_RedGr_id = Config_SemiAutoStateGraph();
-
+  APP::main_loop.Compete_KM_BlueGr_id = Config_SemiAutoStateGraph_Blue();
   // APP::state_core.RegistGraph(graph);
   // graph.Degenerate(Action_of_Dege);
   // APP::state_core.Enable(0);
