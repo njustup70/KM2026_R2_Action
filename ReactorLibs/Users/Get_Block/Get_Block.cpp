@@ -386,6 +386,7 @@ void GetBlock::Store()
   }
 
   _ReadSensors();
+  _LiftHome();
 
   // 抬升在低位时，挡片远离上传感器，_grid[1]/_grid[0] 读数可靠。
   // 直接用传感器刷新 _upper/_lower，消除 FSM 缓存状态（如 LIFT_UP_HOLD
@@ -460,6 +461,10 @@ void GetBlock::Put()
   }
 
   _ReadSensors();
+  _LiftHome();
+
+  _upper = _grid[1];
+  _lower = _grid[0];
 
   if (!_upper && !_lower)
   {
@@ -825,7 +830,7 @@ void GetBlock::_UpdateFSM()
       //     FeedMoveSlow(-_feed_pos_retract, 0.4f);
     //   _FeedMoveBlocking(-_feed_pos_retract, 3560000);
             motor_2006_feed.SetPos(-_feed_pos_retract);
-      if (_FeedNear(-_feed_pos_retract)) // 慢速完成    
+      if (_FeedNear(-_feed_pos_retract)) 
       {
         if (_storing_b2)
         {
@@ -835,9 +840,12 @@ void GetBlock::_UpdateFSM()
         }
         else if (_lower)
         {
-          _fsm = FSM::PUT_LIFT_UP;
-          APP::monit.LogInfo("[GetBlock] Lower has block, lift to upper");
-        }
+            if (_lift_at_upper)
+                _fsm = FSM::PUT_LIFT_DOWN;        // 挡片在高位，先降
+            else
+                _fsm = FSM::PUT_LIFT_UP;
+            APP::monit.LogInfo("[GetBlock] Lower has block, lift to upper");
+        }        
         else
         {
           _fsm = FSM::COMPLETE;
@@ -1001,4 +1009,33 @@ void GetBlock::_UpdateFSM()
     default:
       break;
   }
+}
+void GetBlock::_LiftHome()
+{
+    // 已在传感器位 → 不需要修复
+    if (_lift_at_lower || _lift_at_upper) return;
+
+    APP::monit.LogWarning("[GetBlock] Lift stuck between sensors, homing...");
+
+    // 下仓有块且上仓空 → 降下去托块
+    if (_grid[0] && !_grid[1])
+    {
+        while (!_lift_at_lower)
+        {
+            _lift_cmd_vel = LIFT_DOWN_VEL;
+            Seq::Wait(0.01f);
+        }
+        _LiftStop();
+        _upper = _grid[1];
+        _lower = _grid[0];
+        return;
+    }
+
+    // 其余情况 → 上行到顶
+    while (!_lift_at_upper)
+    {
+        _lift_cmd_vel = LIFT_UP_VEL;
+        Seq::Wait(0.01f);
+    }
+    _LiftStop();
 }

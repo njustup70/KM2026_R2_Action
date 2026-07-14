@@ -44,6 +44,8 @@ public:
     int  GetBlockCount() const   { return (int)_upper + (int)_lower; }
     bool IsFull() const          { return _upper && _lower; }
 
+    bool IsBusy() const { return _fsm_busy; }
+
     // ==================== 电机 ====================
     MotorDM  motor_s2325;       // 下摩擦带 (DM, hcan_sub ID 9)
     MotorDJI motor_2006_fric;   // 上摩擦带 (2006, hcan_main ID 4)
@@ -156,6 +158,8 @@ private:
     void _FeedMoveBlocking(float target_pos, float code_per_sec);
     void _ReadSensors();
     bool _IsTimeout(float sec) const;
+    void _LiftHome();
+
     // void _StartBelt();
     // void _StopBelt();
 
