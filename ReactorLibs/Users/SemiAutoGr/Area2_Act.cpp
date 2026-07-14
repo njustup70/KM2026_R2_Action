@@ -10,6 +10,7 @@
 #include "Get_Block.hpp"
 #include "HostPC.hpp"
 #include "Area2_Act.hpp"
+#include <cstdio>
 #include <cstring>
 #include "std_math.hpp"
 #include "SemiAutoGr.hpp"
@@ -1138,6 +1139,20 @@ void MeiLinArray::ExecuteSequence()
   while (!_seq_ready)
   {
     Seq::Wait(0.01f);
+  }
+
+  // 按 8 字节分段打印，避免单条 Monitor 日志超过长度限制。
+  for (int start = 0; start < _seq_len; start += 8)
+  {
+    char seq_log[48] = {0};
+    int written = snprintf(seq_log, sizeof(seq_log),
+                           "[MeiLin] Seq[%d..%d]:", start,
+                           (start + 7 < _seq_len) ? start + 7 : _seq_len - 1);
+    for (int i = start; i < _seq_len && i < start + 8 && written > 0 && written < static_cast<int>(sizeof(seq_log)); ++i)
+    {
+      written += snprintf(seq_log + written, sizeof(seq_log) - written, " %02X", _seq[i]);
+    }
+    APP::monit.LogInfo("%s", seq_log);
   }
 
   switch (_seq[1])
