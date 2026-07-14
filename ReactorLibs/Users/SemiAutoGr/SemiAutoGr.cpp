@@ -499,7 +499,7 @@ void Put_First_Block(StateCore *core)
     return !APP::get_block.IsBusy();
   }, 15.0f);
 
-  Seq::Wait(1.0f);
+  Seq::Wait(2.0f);
 
   // 收腿后返回三区重试点，准备接收后续操作手指令
   APP::leg.F_AlmostOrigin();
@@ -669,7 +669,7 @@ void RetryZone_PutL2(uint8_t id)
   {
     return !APP::get_block.IsBusy();
   });
-  Seq::Wait(1.0f);
+  Seq::Wait(2.0f);
 
   // 放腿
   APP::leg.F_AlmostOrigin();
