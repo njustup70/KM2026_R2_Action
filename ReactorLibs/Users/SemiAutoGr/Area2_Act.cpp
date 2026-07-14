@@ -537,8 +537,8 @@ void MeiLinArray::FetchBlock(BlockHeight height)
     APP::monit.LogInfo("claw already extended at entry");
     Seq::WaitUntil([]()
     {
-      return fabs(APP::vac_claw.motor_stretch.driver.measure.total_angle - APP::vac_claw.stretch_pos) < 150;
-    });
+      return fabs(APP::vac_claw.motor_stretch.driver.measure.total_angle - APP::vac_claw.stretch_pos) < 8000;
+    }, 5.0f);
   }
   else
   {
@@ -560,7 +560,7 @@ void MeiLinArray::FetchBlock(BlockHeight height)
   // 必须等爪子完全合上
   Seq::WaitUntil([]()
   {
-    return fabs(APP::vac_claw.motor_snap.driver.measure.total_angle - APP::vac_claw.snap_pos) < 1000;
+    return fabs(APP::vac_claw.motor_snap.driver.measure.total_angle - APP::vac_claw.snap_pos) < 10000;
   });  
 
   Seq::Wait(0.5f);

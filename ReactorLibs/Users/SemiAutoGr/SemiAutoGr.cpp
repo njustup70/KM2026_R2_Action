@@ -486,7 +486,7 @@ void Put_First_Block(StateCore *core)
   APP::monit.LogSpec("Put At:%.2f, %.2f", System.position.x, System.position.y);
   APP::get_block.Push();
 
-  Seq::Wait(1.5f);
+  Seq::Wait(5.0f);
 
   core->GetCurState().Complete = true;
 }
