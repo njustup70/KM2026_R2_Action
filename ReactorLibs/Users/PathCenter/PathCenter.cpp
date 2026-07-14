@@ -336,12 +336,12 @@ const Path<202>& A23_B_Retry()
     return ::A23_B_RETRY;
 }
 
-const Path<203>& A32_RetryBack()
+const Path<200>& A32_RetryBack()
 {
     return ::A32_RETRY_BACK;
 }
 
-const Path<203>& A32_B_RetryBack()
+const Path<200>& A32_B_RetryBack()
 {
     return ::A32_B_RETRY_BACK;
 }
