@@ -626,10 +626,10 @@ void RetryZone_PutL2(uint8_t id)
   {
     case 0:   // 放四号格子
     {
-      MOVE::MoveToTargGes(Vec3(10.21f, 5.20f, 1.571f));
       // 抬起腿
       APP::leg.SetFrontPos(-388);
       APP::leg.SetBackPos(-380);
+      MOVE::MoveToTargGes(Vec3(10.21f, 5.15f, 1.571f));
       Seq::Wait(0.5f);
       // 放块
       APP::get_block.Put();
@@ -637,10 +637,10 @@ void RetryZone_PutL2(uint8_t id)
     }
     case 1:   // 放五号格子
     {
-      MOVE::MoveToTargGes(Vec3(10.75f, 5.20f, 1.571f));
       // 抬起腿
       APP::leg.SetFrontPos(-388);
       APP::leg.SetBackPos(-380);
+      MOVE::MoveToTargGes(Vec3(10.75f, 5.15f, 1.571f));
       Seq::Wait(0.5f);
       // 放块
       APP::get_block.Put();
@@ -648,10 +648,10 @@ void RetryZone_PutL2(uint8_t id)
     }
     case 2:   // 放六号格子
     {
-      MOVE::MoveToTargGes(Vec3(11.29f, 5.20f, 1.571f));
       // 抬起腿
       APP::leg.SetFrontPos(-388);
       APP::leg.SetBackPos(-380);
+      MOVE::MoveToTargGes(Vec3(11.29f, 5.15f, 1.571f));
       Seq::Wait(0.5f);
       // 放块
       APP::get_block.Put();
@@ -697,6 +697,8 @@ void Wait_Human_Instru(StateCore *core)
 
   /// @brief 根据操作手的指令，路由至不同状态
   Area3ActCode code = Area3ActCode::Idle;
+
+  APP::main_loop.test_led.Breath(Color::Green, 0.75f);
 
   // 无指令则持续阻塞，等待下面的等待和做动作
   while (code == Area3ActCode::Idle)
