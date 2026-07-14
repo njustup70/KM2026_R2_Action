@@ -65,6 +65,9 @@
 #include "n5b_back.hpp"
 #include "n6b_back.hpp"
 
+#include "a23_retry.hpp"
+#include "a23_bretry.hpp"
+
 namespace PATH
 {
 const Path<20>& TTD_B1()
@@ -318,6 +321,16 @@ const Path<161>& N5B_BACK()
 const Path<156>& N6B_BACK()
 {
     return ::N6B_Back;
+}
+
+const Path<202>& A23_Retry()
+{
+    return ::A23_RETRY;
+}
+
+const Path<202>& A23_B_Retry()
+{
+    return ::A23_B_RETRY;
 }
 
 }

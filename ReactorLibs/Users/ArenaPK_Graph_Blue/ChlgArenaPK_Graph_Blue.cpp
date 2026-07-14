@@ -216,6 +216,8 @@ void Waiting_for_Start(StateCore *core)
  */
  void Retry_Go_Wait(StateCore *core)
  {
+  retry_go_wait = false;
+
     APP::monit.LogInfo("Retry: Go Wait.");
 
   // 灯带：滚动
@@ -240,6 +242,8 @@ void Waiting_for_Start(StateCore *core)
  */
 void Direct_Go_Wait(StateCore *core)
 {
+  dirct_go_wait = false;
+
   APP::monit.LogInfo("Retry: Go Wait.");
 
   // 灯带：滚动
@@ -1378,7 +1382,7 @@ void Response_Button()
 void Retry_to_Put(StateCore *core)
 {
   // 先走到擂台中央（蓝区路径 A23_B2）
-  MOVE::MoveToTargPos(PATH::A23_B2(), Vec3(0.01f, 0.01f, 0.01f));
+  MOVE::MoveToTargPos(PATH::A23_B_Retry(), Vec3(0.01f, 0.01f, 0.01f));
   SickCorrect_Blue();
 
   // 放四号格子

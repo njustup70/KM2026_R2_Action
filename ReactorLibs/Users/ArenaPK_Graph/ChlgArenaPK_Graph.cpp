@@ -188,17 +188,17 @@ void Waiting_for_Start(StateCore *core)
     return;
   }
   /***    重试并直接去放块    ***/
-  if(retry_put_L2_N4)
+  else if(retry_put_L2_N4)
   {
     APP::monit.LogRespond("Retry to put L2_N4.");
     return;
   }
-  if(retry_put_L2_N5)
+  else if(retry_put_L2_N5)
   {
     APP::monit.LogRespond("Retry to put L2_N5.");
     return;
   }
-  if(retry_put_L2_N6)
+  else if(retry_put_L2_N6)
   {
     APP::monit.LogRespond("Retry to put L2_N6.");
     return;
@@ -215,6 +215,7 @@ void Waiting_for_Start(StateCore *core)
  */
  void Retry_Go_Wait(StateCore *core)
  {
+  retry_go_wait = false;
     APP::monit.LogInfo("Retry: Go Wait.");
 
   // 灯带：滚动
@@ -239,6 +240,8 @@ void Waiting_for_Start(StateCore *core)
  */
 void Direct_Go_Wait(StateCore *core)
 {
+  dirct_go_wait = false;
+
   APP::monit.LogInfo("Retry: Go Wait.");
 
   // 灯带：滚动
@@ -1045,12 +1048,12 @@ void Robot_Combine()
 // 根据重试后按的遥控器按键，选择直接去放哪个块
 void Retry_to_Put(StateCore *core)
 {
+  MOVE::MoveToTargPos(PATH::A23_Retry(), Vec3(0.01f, 0.01f, 0.01f));
+  SickCorrect();
   // 放四号格子
   if(retry_put_L2_N4)
   {
     retry_put_L2_N4 = false;
-    MOVE::MoveToTargPos(PATH::A23_2(), Vec3(0.01f, 0.01f, 0.01f));
-    SickCorrect();
     MOVE::MoveToTargGes(Vec3(10.21f, 5.20f, 1.571f));
     // 抬起腿
     APP::leg.SetFrontPos(-388);
@@ -1063,8 +1066,6 @@ void Retry_to_Put(StateCore *core)
   else if(retry_put_L2_N5)
   {
     retry_put_L2_N5 = false;
-    MOVE::MoveToTargPos(PATH::A23_2(), Vec3(0.01f, 0.01f, 0.01f));
-    SickCorrect();
     // MOVE::MoveToTargGes(Vec3(10.21f, 5.20f, 1.571f));
     // 抬起腿
     APP::leg.SetFrontPos(-388);
@@ -1078,8 +1079,6 @@ void Retry_to_Put(StateCore *core)
   else if(retry_put_L2_N6)
   {
     retry_put_L2_N6 = false;
-    MOVE::MoveToTargPos(PATH::A23_2(), Vec3(0.01f, 0.01f, 0.01f));
-    SickCorrect();
     MOVE::MoveToTargGes(Vec3(11.29f, 5.20f, 1.571f));
     // 抬起腿
     APP::leg.SetFrontPos(-388);

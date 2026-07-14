@@ -76,4 +76,8 @@ const Path<180>& N4B_BACK();
 const Path<161>& N5B_BACK();
 const Path<156>& N6B_BACK();
 
+/// @brief 重试直接上擂台路径
+const Path<202>& A23_Retry();
+const Path<202>& A23_B_Retry();
+
 }
