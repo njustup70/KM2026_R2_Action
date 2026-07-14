@@ -51,7 +51,7 @@ void Action_of_Dege(StateCore *core)
   Area3::FetchBlockOnTheGround();
   // Area2::block_pos.GetIn(1);
   // Area2::mei_lin_array.Climb_Up200();
-  APP::get_block.Put();
+  // APP::get_block.Put();
 
   while(MOD::farcon.button_second_half[0] != 1)
   {

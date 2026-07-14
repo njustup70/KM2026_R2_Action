@@ -5,8 +5,8 @@
 
 MainLoop& APP::main_loop = MainLoop::GetInstance();
 
-#define Challenge_Area12_EXPLORE
-//  #define Challenge_Area3_ARENA
+// #define Challenge_Area12_EXPLORE
+ #define Challenge_Area3_ARENA
 // #define Compete_KungfuMaster
 void ButtonLogics();
 void UpdateFarconSlamPos();
