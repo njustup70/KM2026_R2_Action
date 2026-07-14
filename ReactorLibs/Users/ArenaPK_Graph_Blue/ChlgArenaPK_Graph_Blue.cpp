@@ -756,11 +756,11 @@ void Fetch_0_FromWait()
   APP::monit.LogInfo("[Arena] I'm at the second block.");
 
   // 等待遥控器的出发指令
-  while(MOD::farcon.button_second_half[0] != 1)
-  {
-    Response_Button();
-    Seq::Wait(0.01f);
-  }
+  // while(MOD::farcon.button_second_half[0] != 1)
+  // {
+  //   Response_Button();
+  //   Seq::Wait(0.01f);
+  // }
   // 取第二个块
   Area3::FetchBlockOnTheGround();
 
@@ -780,11 +780,11 @@ void Fetch_1_FromWait()
   APP::monit.LogInfo("[Arena] I'm at the second block.");
 
   // 等待遥控器的出发指令
-  while(MOD::farcon.button_second_half[0] != 1)
-  {
-    Response_Button();
-    Seq::Wait(0.01f);
-  }
+  // while(MOD::farcon.button_second_half[0] != 1)
+  // {
+  //   Response_Button();
+  //   Seq::Wait(0.01f);
+  // }
   // 取第二个块
   Area3::FetchBlockOnTheGround();
 

@@ -470,7 +470,13 @@ void GetBlock::Put()
   if (_upper)
     _fsm = FSM::PUT_FEED_PUSH;
   else // _lower && !_upper
-    _fsm = FSM::PUT_LIFT_UP;
+  {
+    // 如果抬升在高位，先降下去才能托住下仓的块
+    if (_lift_at_upper)
+      _fsm = FSM::PUT_LIFT_DOWN;
+    else
+      _fsm = FSM::PUT_LIFT_UP;
+  }
 
   _LiftWakeUp(); // 新序列开始，唤醒抬升电机
   _fsm_busy = true;
