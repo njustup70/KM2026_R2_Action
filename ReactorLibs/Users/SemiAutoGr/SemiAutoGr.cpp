@@ -593,53 +593,120 @@ static void PutBlock_L2(uint8_t id)
   }
 }
 
+void RetryZone_PutL2(uint8_t id)
+{
+  // 走到中心点
+  MOVE::MoveToTargPos(PATH::A23_Retry(), Vec3(0.01f, 0.01f, 0.01f));
+  
+  // 尝试西克纠正
+  Area3_SickFix();
+
+  switch (id)
+  {
+    case 0:   // 放四号格子
+    {
+      MOVE::MoveToTargGes(Vec3(10.21f, 5.20f, 1.571f));
+      // 抬起腿
+      APP::leg.SetFrontPos(-388);
+      APP::leg.SetBackPos(-380);
+      Seq::Wait(0.5f);
+      // 放块
+      APP::get_block.Put();
+      break;
+    }
+    case 1:   // 放五号格子
+    {
+      MOVE::MoveToTargGes(Vec3(10.75f, 5.20f, 1.571f));
+      // 抬起腿
+      APP::leg.SetFrontPos(-388);
+      APP::leg.SetBackPos(-380);
+      Seq::Wait(0.5f);
+      // 放块
+      APP::get_block.Put();
+      break;
+    }
+    case 2:   // 放六号格子
+    {
+      MOVE::MoveToTargGes(Vec3(11.29f, 5.20f, 1.571f));
+      // 抬起腿
+      APP::leg.SetFrontPos(-388);
+      APP::leg.SetBackPos(-380);
+      Seq::Wait(0.5f);
+      // 放块
+      APP::get_block.Put();
+      break;
+    }
+    default:
+    {
+      APP::monit.LogError("Invalid Retry Put ID!");
+      break;
+    }
+  }
+
+  // 等块放完
+  Seq::Wait(7.0f);
+
+  // 放腿
+  APP::leg.F_AlmostOrigin();
+  APP::leg.B_AlmostOrigin();  
+
+  // 回到中间
+  MOVE::MoveToTargGes(Vec3(10.75f, 5.20f, 1.571f));
+
+  // 返回重试区
+  MOVE::MoveToTargPos(PATH::A32_RetryBack(), Vec3(0.01f, 0.01f, 0.01f));
+}
+
 
 /*******************************************************************************
- *  @brief 三区：等待 R1 光通信指令（非阻塞循环，200Hz 调用）
+ *  @brief 三区：等待 操作手 指令（非阻塞循环，200Hz 调用）
  ******************************************************************************/
 /**
- * @brief 此时，R2靠边站好。并将光通信 / 红外接收端向外对准，准备接收信息。并路由至不同状态
+ * @brief 此时，R2靠边站好（在重试区内）。准备接收操作手信息。并路由至不同状态
  * @note 这个函数里如果没有阻塞，那么根据状态机的设计，这个状态将会以 200Hz 循环
  * @param core 
  */
-void Wait_R1_Instru(StateCore *core)
+void Wait_Human_Instru(StateCore *core)
 {
-  /**
-   * @brief 根据R1的指令，路由至不同状态
-   * 
-   */
-  auto code = APP::comm_center.Get_R1_InstruCode();
-  if (code == Area3ActCode::Idle)
-    return;  // 无指令，跳过下面的等待和做动作
+  /// @brief 根据操作手的指令，路由至不同状态
+  Area3ActCode code = Area3ActCode::Idle;
 
-  // 灯带：进度条
-  float wait_progress = 0.0f;
-  APP::main_loop.test_led.ProgBar(Color::Up_Yellow, &wait_progress);
-
-  // 等待 6 秒
-  float wait_time_s = 0.0f;
-  while (wait_time_s < 6.0f)
+  // 无指令则持续阻塞，等待下面的等待和做动作
+  while (code == Area3ActCode::Idle)
   {
-    wait_time_s += 0.05f;
-    wait_progress = wait_time_s / 6.0f;
-    Seq::Wait(0.05f);
+    if (MOD::farcon.button_second_half[2] == 1)
+    {
+      code = Area3ActCode::Put_L2_N4_Block;
+    }
+    else if (MOD::farcon.button_second_half[3] == 1)
+    {
+      code = Area3ActCode::Put_L2_N5_Block;
+    }
+    else if (MOD::farcon.button_second_half[4] == 1)
+    {
+      code = Area3ActCode::Put_L2_N6_Block;
+    }
+    Seq::Wait(0.1f);
   }
+
+  // 灯带：运行
+  APP::main_loop.test_led.Running(Color::Green, 0.1f, 0.5f);
 
   switch (code)
   {
     case Area3ActCode::Put_L2_N4_Block:
     {
-      PutBlock_L2(0);
+      RetryZone_PutL2(0);
       break;
     }
     case Area3ActCode::Put_L2_N5_Block:
     {      
-      PutBlock_L2(1);
+      RetryZone_PutL2(1);
       break;
     }
     case Area3ActCode::Put_L2_N6_Block:
     {
-      PutBlock_L2(2);
+      RetryZone_PutL2(2);
       break;
     }
     case Area3ActCode::Put_L3:
@@ -651,74 +718,17 @@ void Wait_R1_Instru(StateCore *core)
       Robot_Combine();
       break;
     }
-    case Area3ActCode::Fetch_GroundBlock_0:
-    {
-      Fetch_0_FromWait();
-      break;
-    }
-    case Area3ActCode::Fetch_GroundBlock_1:
-    {
-      Fetch_1_FromWait();
-      break;
-    }
     default:
     {
       break;
     }
   }
   // 清除，防止重复执行
-  APP::comm_center.Reset_R1_InstruCode();
+  // APP::comm_center.Reset_R1_InstruCode();
+  code = Area3ActCode::Idle;
 }
 
 /*******************************************************************************/
-
-void Fetch_0_FromWait()
-{
-  // 走到第一个块跟前
-  MOVE::MoveToTargGes(Vec3(Arena_R2_KFS_FetchPos[0].x, Arena_R2_KFS_FetchPos[0].y, 0.0));
-
-  // 等待到达
-  APP::monit.LogInfo("[Arena] I'm at the second block.");
-
-  // 等待遥控器的出发指令
-  while(MOD::farcon.button_second_half[0] != 1)
-  {
-    Response_Button();
-    Seq::Wait(0.01f);
-  }
-  // 取第二个块
-  Area3::FetchBlockOnTheGround();
-
-  // 等待取块完成
-  Seq::Wait(1.0f);
-
-  // 返回等待点（光通信朝向 R1）
-  MOVE::MoveToTargGes(Vec3(10.1f, 2.1f, -1.571f));
-}
-
-void Fetch_1_FromWait()
-{
-  // 走到第二个块跟前
-  MOVE::MoveToTargGes(Vec3(Arena_R2_KFS_FetchPos[1].x, Arena_R2_KFS_FetchPos[1].y, 0.0));
-
-  // 等待到达
-  APP::monit.LogInfo("[Arena] I'm at the second block.");
-
-  // 等待遥控器的出发指令
-  while(MOD::farcon.button_second_half[0] != 1)
-  {
-    Response_Button();
-    Seq::Wait(0.01f);
-  }
-  // 取第二个块
-  Area3::FetchBlockOnTheGround();
-
-  // 等待取块完成
-  Seq::Wait(1.0f);
-
-  // 返回等待点（光通信朝向 R1）
-  MOVE::MoveToTargGes(Vec3(10.1f, 2.1f, -1.571f));
-}
 
 void Robot_Combine()
 {
@@ -793,28 +803,9 @@ void Robot_Combine()
 
   // 继续慢慢向前走，同上锁定，直到小黄2号看到障碍（最长20s超时）
   float combine_start_t = DWT_GetTimeline_Sec();
+
   while (!IR_Read(APP::leg.detector[2]) && DWT_GetTimeline_Sec() - combine_start_t < 15.0f)
   {
-    // float x_err = _avg_x - System.position.x;
-    // float yaw_err = 1.571f - System.position.z;
-
-    // Vec2 targ_world_vec(0.0f, 0.03f); // 向 y 正方向走
-    // targ_world_vec.x = x_err * 0.7f;       // 锁定x
-
-    // // 转到车体坐标系下
-    // Vec2 targ_body_vec = targ_world_vec.Rotate(-System.position.z);
-
-    // // 锁定yaw角
-    // Vec3 final_body_vec = targ_body_vec.ToVec3();
-    // final_body_vec.z = yaw_err * 0.8f;
-
-    // APP::chas.Move(final_body_vec, 0.01f);
-
-    // float yaw_err = 1.571f - System.position.z;
-
-    // APP::chas.Move(Vec3(0.025f, 0.0f, yaw_err * 0.5f), 0.5f);
-    // Seq::Wait(0.01f);
-
     float yaw_err = 1.571f - System.position.z;
     APP::chas.Move(Vec3(0.15f, 0.0f, yaw_err * 0.5f), 0.5f);
     Seq::Wait(0.5f);
