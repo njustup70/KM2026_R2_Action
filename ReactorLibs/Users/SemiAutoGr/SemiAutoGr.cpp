@@ -31,9 +31,6 @@ StateGraph SemiAutoGr("SemiAuto");
 static uint8_t need_spear_id = 0;
 
 /*********    额外的状态转移Flag    *********/
-static bool fetch_again = false;    // 是否需要再次取矛头
-static bool move_to_area2 = false;  // 是否可以移动到二区了
-
 static bool soft_retry_chasdisable = false; // 软重试：底盘失能状态
 static bool retry_fetch_spear = false;      // 软重试：重新去取对应矛头
 
@@ -65,9 +62,6 @@ static void Retry_ChasDisabled(StateCore *core);
 // 从R1等待位置出发的状态函数
 static void Robot_Combine();
 
-static Vec2 Arena_R2_KFS_FetchPos[2] = {
-  Vec2(11.1, 3.555), Vec2(11.1, 2.835)
-}; 
 // 放中间九宫格块的位置
 static Vec3 Arena_R2_L2_Mid_Ges(10.75f, 5.10f, 1.571f);
 
@@ -178,7 +172,7 @@ void Waiting_for_Start(StateCore *core)
   APP::leg.F_AlmostOrigin();
   APP::leg.B_AlmostOrigin();
 
-  Seq::Wait(0.1f);
+  Seq::Wait(1.5f);
 
   // 等待遥控器确认
   while (MOD::farcon.button_second_half[0] != 1)
@@ -198,7 +192,7 @@ void Waiting_for_Start(StateCore *core)
   Seq::WaitUntil([]() { return MOD::host_pc.IsOnline(); });
   APP::monit.LogInfo("HostPC Online.");
 
-  Seq::Wait(0.75f);
+  Seq::Wait(1.5f);
   APP::monit.LogInfo("Ready to Go...");
 
   // 等待出发指令
@@ -479,12 +473,12 @@ void Put_First_Block(StateCore *core)
   if (APP::get_block.IsBlockPresent())
   {
     APP::monit.LogInfo("Middle block exists, move to right");
-    MOVE::MoveToTargGes(Vec3(11.29f, 5.10f, 1.571f));
+    MOVE::MoveToTargGes(Vec3(11.29f, 5.13f, 1.571f));
 
     if (APP::get_block.IsBlockPresent())
     {
       APP::monit.LogInfo("Right block also exists, move to left");
-      MOVE::MoveToTargGes(Vec3(10.21f, 5.10f, 1.571f));
+      MOVE::MoveToTargGes(Vec3(10.21f, 5.13f, 1.571f));
 
       if (APP::get_block.IsBlockPresent())
         APP::monit.LogInfo("All three have blocks, need combine!");
@@ -512,108 +506,6 @@ void Put_First_Block(StateCore *core)
   core->GetCurState().Complete = true;
 }
 
-// 放二层块的封装
-static void PutBlock_L2(uint8_t id)
-{
-  // 此时接收到R1的命令，等待2.0s，R1让开
-  Seq::Wait(2.0f);
-
-  // 根据需求，走不同的路线
-  switch (id)
-  {
-    case 0:
-    {
-      // 放最靠近二区的格子
-      MOVE::MoveToTargPos(PATH::W_TO_N4(), Vec3(0.01f, 0.01f, 0.015f));
-      break;
-    }
-    case 1:
-    {
-      // 放中间的格子
-      MOVE::MoveToTargPos(PATH::W_TO_N5(), Vec3(0.01f, 0.01f, 0.015f));
-      break;
-    }
-    case 2:
-    {
-      // 放最靠近三区的格子
-      MOVE::MoveToTargPos(PATH::W_TO_N6(), Vec3(0.01f, 0.01f, 0.015f));
-      break;
-    }
-  }
-
-  // 等待到达
-  APP::monit.LogInfo("Forward is Arena.");
-
-  Seq::Wait(0.5f);
-
-  // 抬腿
-  APP::leg.SetFrontPos(-388);
-  APP::leg.SetBackPos(-380);
-
-  // 等腿抬好
-  Seq::WaitUntil([](){
-    return ( fabs(APP::leg.real_front_pos_mm - APP::leg.front_pos) < 6  && fabs(APP::leg.real_back_pos_mm - APP::leg.back_pos) < 6 );
-  });
-
-  // 根据需求，走不同的路线
-  switch (id)
-  {
-    case 0:
-    {
-      // 放最靠近二区的格子
-      MOVE::MoveToTargGes(Vec3(10.21f, 5.20f, 1.571f));
-      break;
-    }
-    case 1:
-    {
-      // 放中间的格子
-      MOVE::MoveToTargGes(Vec3(10.75f, 5.20f, 1.571f));
-      break;
-    }
-    case 2:
-    {
-      // 放最靠近三区的格子
-      MOVE::MoveToTargGes(Vec3(11.29f, 5.20f, 1.571f));
-      break;
-    }
-  }
-
-  // 放块
-  APP::get_block.Put();
-
-  APP::monit.LogSpec("Put At:%.2f, %.2f", System.position.x, System.position.y);
-
-  // 等待放块完成
-  Seq::Wait(7.0);
-
-  // 得先放下腿，再回家
-  APP::leg.F_AlmostOrigin();
-  APP::leg.B_AlmostOrigin();
-
-  // 根据需求，走不同的路线回到光通信位置，等待下一个指令
-  switch (id)
-  {
-    case 0:
-    {
-      // 放最靠近二区的格子
-      MOVE::MoveToTargPos(PATH::N4_BACK(), Vec3(0.015f, 0.015f, 0.015f));
-      break;
-    }
-    case 1:
-    {
-      // 放中间的格子
-      MOVE::MoveToTargPos(PATH::N5_BACK(), Vec3(0.015f, 0.015f, 0.015f));
-      break;
-    }
-    case 2:
-    {
-      // 放最靠近三区的格子
-      MOVE::MoveToTargPos(PATH::N6_BACK(), Vec3(0.015f, 0.015f, 0.015f));
-      break;
-    }
-  }
-}
-
 void RetryZone_PutL2(uint8_t id)
 {
   // 走到中心点
@@ -629,7 +521,7 @@ void RetryZone_PutL2(uint8_t id)
       // 抬起腿
       APP::leg.SetFrontPos(-388);
       APP::leg.SetBackPos(-380);
-      MOVE::MoveToTargGes(Vec3(10.21f, 5.10f, 1.571f));
+      MOVE::MoveToTargGes(Vec3(10.21f, 5.13f, 1.571f));
       Seq::Wait(0.5f);
       // 放块
       APP::get_block.Put();
@@ -651,7 +543,7 @@ void RetryZone_PutL2(uint8_t id)
       // 抬起腿
       APP::leg.SetFrontPos(-388);
       APP::leg.SetBackPos(-380);
-      MOVE::MoveToTargGes(Vec3(11.29f, 5.10f, 1.571f));
+      MOVE::MoveToTargGes(Vec3(11.29f, 5.13f, 1.571f));
       Seq::Wait(0.5f);
       // 放块
       APP::get_block.Put();
@@ -714,6 +606,10 @@ void Wait_Human_Instru(StateCore *core)
     else if (MOD::farcon.button_second_half[4] == 1)
     {
       code = Area3ActCode::Put_L2_N6_Block;
+    }
+    else if (MOD::farcon.button_second_half[5] == 1)
+    {
+      code = Area3ActCode::Combine;
     }
     Seq::Wait(0.1f);
   }
@@ -934,6 +830,21 @@ static void Response_Button()
     vel.z = -map_axis(MOD::farcon.jys_value[0]) * max_velo;
 
     APP::chas.Move(vel, 0.2f);
+
+    /*******  仅供测试！！！  *******/
+    // 抬腿
+    if (MOD::farcon.button_first_half[0] == 1)
+    {
+      APP::leg.SetFrontPosSlow(-400.0f, 5.0f);
+      APP::leg.SetBackPosSlow(-400.0f, 5.0f);
+    }
+
+    // 一起收回 
+    if (MOD::farcon.button_first_half[3] == 1)
+    {
+      APP::leg.SetFrontPosSlow(-4, 5.0f);
+      APP::leg.SetBackPosSlow(-4, 5.0f);
+    }
 }
 
 void Area3_SickFix()

@@ -69,7 +69,7 @@ static Vec2 Arena_R2_KFS_FetchPos[2] = {
   Vec2(11.1, 3.555), Vec2(11.1, 2.835)
 }; 
 // 放中间九宫格块的位置
-static Vec3 Arena_R2_L2_Mid_Ges_Blue(10.75f, 5.20f, -1.571f);
+static Vec3 Arena_R2_L2_Mid_Ges_Blue(10.75f, 0.90f, -1.571f);
 
 
 int Config_SemiAutoStateGraph_Blue()
@@ -247,7 +247,7 @@ void Walk_Fetch(StateCore *core)
     need_spear_id = 2;
   }
   retry_fetch_spear = false;
-  FetchSpear_FromOrigin(need_spear_id);
+  FetchSpear_FromOrigin_Blue(need_spear_id);
 
   core->GetCurState().Complete = true;
 }
@@ -258,7 +258,7 @@ void Walk_Fetch(StateCore *core)
  ******************************************************************************/
 void Walk_To_Dock(StateCore *core)
 {
-  GotoDock(need_spear_id);
+  GotoDock_Blue(need_spear_id);
 
   // 进入对接模式，允许工控机发送偏置
   APP::jaw.SetTrackMode(true);
@@ -482,12 +482,12 @@ void Put_First_Block(StateCore *core)
   if (APP::get_block.IsBlockPresent())
   {
     APP::monit.LogInfo("Middle block exists, move to right");
-    MOVE::MoveToTargGes(Vec3(10.21f, 0.80f, -1.571f));
+    MOVE::MoveToTargGes(Vec3(10.21f, 0.87f, -1.571f));
 
     if (APP::get_block.IsBlockPresent())
     {
       APP::monit.LogInfo("Right block also exists, move to left");
-      MOVE::MoveToTargGes(Vec3(11.29f, 0.80f, -1.571f));
+      MOVE::MoveToTargGes(Vec3(11.29f, 0.87f, -1.571f));
 
       if (APP::get_block.IsBlockPresent())
         APP::monit.LogInfo("All three have blocks, need combine!");
@@ -629,7 +629,7 @@ void RetryZone_PutL2_Blue(uint8_t id)
   {
     case 0:   // 放四号格子
     {
-      MOVE::MoveToTargGes(Vec3(11.29f, 0.80f, -1.571f));
+      MOVE::MoveToTargGes(Vec3(11.29f, 0.87f, -1.571f));
       // 抬起腿
       APP::leg.SetFrontPos(-388);
       APP::leg.SetBackPos(-380);
@@ -640,7 +640,7 @@ void RetryZone_PutL2_Blue(uint8_t id)
     }
     case 1:   // 放五号格子
     {
-      MOVE::MoveToTargGes(Vec3(10.75f, 0.80f, -1.571f));
+      MOVE::MoveToTargGes(Vec3(10.75f, 0.90f, -1.571f));
       // 抬起腿
       APP::leg.SetFrontPos(-388);
       APP::leg.SetBackPos(-380);
@@ -651,7 +651,7 @@ void RetryZone_PutL2_Blue(uint8_t id)
     }
     case 2:   // 放六号格子
     {
-      MOVE::MoveToTargGes(Vec3(10.21f, 0.80f, -1.571f));
+      MOVE::MoveToTargGes(Vec3(10.21f, 0.87f, -1.571f));
       // 抬起腿
       APP::leg.SetFrontPos(-388);
       APP::leg.SetBackPos(-380);
@@ -715,6 +715,10 @@ void Wait_Human_Instru(StateCore *core)
     else if (MOD::farcon.button_second_half[4] == 1)
     {
       code = Area3ActCode::Put_L2_N6_Block;
+    }
+    else if (MOD::farcon.button_second_half[5] == 1)
+    {
+      code = Area3ActCode::Combine;
     }
     Seq::Wait(0.1f);
   }
@@ -794,11 +798,11 @@ void Robot_Combine()
 
   APP::main_loop.test_led.TempBlink(Color::Orange, 3, 0.3f);
 
-  // 向 y 正方向走，同时锁定 x 为_avg_x，yaw 角为1.571，直到小黄0号看到障碍
+  // 向 y 正方向走，同时锁定 x 为_avg_x，yaw 角为-1.571，直到小黄0号看到障碍
   while (true)
   {
     // -------直接向前走-------- // 
-    float yaw_err = 1.571f - System.position.z;
+    float yaw_err = -1.571f - System.position.z;
     APP::chas.Move(Vec3(0.2f, 0.0f, yaw_err * 1.0f), 0.006f);
     Seq::Wait(0.005f);
 
@@ -836,11 +840,11 @@ void Robot_Combine()
 
   while (!IR_Read(APP::leg.detector[2]) && DWT_GetTimeline_Sec() - combine_start_t < 15.0f)
   {
-    float yaw_err = 1.571f - System.position.z;
+    float yaw_err = -1.571f - System.position.z;
     APP::chas.Move(Vec3(0.15f, 0.0f, yaw_err * 0.5f), 0.5f);
     Seq::Wait(0.5f);
 
-    yaw_err = 1.571f - System.position.z;
+    yaw_err = -1.571f - System.position.z;
     APP::chas.Move(Vec3(0.0f, 0.0f, yaw_err * 1.0f), 0.5f);
     Seq::Wait(0.5f);
   }
