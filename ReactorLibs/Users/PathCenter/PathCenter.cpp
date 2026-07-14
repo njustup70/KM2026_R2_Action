@@ -68,6 +68,9 @@
 #include "a23_retry.hpp"
 #include "a23_bretry.hpp"
 
+#include "a32_retryback.hpp"
+#include "a32_bretryback.hpp"
+
 namespace PATH
 {
 const Path<20>& TTD_B1()
@@ -331,6 +334,16 @@ const Path<202>& A23_Retry()
 const Path<202>& A23_B_Retry()
 {
     return ::A23_B_RETRY;
+}
+
+const Path<203>& A32_RetryBack()
+{
+    return ::A32_RETRY_BACK;
+}
+
+const Path<203>& A32_B_RetryBack()
+{
+    return ::A32_B_RETRY_BACK;
 }
 
 }

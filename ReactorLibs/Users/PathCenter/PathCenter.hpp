@@ -80,4 +80,8 @@ const Path<156>& N6B_BACK();
 const Path<202>& A23_Retry();
 const Path<202>& A23_B_Retry();
 
+/// @brief 重试回撤路径
+const Path<203>& A32_RetryBack();
+const Path<203>& A32_B_RetryBack();
+
 }
