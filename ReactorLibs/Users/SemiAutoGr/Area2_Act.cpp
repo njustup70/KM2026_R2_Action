@@ -1091,7 +1091,7 @@ void MeiLinArray::HandleClimbAct()
           // 5 秒为故障兜底，防止状态机无限阻塞。
           Seq::WaitUntil([]()
           {
-            return fabs(APP::vac_claw.motor_stretch.driver.measure.total_angle - 100.0f) < 1000.0f;
+            return fabs(APP::vac_claw.motor_stretch.driver.measure.total_angle - 100.0f) < 4000.0f;
           }, 5.0f);
           APP::leg.F_Down_200();
           APP::leg.B_Down_200();
