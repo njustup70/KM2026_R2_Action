@@ -432,6 +432,12 @@ static void FetchUp400()
 
 static void FetchDown200()
 {
+  // 这里等腿完全放下才允许开始取
+  Seq::WaitUntil([=]()
+  {
+    return (APP::leg.real_front_pos_mm > -15.0f) && (APP::leg.real_back_pos_mm > -15.0f); 
+  }, 5.0f);
+
   // 往前缓慢移动，边前进边锁横向+yaw
   float move_start = DWT_GetTimeline_Sec();
   MoveWhileAlignUntil(0.25f, 0.5f, 0.5f, [&]()
@@ -445,7 +451,8 @@ static void FetchDown200()
   });
   MoveWhileAlignUntil(0.15f, 0.4f, 0.4f, [&]()
   {
-    return !APP::leg.detector[0].Read();
+    // return !APP::leg.detector[0].Read();
+    return NIR_Read(APP::leg.detector[0]);
   });
 
     // 先缓慢向前走
@@ -956,7 +963,8 @@ void MeiLinArray::Decend_400(bool need_chase)
   // 先缓慢向前走，边前进边锁横向+yaw
   MoveWhileAlignUntil(0.25f, 0.5f, 0.5f, [&]()
   {
-    return !APP::leg.detector[0].Read();
+    // return !APP::leg.detector[0].Read();
+    return NIR_Read(APP::leg.detector[0]);
   });
 
   // 先缓慢向前走
@@ -965,7 +973,8 @@ void MeiLinArray::Decend_400(bool need_chase)
   // 等待小黄1号检测不到后，放下前腿
   Seq::WaitUntil([&]()
   {
-    return !APP::leg.detector[1].Read();
+    // return !APP::leg.detector[1].Read();
+    return NIR_Read(APP::leg.detector[1]);
   });
 
   APP::chas.Move(Vec2(0, 0), 2.0f);
@@ -981,7 +990,8 @@ void MeiLinArray::Decend_400(bool need_chase)
   
   Seq::WaitUntil([&]()
   {
-    return !APP::leg.detector[3].Read();
+    // return !APP::leg.detector[3].Read();
+    return NIR_Read(APP::leg.detector[3]);
   });
 
   APP::chas.Move(Vec2(0, 0), 2.0f);
