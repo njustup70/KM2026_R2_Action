@@ -508,9 +508,10 @@ void Put_First_Block(StateCore *core)
     {
         return !APP::get_block.IsBusy();
     }, 15.0f);
+    Seq::Wait(2.0f);
   }
 
-  Seq::Wait(2.0f);
+
 
   // 收腿后返回三区重试点，准备接收后续操作手指令
   APP::leg.F_AlmostOrigin();
