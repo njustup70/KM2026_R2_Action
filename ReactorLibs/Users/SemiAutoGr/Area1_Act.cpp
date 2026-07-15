@@ -427,6 +427,11 @@ void FetchSpear_FromDock(uint8_t spear_id)
   // 应用取矛头X方向偏移
   System.SetPositionBias(Vec3(fetch_spear_x_bias, 0.0f, 0.0f));
 
+  // 将JAW放到合适位置
+  APP::jaw.SetTrackMode(false);
+  APP::jaw.SetPosCode(APP::jaw._hori_origin_code - JawConst::_hori_max_travel_code / 2,
+                      APP::jaw._vert_origin_code - 200000);
+
   // 根据矛头编号，选择对应的路径（技能挑战赛）
   DockTo::DockSpearChase(spear_id, Vec3(0.015f, 0.015f, 0.02f));
 
