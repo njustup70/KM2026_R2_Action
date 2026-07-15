@@ -60,7 +60,7 @@ void GetBlock::Start()
       .ADRC_Limit(8.0f)
       .SpdLimit(11000.0f)
       .ADRC_MaxPlannedVel(10500.0f)
-      .ADRC_SOTF(0.07f)
+      .ADRC_SOTF(0.2f)
       .SetDt(0.001)
       .Apply();
   motor_2006_feed.driver.Enable();
@@ -160,6 +160,7 @@ void GetBlock::Update()
 //   }
 // #endif
 
+  _UpdateFeedSlow();
   _UpdateFSM();
 }
 
@@ -351,6 +352,22 @@ void GetBlock::_FeedMoveBlocking(float target_pos, float code_per_sec)
     Seq::Wait(step_dt);
   }
   motor_2006_feed.SetPos(target_pos);
+}
+
+void GetBlock::_UpdateFeedSlow()
+{
+  if (!_feed_slow.active) return;
+  float t = (_local_tick - _feed_slow.start_time) / _feed_slow.duration;
+  if (t >= 1.0f)
+  {
+    motor_2006_feed.SetPos(_feed_slow.target_pos);
+    _feed_slow.active = false;
+    return;
+  }
+  if (t < 0.0f) t = 0.0f;
+  float blend = t * t * (3.0f - 2.0f * t);  // S-curve
+  motor_2006_feed.SetPos(
+      _feed_slow.start_pos + (_feed_slow.target_pos - _feed_slow.start_pos) * blend);
 }
 
 // ==================== 存块 ====================
@@ -825,11 +842,7 @@ void GetBlock::_UpdateFSM()
     // ═══════════════════ 放块: 送块收回 ═══════════════════
     case FSM::PUT_FEED_RETRACT:
     {
-      // // 首次进入时启动慢速收回（1.5秒平滑收回）
-      // if (!_feed_slow.active)
-      //     FeedMoveSlow(-_feed_pos_retract, 0.4f);
-    //   _FeedMoveBlocking(-_feed_pos_retract, 3560000);
-            motor_2006_feed.SetPos(-_feed_pos_retract);
+      motor_2006_feed.SetPos(-_feed_pos_retract);
       if (_FeedNear(-_feed_pos_retract)) 
       {
         if (_storing_b2)

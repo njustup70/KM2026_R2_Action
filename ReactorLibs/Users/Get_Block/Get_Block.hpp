@@ -145,6 +145,15 @@ private:
     float _feed_pos_retract = 6000.0f;     // 收回
     float _feed_pos_extend  = 1620000.0f;  // 伸出（上仓块被推出）  // Max:1770000.0f
 
+    // ==================== 送块缓动（慢推） ====================
+    struct {
+        bool active = false;
+        float start_pos = 0.0f;
+        float target_pos = 0.0f;
+        float start_time = 0.0f;
+        float duration = 0.0f;
+    } _feed_slow;
+
     // ==================== 私有方法 ====================
     void _InitLiftDm();
     void _ConfigureLiftDmParamsOnce();
@@ -155,6 +164,7 @@ private:
     void _LiftStop();
     void _LogLiftDmDiag(const char* tag);
     void _UpdateFSM();
+    void _UpdateFeedSlow();
     void _FeedMoveBlocking(float target_pos, float code_per_sec);
     void _ReadSensors();
     bool _IsTimeout(float sec) const;

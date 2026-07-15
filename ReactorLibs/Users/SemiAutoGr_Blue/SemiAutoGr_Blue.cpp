@@ -69,7 +69,7 @@ static Vec2 Arena_R2_KFS_FetchPos[2] = {
   Vec2(11.1, 3.555), Vec2(11.1, 2.835)
 }; 
 // 放中间九宫格块的位置
-static Vec3 Arena_R2_L2_Mid_Ges_Blue(10.75f, 0.80f, -1.571f);
+static Vec3 Arena_R2_L2_Mid_Ges_Blue(10.75f, 0.87f, -1.571f);
 
 
 int Config_SemiAutoStateGraph_Blue()
@@ -483,8 +483,8 @@ void Put_First_Block(StateCore *core)
   bool able_to_put = true; // 默认是可以放块的
 
   // 抬起腿
-  APP::leg.SetFrontPos(-388);
-  APP::leg.SetBackPos(-380);
+  APP::leg.SetFrontPos(-380);
+  APP::leg.SetBackPos(-365);
 
   Seq::WaitUntil([]() {
     return fabs(APP::leg.real_front_pos_mm - APP::leg.front_pos) < 6
@@ -495,12 +495,12 @@ void Put_First_Block(StateCore *core)
   if (APP::get_block.IsBlockPresent())
   {
     APP::monit.LogInfo("Middle block exists, move to right");
-    MOVE::MoveToTargGes(Vec3(10.21f, 0.77f, -1.571f));
+    MOVE::MoveToTargGes(Vec3(10.21f, 0.87f, -1.571f));
 
     if (APP::get_block.IsBlockPresent())
     {
       APP::monit.LogInfo("Right block also exists, move to left");
-      MOVE::MoveToTargGes(Vec3(11.29f, 0.77f, -1.571f));
+      MOVE::MoveToTargGes(Vec3(11.29f, 0.87f, -1.571f));
 
       if (APP::get_block.IsBlockPresent())
       {
@@ -529,7 +529,7 @@ void Put_First_Block(StateCore *core)
   APP::leg.B_AlmostOrigin();
 
   // 先回九宫格中点，保证回撤路径的起点一致
-  MOVE::MoveToTargGes(Vec3(10.75f, 0.77f, -1.571f));
+  MOVE::MoveToTargGes(Vec3(10.75f, 0.87f, -1.571f));
   MOVE::MoveToTargPos(PATH::A32_B_RetryBack(), Vec3(0.01f, 0.01f, 0.01f));
 
   core->GetCurState().Complete = true;
@@ -649,10 +649,10 @@ void RetryZone_PutL2_Blue(uint8_t id)
   {
     case 0:   // 放四号格子
     {
-      MOVE::MoveToTargGes(Vec3(11.29f, 0.79f, -1.571f));
+      MOVE::MoveToTargGes(Vec3(11.29f, 0.87f, -1.571f));
       // 抬起腿
-      APP::leg.SetFrontPos(-388);
-      APP::leg.SetBackPos(-380);
+      APP::leg.SetFrontPos(-380);
+      APP::leg.SetBackPos(-365);
       Seq::Wait(0.5f);
       // 放块
       APP::get_block.Put();
@@ -660,10 +660,10 @@ void RetryZone_PutL2_Blue(uint8_t id)
     }
     case 1:   // 放五号格子
     {
-      MOVE::MoveToTargGes(Vec3(10.75f, 0.79f, -1.571f));
+      MOVE::MoveToTargGes(Vec3(10.75f, 0.87f, -1.571f));
       // 抬起腿
-      APP::leg.SetFrontPos(-388);
-      APP::leg.SetBackPos(-380);
+      APP::leg.SetFrontPos(-380);
+      APP::leg.SetBackPos(-365);
       Seq::Wait(0.5f);
       // 放块
       APP::get_block.Put();
@@ -671,10 +671,10 @@ void RetryZone_PutL2_Blue(uint8_t id)
     }
     case 2:   // 放六号格子
     {
-      MOVE::MoveToTargGes(Vec3(10.21f, 0.79f, -1.571f));
+      MOVE::MoveToTargGes(Vec3(10.21f, 0.87f, -1.571f));
       // 抬起腿
-      APP::leg.SetFrontPos(-388);
-      APP::leg.SetBackPos(-380);
+      APP::leg.SetFrontPos(-380);
+      APP::leg.SetBackPos(-365);
       Seq::Wait(0.5f);
       // 放块
       APP::get_block.Put();
@@ -699,7 +699,7 @@ void RetryZone_PutL2_Blue(uint8_t id)
   APP::leg.B_AlmostOrigin();  
 
   // 回到中间
-  MOVE::MoveToTargGes(Vec3(10.75f, 0.77f, -1.571f));
+  MOVE::MoveToTargGes(Vec3(10.75f, 0.87f, -1.571f));
 
   // 返回重试区
   MOVE::MoveToTargPos(PATH::A32_B_RetryBack(), Vec3(0.01f, 0.01f, 0.01f));
