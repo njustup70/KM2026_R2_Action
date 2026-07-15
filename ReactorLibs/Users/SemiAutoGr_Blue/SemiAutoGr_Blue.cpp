@@ -482,12 +482,12 @@ void Put_First_Block(StateCore *core)
   if (APP::get_block.IsBlockPresent())
   {
     APP::monit.LogInfo("Middle block exists, move to right");
-    MOVE::MoveToTargGes(Vec3(10.21f, 0.87f, -1.571f));
+    MOVE::MoveToTargGes(Vec3(10.21f, 0.80f, -1.571f));
 
     if (APP::get_block.IsBlockPresent())
     {
       APP::monit.LogInfo("Right block also exists, move to left");
-      MOVE::MoveToTargGes(Vec3(11.29f, 0.87f, -1.571f));
+      MOVE::MoveToTargGes(Vec3(11.29f, 0.80f, -1.571f));
 
       if (APP::get_block.IsBlockPresent())
         APP::monit.LogInfo("All three have blocks, need combine!");
@@ -629,7 +629,7 @@ void RetryZone_PutL2_Blue(uint8_t id)
   {
     case 0:   // 放四号格子
     {
-      MOVE::MoveToTargGes(Vec3(11.29f, 0.87f, -1.571f));
+      MOVE::MoveToTargGes(Vec3(11.29f, 0.80f, -1.571f));
       // 抬起腿
       APP::leg.SetFrontPos(-388);
       APP::leg.SetBackPos(-380);
@@ -640,7 +640,7 @@ void RetryZone_PutL2_Blue(uint8_t id)
     }
     case 1:   // 放五号格子
     {
-      MOVE::MoveToTargGes(Vec3(10.75f, 0.90f, -1.571f));
+      MOVE::MoveToTargGes(Vec3(10.75f, 0.80f, -1.571f));
       // 抬起腿
       APP::leg.SetFrontPos(-388);
       APP::leg.SetBackPos(-380);
@@ -651,7 +651,7 @@ void RetryZone_PutL2_Blue(uint8_t id)
     }
     case 2:   // 放六号格子
     {
-      MOVE::MoveToTargGes(Vec3(10.21f, 0.87f, -1.571f));
+      MOVE::MoveToTargGes(Vec3(10.21f, 0.80f, -1.571f));
       // 抬起腿
       APP::leg.SetFrontPos(-388);
       APP::leg.SetBackPos(-380);
