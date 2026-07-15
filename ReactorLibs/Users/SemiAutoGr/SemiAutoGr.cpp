@@ -670,6 +670,7 @@ void Robot_Combine()
 {
   // 首先，走到R1跟前
   MOVE::MoveToTargPos(PATH::W_TO_COMB(), Vec3(0.015f, 0.015f, 0.015f));
+  // MOVE::MoveToTargGes(Vec3());
 
   APP::leg.F_Origin();
   APP::leg.B_Origin();

@@ -64,7 +64,7 @@ const Path<156>& W_TO_N6();
 const Path<180>& N4_BACK();
 const Path<161>& N5_BACK();
 const Path<156>& N6_BACK();
-const Path<114>& W_TO_COMB();
+const Path<155>& W_TO_COMB();
 
 /// @brief ArenaPK_Graph_Blue 路径：W到N区
 const Path<181>& WB_TO_N4();
