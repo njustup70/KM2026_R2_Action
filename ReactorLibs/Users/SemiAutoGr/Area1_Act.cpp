@@ -582,6 +582,7 @@ void FetchSpear_FromOrigin_Blue(uint8_t spear_id)
   APP::jaw.PitchDown();
   APP::jaw.OpenClaw();
 
+  APP::monit.LogInfo("fetch_spear_x_bias: %f", fetch_spear_x_bias);
   // 应用取矛头X方向偏移
   System.SetPositionBias(Vec3(fetch_spear_x_bias, 0.0f, 0.0f));
 
