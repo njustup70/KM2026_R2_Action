@@ -1086,6 +1086,13 @@ void MeiLinArray::HandleClimbAct()
           break;
 
         case Area2Code::ENTER_1:
+          // 从 400 高入口取块后，ReturnAndStore() 在后台翻块、收爪。
+          // 下到 200 前必须确认伸缩爪已实际回到 BACK 位，避免夹爪卡住 400 平台。
+          // 5 秒为故障兜底，防止状态机无限阻塞。
+          Seq::WaitUntil([]()
+          {
+            return fabs(APP::vac_claw.motor_stretch.driver.measure.total_angle - 100.0f) < 1000.0f;
+          }, 5.0f);
           APP::leg.F_Down_200();
           APP::leg.B_Down_200();
           if(is_blue)
