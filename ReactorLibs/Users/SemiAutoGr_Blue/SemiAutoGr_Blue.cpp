@@ -357,6 +357,17 @@ void Retry_ChasDisabled(StateCore *core)
 
         cooldown = DWT_GetTimeline_Sec();
       }
+      // 人为确定取矛头偏移
+      if(MOD::farcon.button_first_half[0] == 1 && DWT_GetTimeline_Sec() - cooldown > 0.35f)
+      {
+        fetch_spear_x_bias -= 0.01;
+        cooldown = DWT_GetTimeline_Sec();
+      }
+      if(MOD::farcon.button_first_half[4] == 1 && DWT_GetTimeline_Sec() - cooldown > 0.35f)
+      {
+        fetch_spear_x_bias += 0.01;
+        cooldown = DWT_GetTimeline_Sec();
+      }
 
       Seq::Wait(0.01f);
     }
