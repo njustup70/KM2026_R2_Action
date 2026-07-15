@@ -409,22 +409,22 @@ static void FetchUp400()
 
   // 往前缓慢移动，边前进边锁横向+yaw
   float move_start = DWT_GetTimeline_Sec();
-  MoveWhileAlignUntil(0.55f, 0.5f, 0.5f, [&]()
+  MoveWhileAlignUntil(0.45f, 0.5f, 0.5f, [&]()
   {
-    return DWT_GetTimeline_Sec() - move_start >= 0.35f;
+    return DWT_GetTimeline_Sec() - move_start >= 0.3f;
   });
   move_start = DWT_GetTimeline_Sec();
-  MoveWhileAlignUntil(0.45f, 0.4f, 0.4f, [&]()
-  {
-    return DWT_GetTimeline_Sec() - move_start >= 0.25f;
-  });
   MoveWhileAlignUntil(0.35f, 0.4f, 0.4f, [&]()
+  {
+    return DWT_GetTimeline_Sec() - move_start >= 0.2f;
+  });
+  MoveWhileAlignUntil(0.25f, 0.4f, 0.4f, [&]()
   {
     return APP::leg.detector[0].Read();
   });
 
   // 再走0.5秒，慢慢走，确保前端抵住（物理接触，不需闭环）
-  APP::chas.Move(Vec2(0.25, 0), 1.0f);
+  APP::chas.Move(Vec2(0.15, 0), 1.0f);
   Seq::Wait(0.5f);
 
   APP::chas.Move(Vec2(0.0f, 0.0f), 1.0f);
