@@ -61,6 +61,8 @@ static void Retry_ChasDisabled(StateCore *core);
 
 // 从R1等待位置出发的状态函数
 static void Robot_Combine();
+// 合体后的状态函数
+static void CombPutL3();
 
 // 放中间九宫格块的位置
 static Vec3 Arena_R2_L2_Mid_Ges(10.75f, 5.10f, 1.571f);
@@ -636,6 +638,7 @@ void Wait_Human_Instru(StateCore *core)
     }
     case Area3ActCode::Put_L3:
     {
+      CombPutL3();
       break;
     }
     case Area3ActCode::Combine:
@@ -771,10 +774,50 @@ void Robot_Combine()
 
   // 缓慢向前走
   APP::chas.Move(Vec3(0.08f, 0.0f, 0.0f), 1.5f);
-  Seq::Wait(1.5f);
+  Seq::Wait(2.0f);
 
   // 结束
   Seq::Wait(3600.0f);
+}
+
+/*******************************************************************************
+ *  @brief 放三层块
+ * @warning 需要前置条件：位于R1上
+ ******************************************************************************/
+void CombPutL3()
+{
+  // 先缓慢抬腿
+  APP::leg.SetFrontPosSlow(-400.0f, 5.0f);
+  APP::leg.SetBackPosSlow(-400.0f, 5.0f);
+
+  // 等待腿抬好
+  Seq::WaitUntil([]() {
+    return fabs(APP::leg.real_front_pos_mm - APP::leg.front_pos) < 6
+        && fabs(APP::leg.real_back_pos_mm - APP::leg.back_pos) < 6;
+  }, 10.0f);
+
+  // 遥控器确认
+  while (MOD::farcon.button_second_half[0] != 1)
+  {
+    Response_Button();
+    Seq::Wait(0.01f);
+  }
+  APP::main_loop.test_led.TempBlink(Color::Orange, 3, 0.3f);
+  Seq::Wait(1.0f);
+
+  // 放块
+  APP::get_block.Put();
+
+  // 等块放完
+  Seq::WaitUntil([]()
+  {
+    return !APP::get_block.IsBusy();
+  }, 15.0f);
+  Seq::Wait(3.5f);
+
+  // 缓慢放腿
+  APP::leg.SetFrontPosSlow(-4, 5.0f);
+  APP::leg.SetBackPosSlow(-4, 5.0f);
 }
 
 
