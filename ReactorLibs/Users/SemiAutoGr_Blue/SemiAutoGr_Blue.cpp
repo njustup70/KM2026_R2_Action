@@ -484,12 +484,12 @@ void Put_First_Block(StateCore *core)
   if (APP::get_block.IsBlockPresent())
   {
     APP::monit.LogInfo("Middle block exists, move to right");
-    MOVE::MoveToTargGes(Vec3(10.21f, 0.80f, -1.571f));
+    MOVE::MoveToTargGes(Vec3(10.21f, 0.77f, -1.571f));
 
     if (APP::get_block.IsBlockPresent())
     {
       APP::monit.LogInfo("Right block also exists, move to left");
-      MOVE::MoveToTargGes(Vec3(11.29f, 0.80f, -1.571f));
+      MOVE::MoveToTargGes(Vec3(11.29f, 0.77f, -1.571f));
 
       if (APP::get_block.IsBlockPresent())
       {
@@ -518,7 +518,7 @@ void Put_First_Block(StateCore *core)
   APP::leg.B_AlmostOrigin();
 
   // 先回九宫格中点，保证回撤路径的起点一致
-  MOVE::MoveToTargGes(Vec3(10.75f, 0.80f, -1.571f));
+  MOVE::MoveToTargGes(Vec3(10.75f, 0.77f, -1.571f));
   MOVE::MoveToTargPos(PATH::A32_B_RetryBack(), Vec3(0.01f, 0.01f, 0.01f));
 
   core->GetCurState().Complete = true;
@@ -638,7 +638,7 @@ void RetryZone_PutL2_Blue(uint8_t id)
   {
     case 0:   // 放四号格子
     {
-      MOVE::MoveToTargGes(Vec3(11.29f, 0.80f, -1.571f));
+      MOVE::MoveToTargGes(Vec3(11.29f, 0.77f, -1.571f));
       // 抬起腿
       APP::leg.SetFrontPos(-388);
       APP::leg.SetBackPos(-380);
@@ -649,7 +649,7 @@ void RetryZone_PutL2_Blue(uint8_t id)
     }
     case 1:   // 放五号格子
     {
-      MOVE::MoveToTargGes(Vec3(10.75f, 0.80f, -1.571f));
+      MOVE::MoveToTargGes(Vec3(10.75f, 0.77f, -1.571f));
       // 抬起腿
       APP::leg.SetFrontPos(-388);
       APP::leg.SetBackPos(-380);
@@ -660,7 +660,7 @@ void RetryZone_PutL2_Blue(uint8_t id)
     }
     case 2:   // 放六号格子
     {
-      MOVE::MoveToTargGes(Vec3(10.21f, 0.80f, -1.571f));
+      MOVE::MoveToTargGes(Vec3(10.21f, 0.77f, -1.571f));
       // 抬起腿
       APP::leg.SetFrontPos(-388);
       APP::leg.SetBackPos(-380);
@@ -688,7 +688,7 @@ void RetryZone_PutL2_Blue(uint8_t id)
   APP::leg.B_AlmostOrigin();  
 
   // 回到中间
-  MOVE::MoveToTargGes(Vec3(10.75f, 0.80f, -1.571f));
+  MOVE::MoveToTargGes(Vec3(10.75f, 0.77f, -1.571f));
 
   // 返回重试区
   MOVE::MoveToTargPos(PATH::A32_B_RetryBack(), Vec3(0.01f, 0.01f, 0.01f));
