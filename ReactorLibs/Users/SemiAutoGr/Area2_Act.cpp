@@ -418,14 +418,14 @@ static void FetchUp400()
   {
     return DWT_GetTimeline_Sec() - move_start >= 0.2f;
   });
-  MoveWhileAlignUntil(0.25f, 0.4f, 0.4f, [&]()
+  MoveWhileAlignUntil(0.20f, 0.4f, 0.4f, [&]()
   {
     return APP::leg.detector[0].Read();
   });
 
   // 再走0.5秒，慢慢走，确保前端抵住（物理接触，不需闭环）
-  APP::chas.Move(Vec2(0.15, 0), 1.0f);
-  Seq::Wait(0.5f);
+  APP::chas.Move(Vec2(0.10, 0), 1.0f);
+  Seq::Wait(0.6f);
 
   APP::chas.Move(Vec2(0.0f, 0.0f), 1.0f);
 }
