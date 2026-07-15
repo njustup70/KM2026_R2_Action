@@ -368,8 +368,11 @@ void VacuumClaw::_UpdateReturnAndStore()
         }
         break;
 
-    case 2: // 仅当摩擦带可承接物块后，才允许松爪、关泵
-        if (fabs(motor_stretch.driver.measure.total_angle - stretch_pos) < 500.0f)
+    case 2: // 伸缩爪收回完成且摩擦带可承接物块后，才允许松爪、关泵
+        // stretch_pos 是轨迹中的实时指令值。若直接比较它，刚启动收回时实际位置
+        // 仍会与该指令值接近，导致提前开爪；因此必须等收回轨迹结束后再校验 BACK 终点。
+        if (!_stretch_slow.active &&
+            fabs(motor_stretch.driver.measure.total_angle - 100.0f) < 1000.0f)
         {
             OpenSnap();
             APP::get_block.ClosePump();
