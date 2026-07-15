@@ -303,12 +303,12 @@ void ButtonLogics()
         MOD::host_pc.RestartSLAM();
     }
 
-    static uint8_t last_sick_correct_time = 0;
-    if(MOD::farcon.button_second_half[5] && DWT_GetTimeline_Sec() - last_sick_correct_time > 1.0f)
-    {
-        last_sick_correct_time = 0;
-        MOD::host_pc.SendSlamCorrectionCmd();
-    }
+    // static uint8_t last_sick_correct_time = 0;
+    // if(MOD::farcon.button_second_half[5] && DWT_GetTimeline_Sec() - last_sick_correct_time > 1.0f)
+    // {
+    //     last_sick_correct_time = 0;
+    //     MOD::host_pc.SendSlamCorrectionCmd();
+    // }
 }
 
 void UpdateFarconSlamPos()
