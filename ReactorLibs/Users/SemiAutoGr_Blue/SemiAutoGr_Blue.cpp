@@ -469,6 +469,8 @@ void Walk_into_Area3(StateCore *core)
  ******************************************************************************/
 void Put_First_Block(StateCore *core)
 {
+  bool able_to_put = true; // 默认是可以放块的
+
   // 抬起腿
   APP::leg.SetFrontPos(-388);
   APP::leg.SetBackPos(-380);
@@ -490,19 +492,26 @@ void Put_First_Block(StateCore *core)
       MOVE::MoveToTargGes(Vec3(11.29f, 0.80f, -1.571f));
 
       if (APP::get_block.IsBlockPresent())
-        APP::monit.LogInfo("All three have blocks, need combine!");
+      {
+        able_to_put = false;
+        APP::monit.LogInfo("All three have blocks, wait instruction!");
+      }
     }
   }
 
-  APP::monit.LogSpec("Put At:%.2f, %.2f", System.position.x, System.position.y);
-
-  APP::get_block.Put();
-  Seq::WaitUntil([]()
+  if(able_to_put)
   {
-    return !APP::get_block.IsBusy();
-  }, 15.0f);
+    APP::monit.LogSpec("Put At:%.2f, %.2f", System.position.x, System.position.y);
 
-  Seq::Wait(2.0f);
+    APP::get_block.Put();
+    Seq::WaitUntil([]()
+    {
+        return !APP::get_block.IsBusy();
+    }, 15.0f);
+    Seq::Wait(2.0f);
+  }
+
+
 
   // 收腿后返回三区重试点，准备接收后续操作手指令
   APP::leg.F_AlmostOrigin();
