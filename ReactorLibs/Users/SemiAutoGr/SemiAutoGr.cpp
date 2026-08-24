@@ -364,6 +364,7 @@ void Retry_ChasDisabled(StateCore *core)
       {
         fetch_spear_x_bias -= 0.01;
         cooldown = DWT_GetTimeline_Sec();
+				
       }
 
       Seq::Wait(0.01f);
@@ -922,6 +923,10 @@ void Area3_SickFix()
   const float sick_kd = 0.25f;
   const float sick_d_alpha = 0.7f;
   float last_err_dist = APP::comm_center.sick_data_m[1] - APP::comm_center.sick_data_m[0];
+  if(fabs(last_err_dist) > 0.5)
+  {
+    return;
+  }
   float d_err_dist_filt = 0.0f;
   uint32_t sick_log_tick = 0;
 

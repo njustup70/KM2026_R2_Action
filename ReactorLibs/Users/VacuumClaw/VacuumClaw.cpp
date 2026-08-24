@@ -502,10 +502,10 @@ void VacuumClaw::_GetPitchOrigin()
     static int32_t pitch_probe_cnt = 0;
     runed_tick++;
 
-    // 对于竖直方向的电机，让他慢慢撞向右边的限位（PosCode增大的方向）
+    // 对于竖直方向的电机，让他慢慢撞向上边的限位（PosCode增大的方向）
     motor_pitch.SetPos(pitch_probe_code);
 
-    // 如果被小黄看到了，连续5个Tick，就停止
+    // 如果检测到扰动大于1300，连续5个Tick，就停止
     if (fabs(motor_pitch.motor_adrc.eso.z3) > 1300 && runed_tick > 30)
     {
         pitch_probe_cnt++;

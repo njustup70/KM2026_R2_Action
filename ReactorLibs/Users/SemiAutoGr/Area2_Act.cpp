@@ -384,13 +384,13 @@ static void FetchUp200()
     return DWT_GetTimeline_Sec() - move_start >= 0.2f;
   });
 
-  MoveWhileAlignUntil(0.25f, 0.4f, 0.4f, [&]()
+  MoveWhileAlignUntil(0.20f, 0.4f, 0.4f, [&]()
   {
     return IR_Read(APP::leg.detector[0]);
   });
 
   // 再走0.3秒，慢慢走，确保前端抵住（物理接触，不需闭环）
-  APP::chas.Move(Vec2(0.25, 0), 1.0f);
+  APP::chas.Move(Vec2(0.10, 0), 1.0f);
   Seq::Wait(0.3f);
 
   APP::chas.Move(Vec2(0.0f, 0.0f), 1.0f);
