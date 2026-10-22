@@ -291,7 +291,7 @@ const Path<156>& N6_BACK()
     return ::N6_Back;
 }
 
-const Path<114>& W_TO_COMB()
+const Path<155>& W_TO_COMB()
 {
     return ::W_to_Comb;
 }

@@ -10,6 +10,7 @@
 #include "Get_Block.hpp"
 #include "HostPC.hpp"
 #include "Area2_Act.hpp"
+#include <cstdio>
 #include <cstring>
 #include "std_math.hpp"
 #include "SemiAutoGr.hpp"
@@ -24,6 +25,26 @@ MeiLinArray& Area2::mei_lin_array = MeiLinArray::GetInstance();
 
 static bool IR_Read(InfraredDetector& ir);
 static bool NIR_Read(InfraredDetector& ir);
+
+/// @brief 用入口动作码更新当前梅林出口 ID，供入口对齐使用
+static bool SetCurrentEntry(Area2Code enter_code)
+{
+  switch (enter_code)
+  {
+    case Area2Code::ENTER_0:
+      Area2::block_pos.GetIn(0);
+      return true;
+    case Area2Code::ENTER_1:
+      Area2::block_pos.GetIn(1);
+      return true;
+    case Area2Code::ENTER_2:
+      Area2::block_pos.GetIn(2);
+      return true;
+    default:
+      APP::monit.LogError("Error EnterCode: 0x%02X", enter_code);
+      return false;
+  }
+}
 
 /************************* MeiLin_BlockPos 类 **************************/
 const Vec2 MeiHuaForest_Pos[12] = {
@@ -352,24 +373,24 @@ static void FetchUp200()
 
   // 往前缓慢移动，边前进边锁横向+yaw
   float move_start = DWT_GetTimeline_Sec();
-  MoveWhileAlignUntil(0.35f, 0.5f, 0.5f, [&]()
+  MoveWhileAlignUntil(0.45f, 0.5f, 0.5f, [&]()
   {
-    return DWT_GetTimeline_Sec() - move_start >= 0.35f;
+    return DWT_GetTimeline_Sec() - move_start >= 0.25f;
   });
 
   move_start = DWT_GetTimeline_Sec();
-  MoveWhileAlignUntil(0.25f, 0.4f, 0.4f, [&]()
+  MoveWhileAlignUntil(0.35f, 0.4f, 0.4f, [&]()
   {
-    return DWT_GetTimeline_Sec() - move_start >= 0.15f;
+    return DWT_GetTimeline_Sec() - move_start >= 0.2f;
   });
 
-  MoveWhileAlignUntil(0.25f, 0.4f, 0.4f, [&]()
+  MoveWhileAlignUntil(0.20f, 0.4f, 0.4f, [&]()
   {
     return IR_Read(APP::leg.detector[0]);
   });
 
   // 再走0.3秒，慢慢走，确保前端抵住（物理接触，不需闭环）
-  APP::chas.Move(Vec2(0.2, 0), 1.0f);
+  APP::chas.Move(Vec2(0.10, 0), 1.0f);
   Seq::Wait(0.3f);
 
   APP::chas.Move(Vec2(0.0f, 0.0f), 1.0f);
@@ -388,29 +409,35 @@ static void FetchUp400()
 
   // 往前缓慢移动，边前进边锁横向+yaw
   float move_start = DWT_GetTimeline_Sec();
-  MoveWhileAlignUntil(0.35f, 0.5f, 0.5f, [&]()
+  MoveWhileAlignUntil(0.45f, 0.5f, 0.5f, [&]()
   {
-    return DWT_GetTimeline_Sec() - move_start >= 0.35f;
+    return DWT_GetTimeline_Sec() - move_start >= 0.3f;
   });
   move_start = DWT_GetTimeline_Sec();
-  MoveWhileAlignUntil(0.25f, 0.4f, 0.4f, [&]()
+  MoveWhileAlignUntil(0.35f, 0.4f, 0.4f, [&]()
   {
-    return DWT_GetTimeline_Sec() - move_start >= 0.15f;
+    return DWT_GetTimeline_Sec() - move_start >= 0.2f;
   });
-  MoveWhileAlignUntil(0.25f, 0.4f, 0.4f, [&]()
+  MoveWhileAlignUntil(0.20f, 0.4f, 0.4f, [&]()
   {
     return APP::leg.detector[0].Read();
   });
 
-  // 再走0.3秒，慢慢走，确保前端抵住（物理接触，不需闭环）
-  APP::chas.Move(Vec2(0.2, 0), 1.0f);
-  Seq::Wait(0.3f);
+  // 再走0.5秒，慢慢走，确保前端抵住（物理接触，不需闭环）
+  APP::chas.Move(Vec2(0.10, 0), 1.0f);
+  Seq::Wait(0.6f);
 
   APP::chas.Move(Vec2(0.0f, 0.0f), 1.0f);
 }
 
 static void FetchDown200()
 {
+  // 这里等腿完全放下才允许开始取
+  Seq::WaitUntil([=]()
+  {
+    return (APP::leg.real_front_pos_mm > -15.0f) && (APP::leg.real_back_pos_mm > -15.0f); 
+  }, 5.0f);
+
   // 往前缓慢移动，边前进边锁横向+yaw
   float move_start = DWT_GetTimeline_Sec();
   MoveWhileAlignUntil(0.25f, 0.5f, 0.5f, [&]()
@@ -424,7 +451,8 @@ static void FetchDown200()
   });
   MoveWhileAlignUntil(0.15f, 0.4f, 0.4f, [&]()
   {
-    return !APP::leg.detector[0].Read();
+    // return !APP::leg.detector[0].Read();
+    return NIR_Read(APP::leg.detector[0]);
   });
 
     // 先缓慢向前走
@@ -790,15 +818,11 @@ void MeiLinArray::Climb_Up400(bool need_chase)
   Seq::Wait(0.6f);
   
   /****   持续衰减的爆发移动速度加成  ****/
-  APP::chas.Move(Vec2(1.0, 0), 3.0f);
-  Seq::Wait(0.2f);
-  APP::chas.Move(Vec2(0.8, 0), 3.0f);
-  Seq::Wait(0.15f);
-  APP::chas.Move(Vec2(0.6, 0), 3.0f);
-  Seq::Wait(0.15f);
+  APP::chas.Move(Vec2(0.5, 0), 3.0f);
+  Seq::Wait(0.4f);
   APP::chas.Move(Vec2(0.4, 0), 3.0f);
-  Seq::Wait(0.1f);
-  APP::chas.Move(Vec2(0.2, 0), 5.0f);
+  Seq::Wait(0.2f);
+  APP::chas.Move(Vec2(0.3, 0), 3.0f);
 
   // 防止小黄2号误检
   // Seq::Wait(0.2f);
@@ -939,7 +963,8 @@ void MeiLinArray::Decend_400(bool need_chase)
   // 先缓慢向前走，边前进边锁横向+yaw
   MoveWhileAlignUntil(0.25f, 0.5f, 0.5f, [&]()
   {
-    return !APP::leg.detector[0].Read();
+    // return !APP::leg.detector[0].Read();
+    return NIR_Read(APP::leg.detector[0]);
   });
 
   // 先缓慢向前走
@@ -948,7 +973,8 @@ void MeiLinArray::Decend_400(bool need_chase)
   // 等待小黄1号检测不到后，放下前腿
   Seq::WaitUntil([&]()
   {
-    return !APP::leg.detector[1].Read();
+    // return !APP::leg.detector[1].Read();
+    return NIR_Read(APP::leg.detector[1]);
   });
 
   APP::chas.Move(Vec2(0, 0), 2.0f);
@@ -964,7 +990,8 @@ void MeiLinArray::Decend_400(bool need_chase)
   
   Seq::WaitUntil([&]()
   {
-    return !APP::leg.detector[3].Read();
+    // return !APP::leg.detector[3].Read();
+    return NIR_Read(APP::leg.detector[3]);
   });
 
   APP::chas.Move(Vec2(0, 0), 2.0f);
@@ -1059,6 +1086,13 @@ void MeiLinArray::HandleClimbAct()
           break;
 
         case Area2Code::ENTER_1:
+          // 从 400 高入口取块后，ReturnAndStore() 在后台翻块、收爪。
+          // 下到 200 前必须确认伸缩爪已实际回到 BACK 位，避免夹爪卡住 400 平台。
+          // 5 秒为故障兜底，防止状态机无限阻塞。
+          Seq::WaitUntil([]()
+          {
+            return fabs(APP::vac_claw.motor_stretch.driver.measure.total_angle - 100.0f) < 4000.0f;
+          }, 5.0f);
           APP::leg.F_Down_200();
           APP::leg.B_Down_200();
           if(is_blue)
@@ -1088,6 +1122,9 @@ void MeiLinArray::HandleClimbAct()
           APP::monit.LogError("Area2 Second ActionCode: 0x%02X Error!",_seq[1]);
         break;
       }
+
+      // 已经退回并移动到第二个入口，之后的上台动作才应对齐第二个入口。
+      SetCurrentEntry(_seq[1]);
     }
   }
 }
@@ -1097,7 +1134,7 @@ static void MoveBackAndDecend()
   Seq::Wait(0.5);
 
   // 先后退
-  APP::chas.Move(Vec2(-0.25f, 0.0f), 7.0);
+  APP::chas.Move(Vec2(-0.3f, 0.0f), 7.0);
   Seq::Wait(0.5);
   // if(Area2::mei_lin_array.is_f_origin_before_turn)
   // {
@@ -1140,24 +1177,23 @@ void MeiLinArray::ExecuteSequence()
     Seq::Wait(0.01f);
   }
 
-  switch (_seq[1])
+  // 按 8 字节分段打印，避免单条 Monitor 日志超过长度限制。
+  for (int start = 0; start < _seq_len; start += 8)
   {
-    case 0x80:
-      Area2::block_pos.GetIn(0);
-    break;
-
-    case 0x81:
-      Area2::block_pos.GetIn(1);
-    break;
-
-    case 0x82:
-      Area2::block_pos.GetIn(2);
-    break;
-
-    default:
-      APP::monit.LogError("Error EnterCode: 0x%x02", _seq[1]);
-    break;
+    char seq_log[48] = {0};
+    int written = snprintf(seq_log, sizeof(seq_log),
+                           "[MeiLin] Seq[%d..%d]:", start,
+                           (start + 7 < _seq_len) ? start + 7 : _seq_len - 1);
+    for (int i = start; i < _seq_len && i < start + 8 && written > 0 && written < static_cast<int>(sizeof(seq_log)); ++i)
+    {
+      written += snprintf(seq_log + written, sizeof(seq_log) - written, " %02X", _seq[i]);
+    }
+    APP::monit.LogInfo("%s", seq_log);
   }
+
+  // 首个入口动作（取块/抵靠）必须对齐 _seq[0]；若两个入口不同，
+  // HandleClimbAct 会在完成后退和横移后再切换到 _seq[1]。
+  SetCurrentEntry(_seq[0]);
   
 
   APP::monit.LogInfo("[MeiLin] Sequence received, %d actions.", _seq_len);

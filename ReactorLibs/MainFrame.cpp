@@ -19,6 +19,7 @@
 #include "optical_comm.hpp"
 #include "VacuumClaw.hpp"
 #include "SemiAutoGr.hpp"
+#include "SemiAutoGr_Blue.hpp"
 
 #include "ChallengeGraph.hpp"
 #include "ChallengeGraphBlue.hpp"
@@ -39,7 +40,8 @@ void Response_Button_main();
 
 void Action_of_Dege(StateCore *core)
 {
-  while(MOD::farcon.button_second_half[0] != 1)
+  // while(MOD::farcon.button_second_half[0] != 1)
+  while(1)
   {
     Response_Button_main();
     Seq::Wait(0.01f);
@@ -48,16 +50,16 @@ void Action_of_Dege(StateCore *core)
   // Area2::mei_lin_array.FetchBlock(BlockHeight::DOWN200);
   // APP::leg.SetFrontPosSlow(-200.0f, 5.0f);
   // APP::leg.SetBackPosSlow(-200.0f, 5.0f);
-  Area3::FetchBlockOnTheGround();
+  // Area3::FetchBlockOnTheGround();
   // Area2::block_pos.GetIn(1);
   // Area2::mei_lin_array.Climb_Up200();
   // APP::get_block.Put();
 
-  while(MOD::farcon.button_second_half[0] != 1)
-  {
-    Response_Button_main();
-    Seq::Wait(0.01f);
-  }  
+  // while(MOD::farcon.button_second_half[0] != 1)
+  // {
+  //   Response_Button_main();
+  //   Seq::Wait(0.01f);
+  // }  
   // Area2::mei_lin_array.FetchBlock(BlockHeight::UP200);
 
   // Area2::mei_lin_array.Climb_Up200();
@@ -159,16 +161,20 @@ void MainFrameCpp()
 
   Area2::mei_lin_array.Init();
 
-  // 注册状态机（仅注册，不启动。启动在 Mainloop 中）
-  APP::main_loop.Challenge_Explore_RedGr_id = Config_R2_Challenge_StateGraph();
-  APP::main_loop.Challenge_Explore_BlueGr_id = Config_R2_Challenge_Blue_StateGraph();
+  // // 注册状态机（仅注册，不启动。启动在 Mainloop 中）
+  // APP::main_loop.Challenge_Explore_RedGr_id = Config_R2_Challenge_StateGraph();
+  // APP::main_loop.Challenge_Explore_BlueGr_id = Config_R2_Challenge_Blue_StateGraph();
 
-  // 注册三区挑战赛
-  APP::main_loop.Challenge_Treasure_BlueGr_id = ChallengeArenaPK_Graph_Blue();
-  APP::main_loop.Challenge_Treasure_RedGr_id = ChallengeArenaPK_Graph();
+  // // 注册三区挑战赛
+  // APP::main_loop.Challenge_Treasure_BlueGr_id = ChallengeArenaPK_Graph_Blue();
+  // APP::main_loop.Challenge_Treasure_RedGr_id = ChallengeArenaPK_Graph();
 
-  // 注册主赛
-  APP::main_loop.Compete_KM_RedGr_id = Config_SemiAutoStateGraph();
+  // // 注册主赛
+  // APP::main_loop.Compete_KM_RedGr_id = Config_SemiAutoStateGraph();
+  // APP::main_loop.Compete_KM_BlueGr_id = Config_SemiAutoStateGraph_Blue();
+
+  // 启动手动图
+  Config_StateGraph();
 
   // APP::state_core.RegistGraph(graph);
   // graph.Degenerate(Action_of_Dege);

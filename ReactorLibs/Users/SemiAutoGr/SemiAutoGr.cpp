@@ -20,6 +20,8 @@
 #include "a12_1.hpp"
 
 static void Response_Button();
+static void Area3_SickFix();
+
 static bool IR_Read(InfraredDetector& ir);
 static bool NIR_Read(InfraredDetector& ir);
 
@@ -29,18 +31,20 @@ StateGraph SemiAutoGr("SemiAuto");
 static uint8_t need_spear_id = 0;
 
 /*********    额外的状态转移Flag    *********/
-static bool fetch_again = false;    // 是否需要再次取矛头
-static bool move_to_area2 = false;  // 是否可以移动到二区了
+static bool soft_retry_chasdisable = false; // 软重试：底盘失能状态
+static bool retry_fetch_spear = false;      // 软重试：重新去取对应矛头
 
 static bool retry_dir_area2 = false; // 重试：是否需要直接进入二区
 static bool retry_comm_err = false; // 重试：是否需要重新请求工控机发送动作序
+static bool retry_area3 = false;    // 重试：从三区重试点开始等待放块指令
 
 // ── 状态函数声明 ──
 static void Waiting_for_Start(StateCore *core);
 // 一区
 static void Walk_Fetch(StateCore *core);
 static void Walk_To_Dock(StateCore *core);
-static void Dock_Fetch_And_Back(StateCore *core);
+// static void Dock_Fetch_And_Back(StateCore *core);
+
 // 二区
 static void Goto_Area2(StateCore *core);
 static void Area2_HostAction(StateCore *core);
@@ -48,21 +52,20 @@ static void Area2_HostAction(StateCore *core);
 static void Walk_into_Area3(StateCore *core);
 // 三区
 static void Put_First_Block(StateCore *core);
-static void Wait_R1_Instru(StateCore *core);
+static void Wait_Human_Instru(StateCore *core);
 // 重试
 static void Retry_Direct_ToArea2(StateCore *core);
 static void Retry_Comm_Error(StateCore *core);
+static void Retry_ChasDisabled(StateCore *core);
+
 
 // 从R1等待位置出发的状态函数
-static void Fetch_0_FromWait();
-static void Fetch_1_FromWait();
 static void Robot_Combine();
+// 合体后的状态函数
+static void CombPutL3();
 
-static Vec2 Arena_R2_KFS_FetchPos[2] = {
-  Vec2(11.1, 3.555), Vec2(11.1, 2.835)
-}; 
 // 放中间九宫格块的位置
-static Vec3 Arena_R2_L2_Mid_Ges(10.75f, 5.20f, 1.571f);
+static Vec3 Arena_R2_L2_Mid_Ges(10.75f, 5.10f, 1.571f);
 
 
 int Config_SemiAutoStateGraph()
@@ -74,7 +77,7 @@ int Config_SemiAutoStateGraph()
   // 一区
   StateBlock& s_area1_f1   = SemiAutoGr.AddState("area1_f1");      // 取第一个矛头
   StateBlock& s_area1_td   = SemiAutoGr.AddState("area1_td");      // 走到对接点
-  StateBlock& s_dock_fetch = SemiAutoGr.AddState("dock_fetch");   // 对接取矛并返回
+  // StateBlock& s_dock_fetch = SemiAutoGr.AddState("dock_fetch");   // 对接取矛并返回
 
   // 二区
   StateBlock& s_goto_area2     = SemiAutoGr.AddState("goto_area2");     // 走进二区（梅林跟前）
@@ -87,16 +90,19 @@ int Config_SemiAutoStateGraph()
   StateBlock& s_put_first  = SemiAutoGr.AddState("put_first");         // 放第一个块
   StateBlock& s_wait_r1    = SemiAutoGr.AddState("wait_r1");           // 等待R1指令
 
-  // 重试
+  // 重试 （含软重试）
   StateBlock& s_retry_dirctA2  = SemiAutoGr.AddState("retry_dircA2");   // 重试：直接进二区
   StateBlock& s_retry_comm_err = SemiAutoGr.AddState("retry_comm_err"); // 重试：光通信异常
+
+  // 用于拖动车辆的底盘失能状态
+  StateBlock& s_chas_disabled = SemiAutoGr.AddState("chas_disa");
 
   /************************ 状态函数绑定 ************************/
   s_wait.StateAction = Waiting_for_Start;
 
   s_area1_f1.StateAction   = Walk_Fetch;
   s_area1_td.StateAction   = Walk_To_Dock;
-  s_dock_fetch.StateAction = Dock_Fetch_And_Back;
+  // s_dock_fetch.StateAction = Dock_Fetch_And_Back;
 
   s_goto_area2.StateAction    = Goto_Area2;
   s_area2_hostact.StateAction = Area2_HostAction;
@@ -104,20 +110,28 @@ int Config_SemiAutoStateGraph()
   s_walk_a2_to_a3.StateAction = Walk_into_Area3;
 
   s_put_first.StateAction  = Put_First_Block;
-  s_wait_r1.StateAction    = Wait_R1_Instru;
+  s_wait_r1.StateAction    = Wait_Human_Instru;
 
   s_retry_dirctA2.StateAction  = Retry_Direct_ToArea2;
   s_retry_comm_err.StateAction = Retry_Comm_Error;
+  s_chas_disabled.StateAction = Retry_ChasDisabled;
 
   /************************ 状态链接 ************************/
   // ── 正常流程 ──
   s_wait.LinkTo(&s_wait.Complete, s_area1_f1);       // 等待完成 → 取矛头
   s_area1_f1.LinkTo(&s_area1_f1.Complete, s_area1_td); // 取完 → 去对接
-  s_area1_td.LinkTo(&s_area1_td.Complete, s_dock_fetch); // 对接完成 → 对接取矛
+  s_area1_td.LinkTo(&s_area1_td.Complete, s_goto_area2); // 对接完成 → 对接取矛
+
+  // 对接时，可通过遥控器软“重试”，进入底盘失能状态。便于拖车。
+  s_area1_td.LinkTo(&soft_retry_chasdisable, s_chas_disabled);
+  s_chas_disabled.LinkTo(&retry_fetch_spear, s_area1_f1);
+  s_chas_disabled.LinkTo(&retry_dir_area2, s_retry_dirctA2);
+
+
 
   // dock_fetch 分支：继续取矛 或 进二区
-  s_dock_fetch.LinkTo(&fetch_again, s_dock_fetch);
-  s_dock_fetch.LinkTo(&move_to_area2, s_goto_area2);
+  // s_dock_fetch.LinkTo(&fetch_again, s_dock_fetch);
+  // s_dock_fetch.LinkTo(&move_to_area2, s_goto_area2);
 
   // 二区 → 三区
   s_goto_area2.LinkTo(&s_goto_area2.Complete, s_area2_hostact);
@@ -130,6 +144,7 @@ int Config_SemiAutoStateGraph()
   // ── 重试流程 ──
   s_wait.LinkTo(&retry_dir_area2, s_retry_dirctA2);
   s_wait.LinkTo(&retry_comm_err, s_retry_comm_err);
+  s_wait.LinkTo(&retry_area3, s_wait_r1);
   s_retry_dirctA2.LinkTo(&s_retry_dirctA2.Complete, s_goto_area2);
   s_retry_comm_err.LinkTo(&s_retry_comm_err.Complete, s_goto_area2);
 
@@ -159,7 +174,7 @@ void Waiting_for_Start(StateCore *core)
   APP::leg.F_AlmostOrigin();
   APP::leg.B_AlmostOrigin();
 
-  Seq::Wait(0.1f);
+  Seq::Wait(1.5f);
 
   // 等待遥控器确认
   while (MOD::farcon.button_second_half[0] != 1)
@@ -179,7 +194,7 @@ void Waiting_for_Start(StateCore *core)
   Seq::WaitUntil([]() { return MOD::host_pc.IsOnline(); });
   APP::monit.LogInfo("HostPC Online.");
 
-  Seq::Wait(0.75f);
+  Seq::Wait(1.5f);
   APP::monit.LogInfo("Ready to Go...");
 
   // 等待出发指令
@@ -202,6 +217,12 @@ void Waiting_for_Start(StateCore *core)
     retry_comm_err = true;
     return;
   }
+  else if (APP::main_loop.retry_id == 3)
+  {
+    APP::monit.LogRespond("Retry: Area3 retry point.");
+    retry_area3 = true;
+    return;
+  }
 
   core->GetCurState().Complete = true;
 }
@@ -216,8 +237,12 @@ void Walk_Fetch(StateCore *core)
   APP::leg.SetBackPos(-5);
   APP::main_loop.test_led.GradientFlow(Color::Up_Purpor * 0.65f, Color::Up_Yellow * 0.65f, 1.0f);
 
-  // 取矛头，第一个取 2 号，后续由光通信决定
-  need_spear_id = 2;
+  // 正常流程取 2 号；软重试流程使用操作手在 Retry_ChasDisabled 中确认的编号。
+  if (!retry_fetch_spear)
+  {
+    need_spear_id = 2;
+  }
+  retry_fetch_spear = false;
   FetchSpear_FromOrigin(need_spear_id);
 
   core->GetCurState().Complete = true;
@@ -243,6 +268,15 @@ void Walk_To_Dock(StateCore *core)
     Seq::Wait(0.01f);
 
     if (APP::comm_center.IsDocked()) break;
+
+    // 一个遥控器逻辑，按下某个按键后，进入“软重试”逻辑。目的是这样就可以不用R1通信，也能进入二区了。
+    if (MOD::farcon.button_first_half[4] == 1)
+    {
+      // 软重试灯
+      APP::main_loop.test_led.GradientFlow(Color::Up_Purpor * 0.85f, Color::Up_Yellow * 0.85f, 0.65f);
+      soft_retry_chasdisable = true;
+      return;
+    }
   }
 
   // 灯带：进度条
@@ -251,12 +285,22 @@ void Walk_To_Dock(StateCore *core)
 
   APP::jaw.OpenClaw();
 
-  // 等待 6 秒
+  // 等待 12 秒
   float wait_time_s = 0.0f;
-  while (wait_time_s < 6.0f)
+  while (wait_time_s < 12.0f)
   {
     wait_time_s += 0.05f;
-    wait_progress = wait_time_s / 6.0f;
+    wait_progress = wait_time_s / 12.0f;
+
+    // 一个软重试逻辑，同上。放在这里，这样对接完成后也能触发
+    if (MOD::farcon.button_first_half[4] == 1)
+    {
+      // 软重试灯：
+      APP::main_loop.test_led.GradientFlow(Color::Up_Purpor * 0.85f, Color::Up_Yellow * 0.85f, 0.65f);
+      soft_retry_chasdisable = true;
+      return;
+    }
+
     Seq::Wait(0.05f);
   }
 
@@ -264,102 +308,79 @@ void Walk_To_Dock(StateCore *core)
   APP::jaw.SetPosCode(APP::jaw._hori_origin_code - JawConst::_hori_max_travel_code / 2,
                       APP::jaw._vert_origin_code - 200000);
 
-  APP::monit.LogInfo("Fetch and Dock again.");
-  need_spear_id++;
+  APP::monit.LogInfo("Finish Dock.");
   APP::comm_center.ClearDockFlag();
 
   core->GetCurState().Complete = true;
 }
 
-
 /*******************************************************************************
- *  @brief 一区：从对接点取矛头并返回
+ * @brief 逻辑分支：如果使用重试
+ * @note 在这个状态中，车辆的底盘是完全失能的。要想脱离这个状态，只能通过遥控器按键进行选择式跳脱
  ******************************************************************************/
-void Dock_Fetch_And_Back(StateCore *core)
+void Retry_ChasDisabled(StateCore *core)
 {
-  bool giveup_dock = false;
-  fetch_again = false;
+  soft_retry_chasdisable = false;
+  retry_dir_area2 = false;
+  need_spear_id = 0;
 
-  APP::main_loop.test_led.Running(Color::Up_Yellow, 0.4f, 1.2f);
-  FetchSpear_FromDock(need_spear_id);
-
-  // 返回对接点
-  GotoDock(need_spear_id);
-  // 进入对接模式，允许工控机发送偏置
-  APP::jaw.SetTrackMode(true);
-  APP::jaw.UnlockHostPCBias();
-  APP::main_loop.test_led.Running(Color::Up_Yellow, 0.4f, 1.2f);
-
-  while (true)
+  // 如果按下该按钮，进入一个再不跳出的循环，直到跳出状态
+  if (MOD::farcon.button_second_half[2] == 1)
   {
-    Response_Button();
-    Seq::Wait(0.01f);
-
-    if (APP::comm_center.IsDocked() || MOD::farcon.button_second_half[0] == 1)
+    float cooldown = 0.0f;
+    // 灯带分成六段；已亮段数等于当前选择的矛头编号加一。
+    APP::main_loop.test_led.Segment(6);
+    while (MOD::farcon.button_second_half[0] != 1)
     {
-      APP::jaw.OpenClaw();
-      break;
-    }
-    if (APP::comm_center.IsDockGiveUp())
-    {
-      giveup_dock = true;
-      break;
-    }
-  }
+      // 再次按下按键，就能选择取哪个矛头了
+      if (MOD::farcon.button_second_half[2] == 1 && DWT_GetTimeline_Sec() - cooldown > 0.35f)
+      {
+        need_spear_id++;
+        if (need_spear_id > 5) need_spear_id = 0;
+        
+        // 根据选择的矛头编号，显示不同的颜色
+        for (uint8_t i = 0; i < 6; ++i)
+        {
+          if (i <= need_spear_id)
+          {
+            APP::main_loop.test_led.SegLit(i, (i % 2 == 0) ? Color::Yellow : Color::Green);
+          }
+          else
+          {
+            APP::main_loop.test_led.SegLit(i, Color(0.0f, 0.0f, 0.0f));
+          }
+        }
 
-  APP::jaw.SetTrackMode(false);
+        cooldown = DWT_GetTimeline_Sec();
+      }
 
-  // 区分：是否还要再取一个矛头
-  if (need_spear_id < 2 && !giveup_dock)
-  {
-    float wait_progress = 0.0f;
-    APP::main_loop.test_led.ProgBar(Color::Up_Yellow, &wait_progress);
-    float t = 0.0f;
-    while (t < 12.0f)
-    { 
-      t += 0.05f; 
-      wait_progress = t / 12.0f; 
-      Seq::Wait(0.05f); 
-    }
+      // 人为确定取矛头偏移
+      if(MOD::farcon.button_first_half[0] == 1 && DWT_GetTimeline_Sec() - cooldown > 0.35f)
+      {
+        fetch_spear_x_bias += 0.01;
+        cooldown = DWT_GetTimeline_Sec();
+      }
+      if(MOD::farcon.button_first_half[4] == 1 && DWT_GetTimeline_Sec() - cooldown > 0.35f)
+      {
+        fetch_spear_x_bias -= 0.01;
+        cooldown = DWT_GetTimeline_Sec();
+				
+      }
 
-    if (!giveup_dock)
-      APP::jaw.SetPosCode(APP::jaw._hori_origin_code - JawConst::_hori_max_travel_code / 2,
-                          APP::jaw._vert_origin_code - 200000);
-
-    need_spear_id++;
-    APP::comm_center.ClearDockFlag();
-    fetch_again = true;
-    APP::monit.LogInfo("Go Fetch Again.");
-  }
-  else
-  {
-    APP::comm_center.ClearDockFlag();
-    Seq::Wait(0.5f);
-    APP::main_loop.test_led.Running(Color::Orange, 0.4f, 1.2f);
-
-    while (true)
-    {
-      Response_Button();
       Seq::Wait(0.01f);
-      if (APP::comm_center.IsDocked() || MOD::farcon.button_second_half[0] == 1
-          || APP::comm_center.IsDockGiveUp())
-        break;
     }
 
-    float wait_progress = 0.0f;
-    APP::main_loop.test_led.ProgBar(Color::Up_Yellow, &wait_progress);
-    float t = 0.0f;
-    while (t < 6.0f)
-    { 
-      t += 0.05f; 
-      wait_progress = t / 6.0f; 
-      Seq::Wait(0.05f); 
-    }
+    // 选择完成，进入取矛头流程
+    retry_fetch_spear = true;
+    return;
+  }
 
-    APP::comm_center.ClearDockFlag();
-    fetch_again = false;
-    move_to_area2 = true;
-    APP::monit.LogInfo("Go to Climb.");
+  // 如果按下该按钮，直接进入二区，参考 Retry_Direct_ToArea2
+  if (MOD::farcon.button_second_half[3] == 1)
+  {
+    APP::monit.LogRespond("Retry: Direct to Area2.");
+    retry_dir_area2 = true;
+    return;
   }
 }
 
@@ -377,21 +398,18 @@ void Goto_Area2(StateCore *core)
 
   APP::main_loop.test_led.Lit(Color::White);
   APP::monit.LogInfo("entercode:%x", Area2::mei_lin_array.enter_code);
-
-  // 放宽路径末端刹车，让机器人带着余速退出 → 配合 Action 侧的闭环修正
-  // APP::path_chaser.SetTimeEndSlowDist(0.2f);
-  // APP::path_chaser.SetTimeEndMinVel(0.08f);
+  const bool need_fetch_at_entry = Area2::mei_lin_array.LockEntryFetchPlan();
 
   switch (Area2::mei_lin_array.enter_code)
   {
     case Area2Code::ENTER_0:
-      Area2::RunIntoArea2(PATH::A12_3(), Vec3(0.1f, 0.1f, 0.05f), true);
+      Area2::RunIntoArea2(PATH::A12_3(), Vec3(0.1f, 0.1f, 0.05f), true, need_fetch_at_entry);
       break;
     case Area2Code::ENTER_1:
-      Area2::RunIntoArea2(PATH::A12_2(), Vec3(0.1f, 0.1f, 0.05f), false);
+      Area2::RunIntoArea2(PATH::A12_2(), Vec3(0.1f, 0.1f, 0.05f), false, need_fetch_at_entry);
       break;
     case Area2Code::ENTER_2:
-      Area2::RunIntoArea2(PATH::A12_1(), Vec3(0.1f, 0.1f, 0.05f), true);
+      Area2::RunIntoArea2(PATH::A12_1(), Vec3(0.1f, 0.1f, 0.05f), true, need_fetch_at_entry);
       break;
     default:
       APP::monit.LogError("Invalid A2EnterCode!");
@@ -440,61 +458,10 @@ void Walk_into_Area3(StateCore *core)
   APP::leg.B_Origin();
 
   // 跑到九宫格第二层中间位置
-  MOVE::MoveToTargPos(PATH::A23_2(), Vec3(0.01f, 0.01f, 0.01f));
+  MOVE::MoveToTargPos(PATH::A23_2(), Vec3(0.2f, 0.2f, 0.1f));
   MOVE::MoveToTargGes(Arena_R2_L2_Mid_Ges);
 
-  // 西克激光对准
-  Seq::Wait(0.25f);
-  int sick_cnt = 0;
-  const float sick_kd = 0.25f;
-  const float sick_d_alpha = 0.7f;
-  float last_err_dist = APP::comm_center.sick_data_m[1] - APP::comm_center.sick_data_m[0];
-  float d_err_dist_filt = 0.0f;
-  uint32_t sick_log_tick = 0;
-
-  while (sick_cnt < 10)
-  {
-    float err_dist = APP::comm_center.sick_data_m[1] - APP::comm_center.sick_data_m[0];
-    if (fabs(err_dist) < 0.004f) sick_cnt++;
-    else sick_cnt = 0;
-
-    float d_err_dist = (err_dist - last_err_dist) / 0.005f;
-    d_err_dist_filt = d_err_dist_filt * sick_d_alpha + d_err_dist * (1.0f - sick_d_alpha);
-    float err_spd = err_dist * 1.0f - sick_kd * d_err_dist_filt;
-    last_err_dist = err_dist;
-
-    Vec2 sick_fix = Vec2(err_spd, 0.0f).Rotate(-System.position.z);
-    float sick_speed = sick_fix.Length();
-    if (sick_speed > 0.3f) sick_fix = sick_fix * (0.3f / sick_speed);
-
-    float yaw_err = 1.5707f - System.position.z;
-    Vec3 targ_body_vec = sick_fix.ToVec3();
-    targ_body_vec.z = yaw_err * 0.8f;
-
-    if (++sick_log_tick >= 20)
-    {
-      sick_log_tick = 0;
-      APP::monit.LogInfo("sf:e%.3f v%.3f s0%.3f s1%.3f",
-                         err_dist, err_spd,
-                         APP::comm_center.sick_data_m[0],
-                         APP::comm_center.sick_data_m[1]);
-    }
-    APP::chas.Move(targ_body_vec, 0.01f);
-    Seq::Wait(0.005f);
-  }
-
-  APP::monit.LogInfo("Finished sick fix. s0:%.3f s1:%.3f",
-                     APP::comm_center.sick_data_m[0], APP::comm_center.sick_data_m[1]);
-  APP::chas.Move(Vec3(0, 0, 0), 0.25f);
-
-  // 西克校准后修正坐标
-  int cnt = 0;
-  float _avg_x = 0.0f;
-  while (cnt < 10) { _avg_x += System.position.x; cnt++; Seq::Wait(0.005f); }
-  _avg_x /= 10.0f;
-  float arena_x_bias = 10.75f - _avg_x;
-  APP::monit.LogInfo("[arena_bias]:%.3f", arena_x_bias);
-  System.SetPositionBias(Vec3(arena_x_bias, 0.0f, 0.0f));
+  Area3_SickFix();
 
   Seq::Wait(0.5f);
 
@@ -508,9 +475,10 @@ void Walk_into_Area3(StateCore *core)
  ******************************************************************************/
 void Put_First_Block(StateCore *core)
 {
+  bool able_to_put = true; // 默认是可以放块的
   // 抬起腿
-  APP::leg.SetFrontPos(-388);
-  APP::leg.SetBackPos(-380);
+  APP::leg.SetFrontPos(-380);
+  APP::leg.SetBackPos(-365);
 
   Seq::WaitUntil([]() {
     return fabs(APP::leg.real_front_pos_mm - APP::leg.front_pos) < 6
@@ -521,272 +489,182 @@ void Put_First_Block(StateCore *core)
   if (APP::get_block.IsBlockPresent())
   {
     APP::monit.LogInfo("Middle block exists, move to right");
-    MOVE::MoveToTargGes(Vec3(11.29f, 5.20f, 1.571f));
+    MOVE::MoveToTargGes(Vec3(11.29f, 5.11f, 1.571f));
 
     if (APP::get_block.IsBlockPresent())
     {
       APP::monit.LogInfo("Right block also exists, move to left");
-      MOVE::MoveToTargGes(Vec3(10.21f, 5.20f, 1.571f));
+      MOVE::MoveToTargGes(Vec3(10.21f, 5.11f, 1.571f));
 
       if (APP::get_block.IsBlockPresent())
-        APP::monit.LogInfo("All three have blocks, need combine!");
+      {
+        APP::monit.LogInfo("All three have blocks, wait instruction!");
+        able_to_put = false;
+      }
     }
   }
 
-  APP::monit.LogSpec("Put At:%.2f, %.2f", System.position.x, System.position.y);
-  APP::get_block.Push();
+  if(able_to_put)
+  {
+    APP::monit.LogSpec("Put At:%.2f, %.2f", System.position.x, System.position.y);
 
-  Seq::Wait(5.0f);
+    APP::get_block.Put();
+    Seq::WaitUntil([]()
+    {
+      return !APP::get_block.IsBusy();
+    }, 15.0f);
+    Seq::Wait(2.0f);
+  }
 
-  // 确认
-  // while (MOD::farcon.button_second_half[0] != 1)
-  // {
-  //   Response_Button();
-  //   Seq::Wait(0.01f);
-  // }
+
+
+  // 收腿后返回三区重试点，准备接收后续操作手指令
+  APP::leg.F_AlmostOrigin();
+  APP::leg.B_AlmostOrigin();
+
+  // 先回九宫格中点，保证回撤路径的起点一致
+  MOVE::MoveToTargGes(Vec3(10.75f, 5.11f, 1.571f));
+  MOVE::MoveToTargPos(PATH::A32_RetryBack(), Vec3(0.01f, 0.01f, 0.01f));
 
   core->GetCurState().Complete = true;
 }
 
-// 放二层块的封装
-static void PutBlock_L2(uint8_t id)
+void RetryZone_PutL2(uint8_t id)
 {
-  // 此时接收到R1的命令，等待2.0s，R1让开
+  // 走到中心点
+  MOVE::MoveToTargPos(PATH::A23_Retry(), Vec3(0.01f, 0.01f, 0.01f));
+  
+  // 尝试西克纠正
+  Area3_SickFix();
+
+  switch (id)
+  {
+    case 0:   // 放四号格子
+    {
+      // 抬起腿
+      APP::leg.SetFrontPos(-380);
+      APP::leg.SetBackPos(-365);
+      MOVE::MoveToTargGes(Vec3(10.21f, 5.11f, 1.571f));
+      Seq::Wait(0.5f);
+      // 放块
+      APP::get_block.Put();
+      break;
+    }
+    case 1:   // 放五号格子
+    {
+      // 抬起腿
+      APP::leg.SetFrontPos(-380);
+      APP::leg.SetBackPos(-365);
+      MOVE::MoveToTargGes(Vec3(10.75f, 5.11f, 1.571f));
+      Seq::Wait(0.5f);
+      // 放块
+      APP::get_block.Put();
+      break;
+    }
+    case 2:   // 放六号格子
+    {
+      // 抬起腿
+      APP::leg.SetFrontPos(-380);
+      APP::leg.SetBackPos(-365);
+      MOVE::MoveToTargGes(Vec3(11.29f, 5.13f, 1.571f));
+      Seq::Wait(0.5f);
+      // 放块
+      APP::get_block.Put();
+      break;
+    }
+    default:
+    {
+      APP::monit.LogError("Invalid Retry Put ID!");
+      break;
+    }
+  }
+
+  // 等块放完
+  Seq::WaitUntil([]()
+  {
+    return !APP::get_block.IsBusy();
+  });
   Seq::Wait(2.0f);
 
-  // 根据需求，走不同的路线
-  switch (id)
-  {
-    case 0:
-    {
-      // 放最靠近二区的格子
-      MOVE::MoveToTargPos(PATH::W_TO_N4(), Vec3(0.01f, 0.01f, 0.015f));
-      break;
-    }
-    case 1:
-    {
-      // 放中间的格子
-      MOVE::MoveToTargPos(PATH::W_TO_N5(), Vec3(0.01f, 0.01f, 0.015f));
-      break;
-    }
-    case 2:
-    {
-      // 放最靠近三区的格子
-      MOVE::MoveToTargPos(PATH::W_TO_N6(), Vec3(0.01f, 0.01f, 0.015f));
-      break;
-    }
-  }
-
-  // 等待到达
-  APP::monit.LogInfo("Forward is Arena.");
-
-  // 西克校准：根据id确定目标偏移量
-  // 几何关系：坐标偏移a时，一边激光近a、另一边远a，差值变化2a
-  // N4(左,id=0): X=10.21，偏移0.54m，sick[1]-sick[0]目标为+1.08
-  // N5(中,id=1): X=10.75，居中，sick[1]-sick[0]目标为0
-  // N6(右,id=2): X=11.29，偏移0.54m，sick[1]-sick[0]目标为-1.08
-  // float sick_target = 0.0f;
-  // if (id == 0)
-  //   sick_target = 1.08f;
-  // else if (id == 2)
-  //   sick_target = -1.08f;
-
-  // // 等待，保障稳定性
-  // Seq::Wait(0.25f);
-
-  // // 锁定yaw角为1.571，同时平移直到两路西克激光差值与目标一致
-  // int sick_cnt = 0;
-  // const float sick_kd = 0.25f;
-  // const float sick_d_alpha = 0.7f;
-  // float last_err_dist = APP::comm_center.sick_data_m[1] - APP::comm_center.sick_data_m[0] - sick_target;
-  // float d_err_dist_filt = 0.0f;
-  // uint32_t sick_log_tick = 0;
-
-  // while (sick_cnt < 10)
-  // {
-  //   float err_dist = APP::comm_center.sick_data_m[1] - APP::comm_center.sick_data_m[0] - sick_target;
-
-  //   if (fabs(err_dist) < 0.004f)
-  //   {
-  //     sick_cnt++;
-  //   }
-  //   else
-  //     sick_cnt = 0;
-
-  //   float d_err_dist = (err_dist - last_err_dist) / 0.005f;
-  //   d_err_dist_filt = d_err_dist_filt * sick_d_alpha + d_err_dist * (1.0f - sick_d_alpha);
-  //   float err_spd = err_dist * 1.0f - sick_kd * d_err_dist_filt;
-  //   last_err_dist = err_dist;
-
-  //   Vec2 sick_fix = Vec2(err_spd, 0.0f).Rotate(-System.position.z);
-
-  //   // 速度保护：限制平移速度不超过0.3m/s
-  //   float sick_speed = sick_fix.Length();
-  //   if (sick_speed > 0.3f)
-  //   {
-  //     sick_fix = sick_fix * (0.3f / sick_speed);
-  //   }
-
-  //   // 锁定yaw角为 1.5707 rad，不用太强
-  //   float yaw_err = 1.5707f - System.position.z;
-  //   Vec3 targ_body_vec = sick_fix.ToVec3();
-  //   targ_body_vec.z = yaw_err * 0.8f;
-
-  //   if (++sick_log_tick >= 20)
-  //   {
-  //     sick_log_tick = 0;
-  //     APP::monit.LogInfo("sf:e%.3f v%.3f s0%.3f s1%.3f t%.3f",
-  //                        err_dist,
-  //                        err_spd,
-  //                        APP::comm_center.sick_data_m[0],
-  //                        APP::comm_center.sick_data_m[1],
-  //                        sick_target);
-  //   }
-
-  //   APP::chas.Move(targ_body_vec, 0.01f);
-  //   Seq::Wait(0.005f); // 200hz更新频率
-  // }
-
-  // APP::monit.LogInfo("Finished sick fix. sick0:%.3f sick1:%.3f id:%d",
-  //                    APP::comm_center.sick_data_m[0], APP::comm_center.sick_data_m[1], id);
-  // APP::chas.Move(Vec3(0.0f, 0.0f, 0.0f), 0.25f);
-
-  Seq::Wait(0.5f);
-
-  // 抬腿
-  APP::leg.SetFrontPos(-388);
-  APP::leg.SetBackPos(-380);
-
-  // 等腿抬好
-  Seq::WaitUntil([](){
-    return ( fabs(APP::leg.real_front_pos_mm - APP::leg.front_pos) < 6  && fabs(APP::leg.real_back_pos_mm - APP::leg.back_pos) < 6 );
-  });
-
-  // 根据需求，走不同的路线
-  switch (id)
-  {
-    case 0:
-    {
-      // 放最靠近二区的格子
-      MOVE::MoveToTargGes(Vec3(10.21f, 5.20f, 1.571f));
-      break;
-    }
-    case 1:
-    {
-      // 放中间的格子
-      MOVE::MoveToTargGes(Vec3(10.75f, 5.20f, 1.571f));
-      break;
-    }
-    case 2:
-    {
-      // 放最靠近三区的格子
-      MOVE::MoveToTargGes(Vec3(11.29f, 5.20f, 1.571f));
-      break;
-    }
-  }
-
-  // 放块
-  APP::get_block.Put();
-
-  APP::monit.LogSpec("Put At:%.2f, %.2f", System.position.x, System.position.y);
-
-  // 等待放块完成
-  Seq::Wait(7.0);
-
-  // 得先放下腿，再回家
+  // 放腿
   APP::leg.F_AlmostOrigin();
-  APP::leg.B_AlmostOrigin();
+  APP::leg.B_AlmostOrigin();  
 
-  // 根据需求，走不同的路线回到光通信位置，等待下一个指令
-  switch (id)
-  {
-    case 0:
-    {
-      // 放最靠近二区的格子
-      MOVE::MoveToTargPos(PATH::N4_BACK(), Vec3(0.015f, 0.015f, 0.015f));
-      break;
-    }
-    case 1:
-    {
-      // 放中间的格子
-      MOVE::MoveToTargPos(PATH::N5_BACK(), Vec3(0.015f, 0.015f, 0.015f));
-      break;
-    }
-    case 2:
-    {
-      // 放最靠近三区的格子
-      MOVE::MoveToTargPos(PATH::N6_BACK(), Vec3(0.015f, 0.015f, 0.015f));
-      break;
-    }
-  }
+  // 回到中间
+  MOVE::MoveToTargGes(Vec3(10.75f, 5.10f, 1.571f));
+
+  // 返回重试区
+  MOVE::MoveToTargPos(PATH::A32_RetryBack(), Vec3(0.01f, 0.01f, 0.01f));
 }
 
 
 /*******************************************************************************
- *  @brief 三区：等待 R1 光通信指令（非阻塞循环，200Hz 调用）
+ *  @brief 三区：等待 操作手 指令（非阻塞循环，200Hz 调用）
  ******************************************************************************/
 /**
- * @brief 此时，R2靠边站好。并将光通信 / 红外接收端向外对准，准备接收信息。并路由至不同状态
+ * @brief 此时，R2靠边站好（在重试区内）。准备接收操作手信息。并路由至不同状态
  * @note 这个函数里如果没有阻塞，那么根据状态机的设计，这个状态将会以 200Hz 循环
  * @param core 
  */
-void Wait_R1_Instru(StateCore *core)
+void Wait_Human_Instru(StateCore *core)
 {
-  /**
-   * @brief 根据R1的指令，路由至不同状态
-   * 
-   */
-  auto code = APP::comm_center.Get_R1_InstruCode();
-  if (code == Area3ActCode::Idle)
-    return;  // 无指令，跳过下面的等待和做动作
+  retry_area3 = false;
 
-  // 灯带：进度条
-  float wait_progress = 0.0f;
-  APP::main_loop.test_led.ProgBar(Color::Up_Yellow, &wait_progress);
+  /// @brief 根据操作手的指令，路由至不同状态
+  Area3ActCode code = Area3ActCode::Idle;
 
-  // 等待 6 秒
-  float wait_time_s = 0.0f;
-  while (wait_time_s < 6.0f)
+  APP::main_loop.test_led.Breath(Color::Green, 0.75f);
+
+  // 无指令则持续阻塞，等待下面的等待和做动作
+  while (code == Area3ActCode::Idle)
   {
-    wait_time_s += 0.05f;
-    wait_progress = wait_time_s / 6.0f;
-    Seq::Wait(0.05f);
+    if (MOD::farcon.button_second_half[2] == 1)
+    {
+      code = Area3ActCode::Put_L2_N4_Block;
+    }
+    else if (MOD::farcon.button_second_half[3] == 1)
+    {
+      code = Area3ActCode::Put_L2_N5_Block;
+    }
+    else if (MOD::farcon.button_second_half[4] == 1)
+    {
+      code = Area3ActCode::Put_L2_N6_Block;
+    }
+    else if (MOD::farcon.button_second_half[5] == 1)
+    {
+      code = Area3ActCode::Combine;
+    }
+    Seq::Wait(0.1f);
   }
+
+  // 灯带：运行
+  APP::main_loop.test_led.Running(Color::Green, 0.1f, 0.5f);
 
   switch (code)
   {
     case Area3ActCode::Put_L2_N4_Block:
     {
-      PutBlock_L2(0);
+      RetryZone_PutL2(0);
       break;
     }
     case Area3ActCode::Put_L2_N5_Block:
     {      
-      PutBlock_L2(1);
+      RetryZone_PutL2(1);
       break;
     }
     case Area3ActCode::Put_L2_N6_Block:
     {
-      PutBlock_L2(2);
+      RetryZone_PutL2(2);
       break;
     }
     case Area3ActCode::Put_L3:
     {
+      CombPutL3();
       break;
     }
     case Area3ActCode::Combine:
     {
       Robot_Combine();
-      break;
-    }
-    case Area3ActCode::Fetch_GroundBlock_0:
-    {
-      Fetch_0_FromWait();
-      break;
-    }
-    case Area3ActCode::Fetch_GroundBlock_1:
-    {
-      Fetch_1_FromWait();
       break;
     }
     default:
@@ -795,63 +673,17 @@ void Wait_R1_Instru(StateCore *core)
     }
   }
   // 清除，防止重复执行
-  APP::comm_center.Reset_R1_InstruCode();
+  // APP::comm_center.Reset_R1_InstruCode();
+  code = Area3ActCode::Idle;
 }
 
 /*******************************************************************************/
-
-void Fetch_0_FromWait()
-{
-  // 走到第一个块跟前
-  MOVE::MoveToTargGes(Vec3(Arena_R2_KFS_FetchPos[0].x, Arena_R2_KFS_FetchPos[0].y, 0.0));
-
-  // 等待到达
-  APP::monit.LogInfo("[Arena] I'm at the second block.");
-
-  // 等待遥控器的出发指令
-  while(MOD::farcon.button_second_half[0] != 1)
-  {
-    Response_Button();
-    Seq::Wait(0.01f);
-  }
-  // 取第二个块
-  Area3::FetchBlockOnTheGround();
-
-  // 等待取块完成
-  Seq::Wait(1.0f);
-
-  // 返回等待点（光通信朝向 R1）
-  MOVE::MoveToTargGes(Vec3(10.1f, 2.1f, -1.571f));
-}
-
-void Fetch_1_FromWait()
-{
-  // 走到第二个块跟前
-  MOVE::MoveToTargGes(Vec3(Arena_R2_KFS_FetchPos[1].x, Arena_R2_KFS_FetchPos[1].y, 0.0));
-
-  // 等待到达
-  APP::monit.LogInfo("[Arena] I'm at the second block.");
-
-  // 等待遥控器的出发指令
-  while(MOD::farcon.button_second_half[0] != 1)
-  {
-    Response_Button();
-    Seq::Wait(0.01f);
-  }
-  // 取第二个块
-  Area3::FetchBlockOnTheGround();
-
-  // 等待取块完成
-  Seq::Wait(1.0f);
-
-  // 返回等待点（光通信朝向 R1）
-  MOVE::MoveToTargGes(Vec3(10.1f, 2.1f, -1.571f));
-}
 
 void Robot_Combine()
 {
   // 首先，走到R1跟前
   MOVE::MoveToTargPos(PATH::W_TO_COMB(), Vec3(0.015f, 0.015f, 0.015f));
+  // MOVE::MoveToTargGes(Vec3(11.4f, 4.2f, 1.571f));
 
   APP::leg.F_Origin();
   APP::leg.B_Origin();
@@ -864,93 +696,6 @@ void Robot_Combine()
   }
   Seq::Wait(1.0f);
   APP::main_loop.test_led.TempBlink(Color::Orange, 3, 0.3f);
-  
-  // 然后，使用西克确认坐标（车体左边的那一路）
-  // 锁定yaw角为1.571，保持世界y坐标不变。同时平移，直到左路西克约等于1.64（误差小于0.005m）
-  // int sick_cnt = 0;
-  // const float sick_kd = 0.25f;
-  // const float sick_d_alpha = 0.7f;
-  // const float sick_target = 1.64f;
-  // float last_err_dist = APP::comm_center.sick_data_m[0] - sick_target;
-  // float d_err_dist_filt = 0.0f;
-  // uint32_t sick_log_tick = 0;
-
-  // while (sick_cnt < 10)
-  // {
-  //   float err_dist = APP::comm_center.sick_data_m[0] - sick_target;
-
-  //   if (fabs(err_dist) < 0.005f)
-  //   {
-  //     sick_cnt++;
-  //   }
-  //   else
-  //     sick_cnt = 0;
-
-  //   float d_err_dist = (err_dist - last_err_dist) / 0.005f;
-  //   d_err_dist_filt = d_err_dist_filt * sick_d_alpha + d_err_dist * (1.0f - sick_d_alpha);
-  //   float err_spd = err_dist * 1.0f - sick_kd * d_err_dist_filt;
-  //   last_err_dist = err_dist;
-
-  //   // 车体侧向平移（body y），在 yaw=1.571 时对应世界 x 方向，保持世界y不变
-  //   Vec2 sick_fix = Vec2(-err_spd, 0.0f).Rotate(-System.position.z);
-
-  //   // 速度保护：限制平移速度不超过0.2m/s
-  //   float sick_speed = sick_fix.Length();
-  //   if (sick_speed > 0.2f)
-  //   {
-  //     sick_fix = sick_fix * (0.2f / sick_speed);
-  //   }
-
-  //   // 锁定yaw角为 1.571 rad
-  //   float yaw_err = 1.571f - System.position.z;
-  //   Vec3 targ_body_vec = sick_fix.ToVec3();
-  //   targ_body_vec.z = yaw_err * 0.8f;
-
-  //   if (++sick_log_tick >= 20)
-  //   {
-  //     sick_log_tick = 0;
-  //     APP::monit.LogInfo("sf:e%.3f v%.3f s0%.3f",
-  //                        err_dist,
-  //                        err_spd,
-  //                        APP::comm_center.sick_data_m[0]);
-  //   }
-
-  //   APP::chas.Move(targ_body_vec, 0.01f);
-  //   Seq::Wait(0.005f); // 200hz更新频率
-  // }
-
-  // APP::monit.LogInfo("Finished sick fix. sick0:%.3f",
-  //                    APP::comm_center.sick_data_m[0]);
-  // APP::chas.Move(Vec3(0.0f, 0.0f, 0.0f), 0.25f);
-
-  // // 遥控器确认
-  // while (MOD::farcon.button_second_half[0] != 1)
-  // {
-  //   Response_Button();
-  //   Seq::Wait(0.01f);
-  // }
-  // Seq::Wait(1.0f);
-  // APP::main_loop.test_led.TempBlink(Color::Orange, 3, 0.3f);
-
-  // // 西克完成校准后，认准现在的x坐标
-  // int cnt = 0;
-  // float _avg_x = 0.0f;
-  // while (cnt < 10)
-  // {
-  //   _avg_x += System.position.x;
-  //   cnt++;
-  //   Seq::Wait(0.05f);
-  // }
-  // _avg_x /= float(cnt);
-
-  // // 遥控器确认
-  // while (MOD::farcon.button_second_half[0] != 1)
-  // {
-  //   Response_Button();
-  //   Seq::Wait(0.01f);
-  // }
-  // Seq::Wait(1.0f);
-  // APP::main_loop.test_led.TempBlink(Color::Orange, 3, 0.3f);
 
   // 抬腿
   APP::leg.SetFrontPos(-375);
@@ -969,25 +714,9 @@ void Robot_Combine()
 
   APP::main_loop.test_led.TempBlink(Color::Orange, 3, 0.3f);
 
-  // 向y正方向走，同时锁定x为_avg_x，yaw角为1.571，直到小黄0号看到障碍
+  // 向 y 正方向走，同时锁定 x 为_avg_x，yaw 角为1.571，直到小黄0号看到障碍
   while (true)
   {
-    // float x_err = _avg_x - System.position.x;
-    // float yaw_err = 1.571f - System.position.z;
-
-    // Vec2 targ_world_vec(0.0f, 0.03f); // 向 y 正方向走
-    // targ_world_vec.x = x_err * 0.7f;       // 锁定x
-
-    // // 转到车体坐标系下
-    // Vec2 targ_body_vec = targ_world_vec.Rotate(-System.position.z);
-
-    // // 锁定yaw角
-    // Vec3 final_body_vec = targ_body_vec.ToVec3();
-    // final_body_vec.z = yaw_err * 0.8f;
-
-    // APP::chas.Move(final_body_vec, 0.01f);
-    
-
     // -------直接向前走-------- // 
     float yaw_err = 1.571f - System.position.z;
     APP::chas.Move(Vec3(0.2f, 0.0f, yaw_err * 1.0f), 0.006f);
@@ -1024,28 +753,9 @@ void Robot_Combine()
 
   // 继续慢慢向前走，同上锁定，直到小黄2号看到障碍（最长20s超时）
   float combine_start_t = DWT_GetTimeline_Sec();
+
   while (!IR_Read(APP::leg.detector[2]) && DWT_GetTimeline_Sec() - combine_start_t < 15.0f)
   {
-    // float x_err = _avg_x - System.position.x;
-    // float yaw_err = 1.571f - System.position.z;
-
-    // Vec2 targ_world_vec(0.0f, 0.03f); // 向 y 正方向走
-    // targ_world_vec.x = x_err * 0.7f;       // 锁定x
-
-    // // 转到车体坐标系下
-    // Vec2 targ_body_vec = targ_world_vec.Rotate(-System.position.z);
-
-    // // 锁定yaw角
-    // Vec3 final_body_vec = targ_body_vec.ToVec3();
-    // final_body_vec.z = yaw_err * 0.8f;
-
-    // APP::chas.Move(final_body_vec, 0.01f);
-
-    // float yaw_err = 1.571f - System.position.z;
-
-    // APP::chas.Move(Vec3(0.025f, 0.0f, yaw_err * 0.5f), 0.5f);
-    // Seq::Wait(0.01f);
-
     float yaw_err = 1.571f - System.position.z;
     APP::chas.Move(Vec3(0.15f, 0.0f, yaw_err * 0.5f), 0.5f);
     Seq::Wait(0.5f);
@@ -1086,10 +796,50 @@ void Robot_Combine()
 
   // 缓慢向前走
   APP::chas.Move(Vec3(0.08f, 0.0f, 0.0f), 1.5f);
-  Seq::Wait(1.5f);
+  Seq::Wait(2.0f);
 
   // 结束
   Seq::Wait(3600.0f);
+}
+
+/*******************************************************************************
+ *  @brief 放三层块
+ * @warning 需要前置条件：位于R1上
+ ******************************************************************************/
+void CombPutL3()
+{
+  // 先缓慢抬腿
+  APP::leg.SetFrontPosSlow(-400.0f, 5.0f);
+  APP::leg.SetBackPosSlow(-400.0f, 5.0f);
+
+  // 等待腿抬好
+  Seq::WaitUntil([]() {
+    return fabs(APP::leg.real_front_pos_mm - APP::leg.front_pos) < 6
+        && fabs(APP::leg.real_back_pos_mm - APP::leg.back_pos) < 6;
+  }, 10.0f);
+
+  // 遥控器确认
+  while (MOD::farcon.button_second_half[0] != 1)
+  {
+    Response_Button();
+    Seq::Wait(0.01f);
+  }
+  APP::main_loop.test_led.TempBlink(Color::Orange, 3, 0.3f);
+  Seq::Wait(1.0f);
+
+  // 放块
+  APP::get_block.Put();
+
+  // 等块放完
+  Seq::WaitUntil([]()
+  {
+    return !APP::get_block.IsBusy();
+  }, 15.0f);
+  Seq::Wait(3.5f);
+
+  // 缓慢放腿
+  APP::leg.SetFrontPosSlow(-4, 5.0f);
+  APP::leg.SetBackPosSlow(-4, 5.0f);
 }
 
 
@@ -1098,7 +848,9 @@ void Robot_Combine()
  ******************************************************************************/
 void Retry_Direct_ToArea2(StateCore *core)
 {
-  MOVE::MoveToTargGes(Vec3(1.3f, 1.0f, -1.5707f));
+  retry_dir_area2 = false;
+
+  MOVE::MoveToTargGes(Vec3(1.3f, 5.0f, 1.5707f));
   core->GetCurState().Complete = true;
 }
 
@@ -1108,7 +860,9 @@ void Retry_Direct_ToArea2(StateCore *core)
  ******************************************************************************/
 void Retry_Comm_Error(StateCore *core)
 {
-  MOVE::MoveToTargGes(Vec3(0.8f, 1.3f, 0.0f));
+  retry_comm_err = false;
+
+  MOVE::MoveToTargGes(Vec3(0.8f, 4.7f, 1.5707f));
 
   Seq::WaitUntil([]() { return APP::comm_center.IsKFSSeqRecved(); });
 
@@ -1141,6 +895,84 @@ static void Response_Button()
     vel.z = -map_axis(MOD::farcon.jys_value[0]) * max_velo;
 
     APP::chas.Move(vel, 0.2f);
+
+    /*******  仅供测试！！！  *******/
+    // 抬腿
+    if (MOD::farcon.button_first_half[0] == 1)
+    {
+      APP::leg.SetFrontPosSlow(-400.0f, 5.0f);
+      APP::leg.SetBackPosSlow(-400.0f, 5.0f);
+    }
+
+    // 一起收回 
+    if (MOD::farcon.button_first_half[3] == 1)
+    {
+      APP::leg.SetFrontPosSlow(-4, 5.0f);
+      APP::leg.SetBackPosSlow(-4, 5.0f);
+    }
+}
+
+void Area3_SickFix()
+{
+  static bool _sick_fixed = false;
+
+  if (_sick_fixed) return;
+
+  Seq::Wait(0.25f);
+  int sick_cnt = 0;
+  const float sick_kd = 0.25f;
+  const float sick_d_alpha = 0.7f;
+  float last_err_dist = APP::comm_center.sick_data_m[1] - APP::comm_center.sick_data_m[0];
+  if(fabs(last_err_dist) > 0.5)
+  {
+    return;
+  }
+  float d_err_dist_filt = 0.0f;
+  uint32_t sick_log_tick = 0;
+
+  while (sick_cnt < 10)
+  {
+    float err_dist = APP::comm_center.sick_data_m[1] - APP::comm_center.sick_data_m[0];
+    if (fabs(err_dist) < 0.004f) sick_cnt++;
+    else sick_cnt = 0;
+
+    float d_err_dist = (err_dist - last_err_dist) / 0.005f;
+    d_err_dist_filt = d_err_dist_filt * sick_d_alpha + d_err_dist * (1.0f - sick_d_alpha);
+    float err_spd = err_dist * 1.0f - sick_kd * d_err_dist_filt;
+    last_err_dist = err_dist;
+
+    Vec2 sick_fix = Vec2(err_spd, 0.0f).Rotate(-System.position.z);
+    float sick_speed = sick_fix.Length();
+    if (sick_speed > 0.3f) sick_fix = sick_fix * (0.3f / sick_speed);
+
+    float yaw_err = 1.5707f - System.position.z;
+    Vec3 targ_body_vec = sick_fix.ToVec3();
+    targ_body_vec.z = yaw_err * 0.8f;
+
+    if (++sick_log_tick >= 20)
+    {
+      sick_log_tick = 0;
+      APP::monit.LogInfo("sf:e%.3f v%.3f s0%.3f s1%.3f",
+                         err_dist, err_spd,
+                         APP::comm_center.sick_data_m[0],
+                         APP::comm_center.sick_data_m[1]);
+    }
+    APP::chas.Move(targ_body_vec, 0.01f);
+    Seq::Wait(0.005f);
+  }
+
+  APP::monit.LogInfo("Finished sick fix. s0:%.3f s1:%.3f",
+                     APP::comm_center.sick_data_m[0], APP::comm_center.sick_data_m[1]);
+  APP::chas.Move(Vec3(0, 0, 0), 0.25f);
+
+  int cnt = 0;
+  float avg_x = 0.0f;
+  while (cnt < 10) { avg_x += System.position.x; cnt++; Seq::Wait(0.005f); }
+  avg_x /= 10.0f;
+  float arena_x_bias = 10.75f - avg_x;
+  _sick_fixed = true;
+  APP::monit.LogInfo("[arena_bias]:%.3f", arena_x_bias);
+  System.SetPositionBias(Vec3(arena_x_bias, 0.0f, 0.0f));
 }
 
 /*═══════════════════════════════════════════════════════════════════════════════
