@@ -65,6 +65,8 @@ public:
     static void OpticalRxCallback(uint8_t func_code, const uint8_t* payload, uint8_t payload_len, void* user_ctx);
     static void DockRxCallback(uint8_t func_code, const uint8_t* payload, uint8_t payload_len, void* user_ctx);
     static void ArenaActRxCallback(uint8_t func_code, const uint8_t* payload, uint8_t payload_len, void* user_ctx);
+    static void CtrlSpeedRxCb(uint8_t func_code, const uint8_t *payload, uint8_t payload_len, void *user_ctx);
+
     
     Area3ActCode Get_R1_InstruCode() const { return _area3_act_code; }
     

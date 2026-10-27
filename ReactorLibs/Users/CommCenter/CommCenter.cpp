@@ -4,6 +4,7 @@
 #include "optical_comm.hpp"
 #include "Jaw.hpp"
 #include "string.h"
+#include "Chassis.hpp"
 
 CommCenter& APP::comm_center = CommCenter::GetInstance();
 
@@ -47,6 +48,8 @@ void CommCenter::Start()
     MOD::host_pc.Regist(HostPC::FuncCode::slam_pos, SlamRxCallback, nullptr);
     // 注册工控机接收 分辨 红蓝半场 与 一三区 反馈的回调
     MOD::host_pc.Regist(HostPC::FuncCode::field_area_feedback, FieldToggleRxCb, nullptr);
+
+    MOD::host_pc.Regist(HostPC::FuncCode::ctrl_spd, CtrlSpeedRxCb);
 
     // 注册sick串口
     MOD::sick.Init(Hardware::huart_sick, 0x03); // 使用通道0和1
@@ -284,6 +287,16 @@ void CommCenter::ArenaActRxCallback(uint8_t func_code, const uint8_t* payload, u
     if(func_code == 0xC4)
     {
         APP::comm_center.Set_R1_InstruCode(static_cast<Area3ActCode>(payload[0]));
+    }
+}
+
+void CommCenter::CtrlSpeedRxCb(uint8_t func_code, const uint8_t *payload, uint8_t payload_len, void *user_ctx)
+{
+    if(func_code == 0xBB)
+    {
+        Vec3 vel;
+        vel.FromBytes(payload);
+        APP::chas.Move(vel, 0.2f);
     }
 }
 
