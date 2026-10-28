@@ -407,7 +407,7 @@ void ChassisType::HostCmdCallback(uint8_t func_code, const uint8_t* payload, uin
     if(func_code == 0xBB && chas.control_mode == HOST)
     {
         Vec3 speed;
-        float max_velo = 1.0f; // 发送方速度限幅
+        float max_velo = 4.0f; // 发送方速度限幅
 
         speed.FromBytes(payload);
         speed.Limit(max_velo);
