@@ -54,6 +54,7 @@ void ChassisType::Start()
     // 发送重置底盘和腿的指令，包括电机和里程计
     uint8_t payload[1] = {0x01}; 
     MOD::board_can.SendTask(MOD::C_sub_ctrl_board_id, 4, payload, sizeof(payload), false); 
+    control_mode = HOST;
 }
 
 /**
@@ -413,7 +414,7 @@ void ChassisType::HostCmdCallback(uint8_t func_code, const uint8_t* payload, uin
         speed.Limit(max_velo);
 
         // 调用速度控制指令下发
-        chas.Move(speed);
+        chas.Move(speed, 0.2);
     }
 }
 
