@@ -292,7 +292,7 @@ void CommCenter::ArenaActRxCallback(uint8_t func_code, const uint8_t* payload, u
 
 void CommCenter::CtrlSpeedRxCb(uint8_t func_code, const uint8_t *payload, uint8_t payload_len, void *user_ctx)
 {
-    if(func_code == 0xBB)
+    if(func_code == static_cast<uint8_t>(HostPC::FuncCode::ctrl_spd))
     {
         Vec3 vel;
         vel.FromBytes(payload);
