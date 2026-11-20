@@ -140,7 +140,7 @@ void MainFrameCpp()
   System.RegistApp(APP::comm_center);
 
   // 启动矛头控制应用
-  System.RegistApp(APP::jaw);
+  // System.RegistApp(APP::jaw);
 
   // 底盘启动
   System.RegistApp(APP::chas);
@@ -174,7 +174,7 @@ void MainFrameCpp()
   // APP::main_loop.Compete_KM_BlueGr_id = Config_SemiAutoStateGraph_Blue();
 
   // 启动手动图
-  // Config_StateGraph();
+  Config_StateGraph();
 
   // APP::state_core.RegistGraph(graph);
   // graph.Degenerate(Action_of_Dege);

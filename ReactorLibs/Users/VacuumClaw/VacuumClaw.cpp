@@ -43,7 +43,7 @@ void VacuumClaw::Start()
         .ADRC_MaxPlannedVel(1800.0f)
         .ADRC_SOTF(0.0067f)
         .Apply();
-    motor_snap.driver.Enable();
+    // motor_snap.driver.Enable();
 
     /****  翻转 2006 ，零位：吸盘面竖直，总行程  ****/ 
     motor_pitch.ConfigADRC()
@@ -188,13 +188,14 @@ void VacuumClaw::_Update_GetOrigin()
     {
         _GetPitchOrigin();
     }
-    // 再 snap
-    if(_pitch_origined && !_snap_origined)
-    {
-        _GetClawOrigin();
-    }
+    // 再 snap，小黄好像误触发，不要了，人手自己转
+    // if(_pitch_origined && !_snap_origined)
+    // {
+    //     _GetClawOrigin();
+    // }
 
-    if(_snap_origined && _pitch_origined)
+    // if(_snap_origined && _pitch_origined)
+    if(_pitch_origined)
     {
         _origined = true;
     }
@@ -471,6 +472,7 @@ void VacuumClaw::_GetClawOrigin()
     // 如果被小黄看到了，连续5个Tick，就停止
     if (clawzero_detector.Read() && runed_tick > 30) // 注意正负号！
     {
+        // APP::monit.LogInfo("Snap claw zero detected!");
         snap_probe_cnt++;
         if (snap_probe_cnt >= 10)
         {
